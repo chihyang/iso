@@ -1,6 +1,7 @@
 import Convert
 import Data
 import Interp
+import TypeCheck
 
 main :: IO ()
 main = do {
@@ -42,7 +43,6 @@ main = do {
 
   -- test for terms
   ; let tlv = (BTySum BTyUnit (BTySum BTyUnit (BTySum BTyUnit BTyUnit)))
-  ; let trv = (BTySum (BTySum (BTySum BTyUnit BTyUnit) BTyUnit) BTyUnit)
   ; let v0 = ValLInj ValUnit
   ; let v1 = ValRInj (ValLInj ValUnit)
   ; let v2 = ValRInj (ValRInj (ValLInj ValUnit))
@@ -57,12 +57,15 @@ main = do {
   ; let vlPat = ValAnn (ValLInj (ValVar "vl")) tlv
   ; let vrPat = ValAnn (ValRInj (ValVar "vr")) tlv
   ; let lhsPat = [vlPat, vrPat]
+  ; let trv = (BTySum (BTySum BTyUnit (BTySum BTyUnit BTyUnit)) BTyUnit)
   ; let elPat = ValAnn (ValRInj (ValVar "vl")) trv
   ; let erPat = ValAnn (ValLInj (ValVar "vr")) trv
   ; let rhsPat = [ExpVal elPat, ExpVal erPat]
   ; let i2 = IsoValue lhsPat rhsPat
   ; let i3 = TmIsoApp i2 (TmRInj (TmRInj (TmLInj t0)))
   ; print (interp [] (PgTm i3))
+  ; print (typeInfer [] (PgTm i3))
+
   -- ; let e20 = PgIs $ IsoValue [ValUnit] [ExpVal (ValPair ValUnit ValUnit)]
   -- ; print (interp [] e20)
   -- ; let m1 = matrixize [("a" , 0 :: Int) , ("b" , 2 :: Int), ("c" , 3 :: Int)]
