@@ -236,8 +236,8 @@ typeCheckValue _ tm ty = error $ "Expect " ++ show tm ++ " to have type " ++ sho
 typeInferValueNoPattern :: TypEnv -> Value -> (BaseType , Value)
 typeInferValueNoPattern _ ValUnit = (BTyUnit , ValAnn ValUnit BTyUnit)
 typeInferValueNoPattern _ (ValInt n) = (BTyInt , ValAnn (ValInt n) BTyInt)
-typeInferValueNoPattern _ (ValVar var) =
-  error $ "Type annotation is required for a single pattern var " ++ var ++ "!"
+typeInferValueNoPattern env (ValVar var) = (ty , ValAnn (ValVar var) ty) where
+  ty = applyBaseEnv env var
 typeInferValueNoPattern _ (ValLInj v) =
   error $ "Type annotation is required for a Left value " ++ show v ++ "!"
 typeInferValueNoPattern _ (ValRInj v) =
