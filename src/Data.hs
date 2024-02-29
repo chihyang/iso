@@ -8,12 +8,22 @@ data BaseType =
   | BTySum BaseType BaseType
   | BTyProd BaseType BaseType
   | BTyMu String BaseType
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord)
+instance Show BaseType where
+  show BTyUnit = "Unit"
+  show BTyInt = "Nat"
+  show (BTyVar var) = show var
+  show (BTySum lt rt) = "(" ++ show lt ++ " + " ++ show rt ++ ")"
+  show (BTyProd lt rt) = "(" ++ show lt ++ " x " ++ show rt ++ ")"
+  show (BTyMu var bodyT) = "mu." ++ show var ++ " " ++ show bodyT ++ ""
 
 data IsoType =
   ITyBase BaseType BaseType
   | ITyFun BaseType BaseType IsoType
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord)
+instance Show IsoType where
+  show (ITyBase lt rt) = show lt ++ " <-> " ++ show rt
+  show (ITyFun lt rt bodyT) = "(" ++ show lt ++ " <-> " ++ show rt ++ ") -> " ++ show bodyT
 
 type ProgramType = Either BaseType IsoType
 
@@ -27,17 +37,17 @@ data Value =
   | ValPair Value Value
   | ValAnn Value BaseType
   -- | ValFold Value
-  deriving (Show)
+  deriving (Eq, Ord, Show)
 
 data Exp =
   ExpVal Value
   | ExpLet Pattern Exp Exp
-  deriving (Show)
+  deriving (Eq, Ord, Show)
 
 data Pattern =
   PtSingleVar String
   | PtMultiVar [String]
-  deriving (Show)
+  deriving (Eq, Ord, Show)
 
 data Iso =
   IsoValue [Value] [Exp]
@@ -46,7 +56,7 @@ data Iso =
   | IsoApp Iso Iso
   | IsoFix String Iso
   | IsoAnn Iso IsoType
-  deriving (Show)
+  deriving (Eq, Ord, Show)
 
 data Term =
   TmUnit
@@ -59,12 +69,12 @@ data Term =
   | TmLet Pattern Term Term
   | TmAnn Term BaseType
   -- | TmFold Term
-  deriving (Show)
+  deriving (Eq, Ord, Show)
 
 data Program =
   PgTm Term
   | PgIs Iso
-  deriving (Show)
+  deriving (Eq, Ord, Show)
 
 -- Value
 data ProgramBaseValue =
@@ -81,12 +91,12 @@ data ProgramIsoValue =
   PIValBase [(ProgramBaseValue , ProgramBaseValue)] ValEnv
   | PIValLam String Iso ValEnv
   | PIValFix String Iso ValEnv
-  deriving (Show)
+  deriving (Eq, Ord, Show)
 
 data ProgramValue =
   PB ProgramBaseValue
   | PI ProgramIsoValue
-  deriving (Show)
+  deriving (Eq, Ord, Show)
 
 -- Value Environment
 type ValEnv = [(String , ProgramValue)]

@@ -1,6 +1,5 @@
 module Main (main) where
 
-import Lib
 import Convert
 import Data
 import Interp
