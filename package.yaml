@@ -1,0 +1,61 @@
+name:                iso
+version:             0.1.0.0
+github:              "chihyang/iso"
+license:             BSD-3-Clause
+author:              "Chihyang Hsin"
+maintainer:          "chihyanghsin@gmail.com"
+copyright:           "2024 Chihyang Hsin"
+
+extra-source-files:
+- README.md
+- CHANGELOG.md
+
+# Metadata used when publishing your package
+# synopsis:            Short description of your package
+# category:            Web
+
+# To avoid duplicated efforts in documentation and dealing with the
+# complications of embedding Haddock markup inside cabal files, it is
+# common to point users to the README.md file.
+description:         Please see the README on GitHub at <https://github.com/chihyang/iso#readme>
+
+dependencies:
+- base >= 4.7 && < 5
+- matrix >= 0.3.6.3
+- containers >= 0.6.7
+
+ghc-options:
+- -Wall
+- -Wcompat
+- -Widentities
+- -Wincomplete-record-updates
+- -Wincomplete-uni-patterns
+- -Wmissing-export-lists
+- -Wmissing-home-modules
+- -Wpartial-fields
+- -Wredundant-constraints
+
+library:
+  source-dirs: src
+
+executables:
+  iso-exe:
+    main:                Main.hs
+    source-dirs:         app
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    dependencies:
+    - iso
+
+tests:
+  iso-test:
+    main:                Spec.hs
+    source-dirs:         test
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    dependencies:
+    - iso
