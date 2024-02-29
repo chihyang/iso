@@ -37,17 +37,32 @@ data Value =
   | ValPair Value Value
   | ValAnn Value BaseType
   -- | ValFold Value
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord)
+instance Show Value where
+  show ValUnit = "unit"
+  show (ValInt n) = show n
+  show (ValVar var) = show var
+  show (ValLInj v) = "left " ++ show v
+  show (ValRInj v) = "right " ++ show v
+  show (ValPair l r) = "(" ++ show l ++ ", " ++ show r ++ ")"
+  show (ValAnn v t) = "(" ++ show v ++ " :: " ++ show t ++ ")"
 
 data Exp =
   ExpVal Value
   | ExpLet Pattern Exp Exp
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord)
+instance Show Exp where
+  show (ExpVal v) = show v
+  show (ExpLet pat rhs body) =
+    "let " ++ show pat ++ " = " ++ show rhs ++ "\nin " ++ show body
 
 data Pattern =
   PtSingleVar String
   | PtMultiVar [String]
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord)
+instance Show Pattern where
+  show (PtSingleVar var) = show var
+  show (PtMultiVar vars) = show vars
 
 data Iso =
   IsoValue [Value] [Exp]
@@ -56,7 +71,22 @@ data Iso =
   | IsoApp Iso Iso
   | IsoFix String Iso
   | IsoAnn Iso IsoType
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord)
+instance Show Iso where
+  show (IsoValue lhs rhs) =
+    "{\n" ++
+    (foldl (++) ""
+      $ map (\p -> ((show $ fst p) ++ " <-> " ++ (show $ snd p) ++ ",\n"))
+      $ zip lhs rhs)
+    ++ "}"
+  show (IsoVar var) = show var
+  show (IsoLam var lhs rhs body) =
+    "\\" ++
+    show var ++ " :: (" ++ show lhs ++ ", " ++ show rhs ++ ")" ++
+    "\n  -> " ++ show body
+  show (IsoApp rator rand) = "(" ++ show rator ++ "\n " ++ show rand ++ ")"
+  show (IsoFix var iso) = "mu." ++ show var ++ " -> " ++ show iso
+  show (IsoAnn iso ty) = "(" ++ show iso ++ " :: " ++ show ty ++ ")"
 
 data Term =
   TmUnit
@@ -69,12 +99,26 @@ data Term =
   | TmLet Pattern Term Term
   | TmAnn Term BaseType
   -- | TmFold Term
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord)
+instance Show Term where
+  show TmUnit = "unit"
+  show (TmInt n) = show n
+  show (TmVar var) = show var
+  show (TmLInj v) = "left " ++ show v
+  show (TmRInj v) = "right " ++ show v
+  show (TmPair l r) = "(" ++ show l ++ ", " ++ show r ++ ")"
+  show (TmIsoApp iso tm) = "(" ++ show iso ++ "\n " ++ show tm ++ ")"
+  show (TmLet pat rhs body) =
+    "let " ++ show pat ++ " = " ++ show rhs ++ "\nin " ++ show body
+  show (TmAnn v t) = "(" ++ show v ++ " :: " ++ show t ++ ")"
 
 data Program =
   PgTm Term
   | PgIs Iso
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord)
+instance Show Program where
+  show (PgTm tm) = show tm
+  show (PgIs iso) = show iso
 
 -- Value
 data ProgramBaseValue =
@@ -85,18 +129,36 @@ data ProgramBaseValue =
   | PBValRight ProgramBaseValue
   | PBValPair ProgramBaseValue ProgramBaseValue
   -- | PBValFold ProgramBaseValue
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord)
+instance Show ProgramBaseValue where
+  show PBValUnit = "unit"
+  show (PBValInt n) = show n
+  show (PBValVar var) = show var
+  show (PBValLeft v) = "left " ++ show v
+  show (PBValRight v) = "right " ++ show v
+  show (PBValPair l r) = "(" ++ show l ++ ", " ++ show r ++ ")"
 
 data ProgramIsoValue =
   PIValBase [(ProgramBaseValue , ProgramBaseValue)] ValEnv
   | PIValLam String Iso ValEnv
   | PIValFix String Iso ValEnv
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord)
+instance Show ProgramIsoValue where
+  show (PIValBase pairs _) =
+    "{\n" ++
+    (foldl (++) ""
+      $ map (\p -> ((show $ fst p) ++ " <-> " ++ (show $ snd p) ++ ",\n")) pairs)
+    ++ "}"
+  show (PIValLam var iso _) = "\\" ++ show var ++ " -> " ++ show iso
+  show (PIValFix var iso _) = "mu." ++ show var ++ " -> " ++ show iso
 
 data ProgramValue =
   PB ProgramBaseValue
   | PI ProgramIsoValue
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord)
+instance Show ProgramValue where
+  show (PB v) = show v
+  show (PI i) = show i
 
 -- Value Environment
 type ValEnv = [(String , ProgramValue)]
