@@ -82,7 +82,7 @@ instance Show Iso where
   show (IsoLam var lhs rhs body) =
     "\\" ++
     show var ++ " :: (" ++ show lhs ++ " <-> " ++ show rhs ++ ")" ++
-    "\n  -> " ++ show body
+    " ->\n" ++ show body
   show (IsoApp rator rand) = "(" ++ show rator ++ "\n " ++ show rand ++ ")"
   show (IsoFix var iso) = "fix " ++ show var ++ ". " ++ show iso
   show (IsoAnn iso ty) = "(" ++ show iso ++ " :: " ++ show ty ++ ")"

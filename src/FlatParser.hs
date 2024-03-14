@@ -241,3 +241,7 @@ res10 = test pExp str10
 -- Isos
 str11 = "{ 1 <-> 2 }"
 res11 = test pIsoValue str11
+
+str12 = "\\f :: (Nat <-> Nat) -> { 1 <-> 2 ; x <-> let y = f x in y }"
+res12 = test pIso str12
+
