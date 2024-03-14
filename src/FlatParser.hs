@@ -48,7 +48,7 @@ ident = token $ byteStringOf $
 ident' :: Parser Name
 ident' = ident `cut'` (Msg "identifier")
 
-ident'' = utf8ToStr <$> ident'
+ident'' = utf8ToStr <$> ident
 
 -- use TH to write this so it's feasible to do `C <$> parens p` with nary constructors?
 parens p = $(symbol "(") *> p <* $(symbol' ")") 
@@ -187,6 +187,38 @@ pIsoAnn = parens $ IsoAnn <$> pIso <* $(symbol' "::") <*> pIsoType
 pIso = pIsoValue <|> pIsoLam <|> pIsoApp <|> pIsoFix <|> pIsoAnn <|> pIsoVar
 
 {-
+-- Program
+-}
+pPgTm = PgTm <$> pTerm
+pPgIs = PgIs <$> pIso
+pProg = pPgTm <|> pPgIs
+
+{-
+-- Term
+-}
+pTmUnit = TmUnit <$ $(keyword "unit")
+pTmInt  = TmInt <$> int
+pTmVar  = TmVar <$> ident''
+pTmLInj = TmLInj <$> ($(keyword "left") *> pTerm)
+pTmRInj = TmRInj <$> ($(keyword "right") *> pTerm)
+pTmPair = parens (TmPair <$> pTerm <* $(symbol ",") <*> pTerm)
+pTmAnn  = parens (TmAnn <$> pTerm <* $(symbol "::") <*> pBaseType)
+-- ^ above are alomost identical with pValue
+pTmIsoApp = parens $ TmIsoApp <$> pIso <*> pTerm
+pTmLet    = do
+  $(keyword "let")
+  pat <- pPattern
+  $(symbol' "=")
+  rhs <- pTerm
+  $(keyword' "in")
+  body <- pTerm
+  return $ TmLet pat rhs body
+
+pTerm = pTmUnit <|> pTmInt <|> pTmLInj <|> pTmRInj <|> pTmPair <|> pTmAnn
+  <|> pTmIsoApp <|> pTmLet <|> pTmVar
+
+
+{-
 -- Examples
 -}
 parse p str = runParser p (strToUtf8 str)
@@ -244,4 +276,11 @@ res11 = test pIsoValue str11
 
 str12 = "\\f :: (Nat <-> Nat) -> { 1 <-> 2 ; x <-> let y = f x in y }"
 res12 = test pIso str12
+
+-- Terms
+str13 = "((\\f :: ((Unit + Nat) <-> Nat) -> { left unit <-> 0 ; x <-> let y = f x in y } \n\
+          \{ right z <-> z }) 1)"
+res13 = test pTmIsoApp str13
+
+res14 = test pProg str13
 
