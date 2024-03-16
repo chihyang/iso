@@ -29,7 +29,6 @@ library
       Data
       Expand
       Interp
-      Lib
       LinearCheck
       TypeCheck
   other-modules:

@@ -106,9 +106,9 @@ typeCheckTm _ tm ty = error $ "Expect " ++ show tm ++ " to have type " ++ show t
 
 {---------- Bidirectional type checking for Isos ----------}
 typeInferIso :: TypEnv -> Iso -> (IsoType, Iso)
-typeInferIso env (IsoValue lhs rhs) = (otype , ov) where
-  otype = typeInferIsoPairs env (zip lhs rhs)
-  ov = IsoAnn (IsoValue lhs rhs) otype
+typeInferIso env (IsoValue pairs) = (otype , ov) where
+  otype = typeInferIsoPairs env pairs
+  ov = IsoAnn (IsoValue pairs) otype
 typeInferIso env (IsoVar var) = (otype , ov) where
   otype = applyIsoEnv env var
   ov = IsoAnn (IsoVar var) otype
@@ -299,17 +299,39 @@ typeCheckValueNoPattern _ tm ty =
 {---------- Bidirectional type checking for Exps ----------}
 typeInferExp :: TypEnv -> Exp -> BaseType
 typeInferExp env (ExpVal val) = fst $ typeInferValueNoPattern env val
-typeInferExp env (ExpLet pat rhs body) = bodyTy where
-  rhsTy = typeInferExp env rhs
-  newEnv = extendPatternEnv env pat rhsTy
-  bodyTy = typeInferExp newEnv body
+typeInferExp env (ExpLet pat iso pat' body) =
+  let isoRst = typeInferIso env iso
+      isoTy = fst isoRst
+  in case isoTy of
+    ITyBase lT rT ->
+      let rst = typeInferRhsPat env pat'
+      in if typeEqual env lT rst
+         then let newEnv = extendPatternEnv env pat rT
+              in typeInferExp newEnv body
+         else error $ "The operand " ++ show pat' ++ " has the type " ++ show rst ++ " , expect " ++ show lT
+    _ -> error $ "The operator " ++ show iso ++ " should be an IsoBase!"
 
 typeCheckExp :: TypEnv -> Exp -> BaseType -> BaseType
 typeCheckExp env (ExpVal val) ty = fst $ typeCheckValueNoPattern env val ty
-typeCheckExp env (ExpLet pat rhs body) ty = bodyTy where
-  rhsTy = typeInferExp env rhs
-  newEnv = extendPatternEnv env pat rhsTy
-  bodyTy = typeCheckExp newEnv body ty
+typeCheckExp env (ExpLet pat iso pat' body) ty =
+  let isoRst = typeInferIso env iso
+      isoTy = fst isoRst
+  in case isoTy of
+    ITyBase lT rT ->
+      let rst = typeInferRhsPat env pat'
+      in if typeEqual env lT rst
+         then let newEnv = extendPatternEnv env pat rT
+              in typeCheckExp newEnv body ty
+         else error $ "The operand " ++ show pat' ++ " has the type " ++ show rst ++ " , expect " ++ show lT
+    _ -> error $ "The operator " ++ show iso ++ " should be an IsoBase!"
+
+typeInferRhsPat :: TypEnv -> Pattern -> BaseType
+typeInferRhsPat env (PtSingleVar var) = applyBaseEnv env var
+typeInferRhsPat env (PtMultiVar (var : []) ) = applyBaseEnv env var
+typeInferRhsPat env (PtMultiVar (var : vars) ) = BTyProd hd tl where
+  hd = applyBaseEnv env var
+  tl = typeInferRhsPat env (PtMultiVar vars)
+typeInferRhsPat _ pat = error $ "Invalid pattern " ++ show pat
 
 {-------------- Helper functions --------------}
 typeEqual :: TypEnv -> BaseType -> BaseType -> Bool

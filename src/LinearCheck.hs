@@ -29,7 +29,7 @@ linearCheckTm env (TmAnn tm _) = linearCheckTm env tm
 
 {---------- Linear checking for Isos ----------}
 linearCheckIso :: LinearEnv -> Iso -> LinearEnv
-linearCheckIso env (IsoValue lhs rhs) = linearCheckIsoPairs env (zip lhs rhs)
+linearCheckIso env (IsoValue pairs) = linearCheckIsoPairs env pairs
 linearCheckIso env (IsoVar _) = env
 -- iso var binding is ignored
 linearCheckIso env (IsoLam _ _ _ body) = linearCheckIso env body
@@ -64,11 +64,16 @@ linearCheckValue env (ValAnn v _) = linearCheckValue env v
 {---------- Linear type checking for Exps -----------}
 linearCheckExp :: LinearEnv -> Exp -> LinearEnv
 linearCheckExp env (ExpVal val) = linearCheckValueNoPattern env val
-linearCheckExp env (ExpLet pat rhs body) = env'''' where
-  env' = linearCheckExp env rhs
-  env'' = extendPat env' pat
-  env''' = linearCheckExp env'' body
-  env'''' = dropPat env''' pat
+linearCheckExp env (ExpLet pat iso pat' body) = env''''' where
+  env' = linearCheckIso env iso
+  env'' = linearCheckRhsPattern env' pat'
+  env''' = extendPat env'' pat
+  env'''' = linearCheckExp env''' body
+  env''''' = dropPat env'''' pat
+
+linearCheckRhsPattern :: LinearEnv -> Pattern -> LinearEnv
+linearCheckRhsPattern env (PtSingleVar var) = increEnv env var
+linearCheckRhsPattern env (PtMultiVar vars) = foldl increEnv env vars
 
 {-- Linear type checking for Values (Non-pattern) --}
 linearCheckValueNoPattern :: LinearEnv -> Value -> LinearEnv

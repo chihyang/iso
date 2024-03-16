@@ -48,7 +48,7 @@ main = do {
   ; let v2 = ValRInj (ValRInj (ValLInj ValUnit))
   ; let v3 = ValRInj (ValRInj (ValRInj ValUnit))
   ; let lhs = [v0, v1, v2, v3]
-  ; let i0 = IsoValue lhs (map ExpVal (reverse lhs))
+  ; let i0 = IsoValue $ zip lhs (map ExpVal (reverse lhs))
   ; print (interp env3 (PgIs i0))
 
   ; let i1 = TmIsoApp i0 (TmLInj t0)
@@ -61,7 +61,7 @@ main = do {
   ; let elPat = ValAnn (ValRInj (ValVar "vl")) trv
   ; let erPat = ValAnn (ValLInj (ValVar "vr")) trv
   ; let rhsPat = [ExpVal elPat, ExpVal erPat]
-  ; let i2 = IsoValue lhsPat rhsPat
+  ; let i2 = IsoValue $ zip lhsPat rhsPat
   ; let i3 = TmIsoApp i2 (TmRInj (TmRInj (TmLInj t0)))
   ; print (interp [] (PgTm i3))
   ; print (typeInfer [] (PgTm i3))

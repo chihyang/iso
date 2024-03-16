@@ -11,11 +11,11 @@ data BaseType =
   deriving (Eq, Ord)
 instance Show BaseType where
   show BTyUnit = "Unit"
-  show BTyInt = "Nat"
+  show BTyInt = "Int"
   show (BTyVar var) = show var
   show (BTySum lt rt) = "(" ++ show lt ++ " + " ++ show rt ++ ")"
-  show (BTyProd lt rt) = "(" ++ show lt ++ " x " ++ show rt ++ ")"
-  show (BTyMu var bodyT) = "mu." ++ show var ++ " " ++ show bodyT ++ ""
+  show (BTyProd lt rt) = "(" ++ show lt ++ " × " ++ show rt ++ ")"
+  show (BTyMu var bodyT) = "Mu " ++ show var ++ ". " ++ show bodyT
 
 data IsoType =
   ITyBase BaseType BaseType
@@ -49,12 +49,12 @@ instance Show Value where
 
 data Exp =
   ExpVal Value
-  | ExpLet Pattern Exp Exp
+  | ExpLet Pattern Iso Pattern Exp
   deriving (Eq, Ord)
 instance Show Exp where
   show (ExpVal v) = show v
-  show (ExpLet pat rhs body) =
-    "let " ++ show pat ++ " = " ++ show rhs ++ "\nin " ++ show body
+  show (ExpLet pat iso pat' body) =
+    "let " ++ show pat ++ " = " ++ show iso ++ " " ++ show pat' ++ " in " ++ show body
 
 data Pattern =
   PtSingleVar String
@@ -65,7 +65,7 @@ instance Show Pattern where
   show (PtMultiVar vars) = show vars
 
 data Iso =
-  IsoValue [Value] [Exp]
+  IsoValue [(Value, Exp)]
   | IsoVar String
   | IsoLam String BaseType BaseType Iso
   | IsoApp Iso Iso
@@ -73,19 +73,18 @@ data Iso =
   | IsoAnn Iso IsoType
   deriving (Eq, Ord)
 instance Show Iso where
-  show (IsoValue lhs rhs) =
+  show (IsoValue clauses) =
     "{\n" ++
     (foldl (++) ""
-      $ map (\p -> ((show $ fst p) ++ " <-> " ++ (show $ snd p) ++ ",\n"))
-      $ zip lhs rhs)
+      $ map (\p -> ((show $ fst p) ++ " <-> " ++ (show $ snd p) ++ ";\n")) clauses)
     ++ "}"
   show (IsoVar var) = show var
   show (IsoLam var lhs rhs body) =
     "\\" ++
-    show var ++ " :: (" ++ show lhs ++ ", " ++ show rhs ++ ")" ++
-    "\n  -> " ++ show body
+    show var ++ " :: (" ++ show lhs ++ " <-> " ++ show rhs ++ ")" ++
+    " ->\n" ++ show body
   show (IsoApp rator rand) = "(" ++ show rator ++ "\n " ++ show rand ++ ")"
-  show (IsoFix var iso) = "mu." ++ show var ++ " -> " ++ show iso
+  show (IsoFix var iso) = "fix " ++ show var ++ ". " ++ show iso
   show (IsoAnn iso ty) = "(" ++ show iso ++ " :: " ++ show ty ++ ")"
 
 data Term =
