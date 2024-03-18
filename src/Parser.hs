@@ -131,7 +131,7 @@ pTermLet = do
   return $ TmLet lhs rhs body
 
 pTerm = pUnit <|> pInt <|> pInl <|> pInr <|> pCons <|> pFold
-  <|> pApp <|> pAnn <|> pTermLet <|> pTermIso <|> pVar
+  <|> pApp <|> pAnn <|> pTermLet <|> pVar <|> pTermIso
 
 pTerm' = pTerm `cut'` (Msg "Term")
 
