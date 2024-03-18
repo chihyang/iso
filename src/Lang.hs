@@ -55,7 +55,7 @@ eval (TmApp f a)        env = do
   fun <- eval f env
   case fun of
     RClo iso env' -> applyIso env' iso arg  
-    _             -> error $ "eval: cannot apply non-iso function " ++ show arg
+    _             -> error $ "eval: cannot apply non-iso function " ++ show iso
 eval (TmIso f)      env = pure $ RClo f env
 eval (TmAnn a _)        env = eval a env
 eval (TmLet l r body)   env = do
@@ -92,7 +92,7 @@ applyIso :: Env -> Iso -> Return -> Maybe Return
 applyIso env iso arg = case iso of
   IsoClauses [] -> error msg 
     where
-      msg = "Cannot find a match for " ++ show arg ++ " in " ++ show iso
+      msg = "Cannot find a match for " ++ show arg
   IsoClauses ((l, r) : cs) -> tryFirst <|> tryRest
     where
       tryFirst = do
