@@ -15,17 +15,17 @@ indexMap l = zip l' idx where
   l' = Set.toAscList $ Set.fromList l
   idx = listToIndices l'
 
-proofedLookup :: (Eq a) => [(a , b)] -> a -> b
-proofedLookup l k = case (lookup k l) of
+checkedLookup :: (Eq a) => [(a , b)] -> a -> b
+checkedLookup l k = case (lookup k l) of
   Just v -> v
-  Nothing -> error "In a proofed lookup, we should always find a key!"
+  Nothing -> error "In a checked lookup, we should always find a key!"
 
 collectIndices :: (Ord a , Ord b) =>
   [(a , Int)] -> [(b , Int)] -> [(a , b)] -> Set.Set (Int , Int)
 collectIndices lhsMap rhsMap pairs =
   foldl (\r v -> Set.insert v r) Set.empty idPairs where
-    idPairs = map (\p -> (proofedLookup rhsMap $ snd p ,
-                          proofedLookup lhsMap $ fst p))
+    idPairs = map (\p -> (checkedLookup rhsMap $ snd p ,
+                          checkedLookup lhsMap $ fst p))
               pairs
 
 matrixize :: (Ord a , Ord b) => [(a , b)] -> Matrix Int

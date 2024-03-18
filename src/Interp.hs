@@ -5,7 +5,7 @@ import Debug.Trace (trace)
 
 interp :: ValEnv -> Program -> Maybe ProgramValue
 interp env (PgTm tm) = do {
-  v <- (interpTerm env tm)
+  v <- (interpTm env tm)
   ; Just (PB v)
   }
 interp env (PgIs iso) = do {
@@ -14,34 +14,34 @@ interp env (PgIs iso) = do {
   }
 
 {---------- Interpretation of Terms ----------}
-interpTerm :: ValEnv -> Term -> Maybe ProgramBaseValue
-interpTerm _ TmUnit = Just PBValUnit
-interpTerm _ (TmInt n) = Just (PBValInt n)
-interpTerm env (TmVar var) = lookupBase env var
-interpTerm env (TmLInj tm) = do {
-  v <- interpTerm env tm
+interpTm :: ValEnv -> Term -> Maybe ProgramBaseValue
+interpTm _ TmUnit = Just PBValUnit
+interpTm _ (TmInt n) = Just (PBValInt n)
+interpTm env (TmVar var) = lookupBase env var
+interpTm env (TmLInj tm) = do {
+  v <- interpTm env tm
   ; Just (PBValLeft v)
   }
-interpTerm env (TmRInj tm) = do {
-  v <- interpTerm env tm
+interpTm env (TmRInj tm) = do {
+  v <- interpTm env tm
   ; Just (PBValRight v)
   }
-interpTerm env (TmPair t1 t2) = do {
-  v1 <- interpTerm env t1
-  ; v2 <- interpTerm env t2
+interpTm env (TmPair t1 t2) = do {
+  v1 <- interpTm env t1
+  ; v2 <- interpTm env t2
   ; Just (PBValPair v1 v2)
   }
-interpTerm env (TmIsoApp iso tm) = do {
+interpTm env (TmIsoApp iso tm) = do {
   fun <- interpIso env iso
-  ; arg <- interpTerm env tm
+  ; arg <- interpTm env tm
   ; applyIsoTerm fun arg
   }
-interpTerm env (TmLet pat rhs body) = do {
-  vRhs <- interpTerm env rhs
+interpTm env (TmLet pat rhs body) = do {
+  vRhs <- interpTm env rhs
   ; newEnv <- extendPattern env pat vRhs
-  ; interpTerm newEnv body
+  ; interpTm newEnv body
   }
-interpTerm env (TmAnn tm _) = interpTerm env tm
+interpTm env (TmAnn tm _) = interpTm env tm
 
 {---------- Interpretation of Isos ----------}
 interpIso :: ValEnv -> Iso -> Maybe ProgramIsoValue
