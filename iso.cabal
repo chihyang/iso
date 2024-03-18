@@ -25,14 +25,8 @@ source-repository head
 
 library
   exposed-modules:
-      Convert
-      Data
-      Expand
-      Interp
-      LinearCheck
+      Lang
       Parser
-      FlatParser
-      TypeCheck
   other-modules:
       Paths_iso
   autogen-modules:

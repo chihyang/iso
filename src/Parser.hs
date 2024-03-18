@@ -1,161 +1,317 @@
-{-# LANGUAGE NoMonomorphismRestriction #-}
---{-# LANGUAGE GADTs #-}
+-- Using flatparse library
 
-module Parser where
+{-# language TemplateHaskell #-}
 
-import Data -- the AST
-import Prelude hiding ((^), (||))
-import Control.Applicative
+module Parser(pType, pIso, pTerm,
+              isTmValue, isTmExp, isTmPattern, isTmIso,
+              parse, test, load) where
 
-data PrinterParser a = PrinterParser (a -> String)
-                                     (String -> Maybe (a, String))
+--import qualified Language.Haskell.TH as TH
+import Lang
 
-class FormatSpec repr where
-  lit  :: String -> repr a a
-  int  :: repr a (Int -> a)
-  char :: repr a (Char -> a)
-  fpp  :: PrinterParser b -> repr a (b -> a)
-  (^)  :: repr b c -> repr a b -> repr a c
+import qualified Data.ByteString as B
 
-class Choice repr where
-  triv  :: any -> repr a (any->a)
-  (||)  :: repr a (x->a) -> repr a (y->a) -> repr a (Either x y -> a)
+import FlatParse.Basic hiding (Parser, runParser, string, char, cut)
+--import FlatParse.Common.Assorted (strToUtf8, utf8ToStr)
+import FlatParse.Examples.BasicLambda.Lexer hiding ( isKeyword)
+import FlatParse.Examples.BasicLambda.Parser hiding (Name, ident, ident')
 
--- Printer
-newtype FPr a b = FPr ((String -> a) -> b)
+-- TODO: look at `chainl` provided by flatparser
+sepBy1 :: Parser a -> Parser b -> Parser [a]
+sepBy1 pa pb = (:) <$> pa <*> (many $ pb *> pa)
 
-sprintf :: FPr String b -> b
-sprintf (FPr format) = format id
+sepBy :: Parser a -> Parser b -> Parser [a]
+sepBy pa pb = sepBy1 pa pb <|> pure []
+  
+isKeyword :: Span -> Parser ()
+isKeyword span = inSpan span $ do
+  $(switch [| case _ of
+      "Unit"  -> pure ()
+      "Int"   -> pure ()
+      "mu"    -> pure ()
+      "fix"    -> pure ()
+      "unit"  -> pure ()
+      "left"  -> pure ()
+      "right" -> pure ()
+      "let"   -> pure ()
+      "in"    -> pure ()
+      "if"    -> pure ()
+      "then"  -> pure ()
+      "else"  -> pure ()
+      "true"  -> pure ()
+      "false" -> pure ()  |])
+  eof
 
-instance FormatSpec FPr where
-  lit str = FPr $ \k -> k str
-  int     = FPr $ \k x -> k (show x)
-  char    = FPr $ \k x -> k [x]
-  fpp (PrinterParser pr _) = FPr $ \k x -> k (pr x)
-  (FPr l) ^ (FPr r) = FPr $ \k -> l (\sl -> r (\sr -> k (sl ++ sr)))
+ident :: Parser String
+ident = utf8ToStr <$> ident_
 
-instance Choice FPr where
-  triv a = FPr $ \k _ -> k "" -- just discard
+ident_ :: Parser B.ByteString
+ident_ = token $ byteStringOf $
+  withSpan (identStartChar *> skipMany identChar) (\_ span -> fails (isKeyword span))
 
-  (FPr l) || (FPr r) = 
-    FPr $ \k e -> case e of
-      Left x -> (flip l) x (\sl -> k sl)
-      Right y -> (flip r) y (\sl -> k sl)
+ident' :: Parser Name
+ident' = ident `cut'` (Msg "identifier")
 
+-- use TH to write this so it's feasible to do `C <$> parens p` with nary constructors?
+parens p = $(symbol "(") *> p <* $(symbol' ")") 
+brackets p = $(symbol "[") *> p <* $(symbol' "]")
+braces p = $(symbol "{") *> p <* $(symbol' "}")
 
--- Parser
-newtype FSc a b = FSc (String -> b -> Maybe (a, String))
+pType = pBaseType <|> pIsoType
 
-sscanf :: FSc a b -> String -> b -> Maybe (a, String)
-sscanf (FSc format) str k = format str k
-
-removePrefix :: String -> String -> Maybe String
-removePrefix long [] = Just long
-removePrefix []   _  = Nothing
-removePrefix (x:xs) (y:ys)
- | x == y    = removePrefix xs ys
- | otherwise = Nothing
- 
-instance FormatSpec FSc where
-  lit str = FSc $ \inp k ->
-    case removePrefix inp str of
-      Just suffix -> Just (k, suffix)
-      Nothing -> Nothing
-
-  char = FSc $ \inp k ->
-    case inp of
-      (x : xs) -> Just (k x, xs)
-      _        -> Nothing
-
-  fpp (PrinterParser _ par) = FSc $ \inp k ->
-    case par inp of
-      Just (b, inp') -> Just (k b, inp')
-      Nothing        -> Nothing
-
-  int = fpp showread
-
-  (FSc pl) ^ (FSc pr) = FSc $ \inp k ->
-    case pl inp k of
-      Just (k', inp') -> pr inp' k'
-      _               -> Nothing
-
-instance Choice FSc where
-  triv a = FSc $ \inp k -> Just (k a, inp) -- feed `a` without touching input string
-
-  (FSc l) || (FSc r) = FSc $ \inp k ->
-    let kl = k . Left
-        kr = k . Right
-     in case l inp kl of
-          Nothing -> r inp kr
-          just -> just
-
--- Some helpers:
-fmt :: (FormatSpec repr, Show b, Read b) => b -> repr a (b -> a)
-fmt _ = fpp showread
-
--- casting `read` result from list to maybe
-showread :: (Show a, Read a) => PrinterParser a
-showread =
-  PrinterParser show $
-    \str -> case reads str of
-      [(a, str')] -> Just (a, str')
-      _ -> Nothing
-
-paren spec = lit "(" ^ spec ^ lit ")"
-
--- translating Yafei's `show` instance:
-baseTypeSpec BTyUnit = lit "Unit"
-baseTypeSpec BTyInt = lit "Nat"
-baseTypeSpec (BTyVar var) = lit var
-baseTypeSpec (BTySum lt rt) = paren $ baseTypeSpec lt ^ lit " + " ^ baseTypeSpec rt
-baseTypeSpec (BTyProd lt rt) = paren $ baseTypeSpec lt ^ lit " x " ^ baseTypeSpec rt
-baseTypeSpec (BTyMu var bodyT) = lit "mu " ^ lit var ^ lit ". " ^ baseTypeSpec bodyT -- slightly changed position of '.'
-
-baseTypeParser str =
-  sscanf unitP str BTyUnit <|>
-  sscanf intP  str BTyInt  <|>
-  sscanf varP  str BTyVar  <|>
-  sscanf sumP  str BTySum  <|>
-  sscanf prodP str BTyProd <|>
-  sscanf muP   str BTyMu   <|>
-  Nothing
- where  
-  unitP = baseTypeSpec BTyUnit
-  intP  = baseTypeSpec BTyInt
-  -- varP  = fmt ""  -- this would not work, needs a way to read a token. Q: how to read a string of indefinite length?
-  varP  = fpp varPP
-  sumP  = paren $ fpp baseTypePP ^ lit " + " ^ fpp baseTypePP
-  prodP = paren $ fpp baseTypePP ^ lit " x " ^ fpp baseTypePP
-  muP   = lit "mu " ^ varP ^ lit ". " ^ fpp baseTypePP
-
--- modifed variable name format to "var" ++ some int so parsing is convenient
-varPP = PrinterParser show
-                      (\inp -> sscanf (lit "Var" ^ int) inp (\x -> "Var" ++ show x))
-
-baseTypePP =
-  PrinterParser show
-                baseTypeParser
-
-baseTypeFmt = fpp baseTypePP
 {-
--- tests
---}
+-- BaseType
+-}
+pTyUnit :: Parser Type
+pTyUnit = TyUnit <$ $(keyword "Unit")
 
-x = 0
-y = '0'
-fmt00 = lit "ch" ^ (int || char)
-print00x = sprintf fmt00 (Left x)
-print00y = sprintf fmt00 (Right y)
-str001 = "ch0123"
-str002 = "chc"
-parse001 = sscanf fmt00 str001 id
-parse002 = sscanf fmt00 str002 id
+pTyInt = TyInt <$ $(keyword "Int")
+pTyVar = TyVar <$> ident
+pTySum = parens $ do
+  l <- pBaseType
+  $(symbol "+")
+  r <- pBaseType
+  return $ TySum l r
+pTyProd = parens $ do
+  l <- pBaseType
+  $(symbol "x")
+  r <- pBaseType
+  return $ TyProd l r
+pTyMu = do
+  $(keyword "mu")
+  var <- ident
+  $(symbol' ".")
+  body <- pBaseType
+  return $ TyMu var body
 
+pBaseType = pTyUnit <|> pTyInt <|> pTySum <|> pTyProd <|> pTyMu <|> pTyVar
+pBaseType' = pBaseType `cut'` (Msg "expecting BaseType") 
+
+{-
+-- IsoType
+-}
+pTyIsoZ = do
+  l <- pType
+  $(symbol "<->")
+  r <- pType
+  return $ TyIsoZ l r
+
+pTyIsoS = p1 <* $(symbol' "->") <*> pIsoType
+  where
+    p1 = parens $ do
+      l <- pType
+      $(symbol "<->")
+      r <- pType
+      return $ TyIsoS l r
+    
+pIsoType = pTyIsoZ <|> pTyIsoS
+
+pIsoType' = pIsoType `cut'` (Msg "expecting IsoType")
+
+{-
+-- Term
+-}
+pUnit = TmUnit <$ $(keyword "unit")
+pInt  = TmInt <$> int
+pInl = TmInl <$> ($(keyword "left") *> pTerm)
+pInr = TmInr <$> ($(keyword "right") *> pTerm)
+pCons = parens (TmCons <$> pTerm <* $(symbol ",") <*> pTerm)
+pFold = parens ($(keyword "fold") *> (TmFold <$> pTerm))
+pVar  = TmVar <$> ident
+pApp  = parens (TmApp <$> pTermIso <*> pTerm)
+pTermIso = TmIso <$> pIso
+pAnn  = parens (TmAnn <$> pTerm <* $(symbol "::") <*> pType)
+pTermLet = do
+  $(keyword "let")
+  lhs <- pTerm
+  $(symbol' "=")
+  rhs <- pTerm
+  $(keyword' "in")
+  body <- pTerm
+  return $ TmLet lhs rhs body
+
+pTerm = pTermIso <|> pUnit <|> pInt <|> pInl <|> pInr <|> pCons <|> pFold
+  <|> pApp <|> pAnn <|> pTermLet <|> pVar
+
+pTerm' = pTerm `cut'` (Msg "Term")
+
+{-
+-- Value
+-}
+pValUnit = pUnit
+pValInt = pInt
+pValInl = TmInl <$> ($(keyword "left") *> pValue)
+pValInr = TmInr <$> ($(keyword "right") *> pValue)
+pValCons = parens (TmCons <$> pValue <* $(symbol ",") <*> pValue)
+pValFold = parens (TmFold <$> pValue)
+pValVar  = pVar
+
+pValue = pValUnit <|> pValInt <|> pValInl <|> pValInr <|> pValCons <|> pValFold <|> pValVar
+
+pValue' =  pValue `cut'` (Msg "Value")
+
+{-
+-- Exp
+-}
+pExpVal = pValue
+
+pExpLet = do
+  $(keyword "let")
+  pat <- pPattern
+  $(symbol' "=")
+  iso <- pTermIso
+  pat' <- pPattern
+  $(keyword' "in")
+  body <- pExp
+  return $ TmLet pat (TmApp iso pat') body
+
+pExp = pExpLet <|> pExpVal
+
+pExp' = pExp `cut'` (Msg "Exp")
+
+{-
+-- Pattern
+-}
+pPtSingleVar = pVar
+
+pListOfVars  = brackets $ sepBy1 ident $(symbol' ",") 
+
+pPtMultiVar  = TmVarList <$> pListOfVars
+
+pPattern = pPtMultiVar <|> pPtSingleVar
+
+pPattern' = pPattern `cut'` (Msg "Pattern")
+
+{-
+-- Iso
+-}
+pIsoClause = do
+  lhs <- pValue'
+  $(symbol' "<->")
+  rhs <- pExp'
+  return (lhs, rhs)
+
+pIsoClauses = braces $ IsoClauses <$> (sepBy1 pIsoClause $(symbol ";"))
+
+pIsoFix = do
+  $(keyword "fix")
+  var <- ident
+  $(symbol' ".")
+  iso <- pIso
+  return $ IsoFix var iso
+
+pIsoLam = do
+  $(symbol "\\")
+  var <- ident'
+  $(symbol' "->")
+  body <- pIso'
+  return $ IsoLam var body
+
+pIsoApp = parens (IsoApp <$> pIso <*> pIso)
+
+pIsoVar = IsoVar <$> ident
+
+pIso :: Parser Iso
+pIso = pIsoClauses <|> pIsoLam <|> pIsoApp <|> pIsoFix <|> pIsoVar
+
+pIso' = pIso `cut'` (Msg "Iso")
+
+{-
+-- Syntactic Checkers
+-}
+isTmValue :: Term -> Bool
+isTmValue TmUnit           = True
+isTmValue (TmInt n)        = True
+isTmValue (TmInl a)        = isTmValue a
+isTmValue (TmInr b)        = isTmValue b
+isTmValue (TmCons a b)     = isTmValue a && isTmValue b
+isTmValue (TmFold t)       = isTmValue t
+isTmValue (TmVar _)        = True
+isTmValue _                = False
+
+isTmPattern :: Term -> Bool
+isTmPattern (TmCons a b)     = isTmPattern a && isTmPattern b
+isTmPattern (TmVar _)        = True
+isTmPattern _                = False
+
+isTmExp :: Term -> Bool
+isTmExp (TmLet lhs (TmApp (TmIso f) x) body) =
+  isTmPattern lhs && isTmPattern x && isTmExp body
+isTmExp t = isTmValue t
+
+isTmIso :: Term -> Bool
+isTmIso (TmIso _) = True
+isTmIso _         = False
+
+{-
+-- Examples
+-}
+parse p str = runParser p (strToUtf8 str)
+
+test p str = putStrLn msg
+  where
+    msg = case parse p str of
+      OK a res -> "OK\n" ++ show a ++ "\n" ++ show res
+      Fail     -> "Failed"
+      Err e    -> prettyError (strToUtf8 str) e
+
+load str =
+  case parse pTerm str of
+    OK t res -> if res == mempty then Just t
+                 else error $ "load: remaining string unparsed " ++ show res
+    _        -> Nothing
+
+-- Testing base types
 str0 = "Unit"
-fmt0 = baseTypeSpec BTyUnit
-parse0 = sscanf fmt0 str0 "done"
+res0 = test pTyUnit str0
 
-str1 = "(mu Var0. Unit x Nat)"
-fmt1 = baseTypeSpec (BTyProd (BTyMu "Var0" BTyUnit) (BTyInt))
-parse10 = sscanf fmt1 str1 "done"
-parse11 = sscanf baseTypeFmt str1 id
+str1 = "(Int + Int)"
+res1 = test pTySum str1
+
+str2 = "mu x. Int"
+res2 = test pType str2
+
+str3 = "(mu var0  . Unit x Int)"
+res3 = test pType str3
+
+-- Testing iso types
+str4 = "Int <-> Int"
+res4 = test pIsoType str4
+
+str5 = "mu v . (v + Int) <-> Int"
+res5 = test pIsoType str5
+
+str5' = "mu v . v + Int <-> Int" -- this should fail
+res5' = test pIsoType str5'
+
+-- Testing values
+str6 = "unit"
+res6 = test pValue str6
+
+str7 = "left 123"
+res7 = test pValue str7
+
+str8 = "(left 123, right v)"
+res8 = test pValue str8
+
+str9 = "(Nothing :: mu X. (X + Unit))"
+res9 = test pTerm str9
+
+-- Testing expressions and patterns
+str10 = "let x = f x in let y = g x in x"
+res10 = test pExp str10
+
+-- Isos
+str11 = "{ 1 <-> 2 }"
+res11 = test pIsoClauses str11
+
+str12 = "\\f  -> { 1 <-> 2 ; x <-> let y = f x in y }"
+res12 = test pIso str12
+
+-- Terms
+str13 = "(f 1)"
+res13 = test pTerm str13
+
+str14 = "((\\f -> { left unit <-> 0 ; x <-> let y = f x in y } \n\
+         \ { right z <-> z }) 1)"
+res14 = test pTerm str14
