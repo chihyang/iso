@@ -130,8 +130,8 @@ pTermLet = do
   body <- pTerm
   return $ TmLet lhs rhs body
 
-pTerm = pTermIso <|> pUnit <|> pInt <|> pInl <|> pInr <|> pCons <|> pFold
-  <|> pApp <|> pAnn <|> pTermLet <|> pVar
+pTerm = pUnit <|> pInt <|> pInl <|> pInr <|> pCons <|> pFold
+  <|> pApp <|> pAnn <|> pTermLet <|> pTermIso <|> pVar
 
 pTerm' = pTerm `cut'` (Msg "Term")
 
