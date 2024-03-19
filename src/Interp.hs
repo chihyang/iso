@@ -3,13 +3,13 @@ module Interp (interp) where
 import Syntax
 import Debug.Trace (trace)
 
-interp :: ValEnv -> Program -> Maybe ProgramValue
-interp env (PgTm tm) = do {
-  v <- (interpTm env tm)
+interp :: Program -> Maybe ProgramValue
+interp (PgTm tm) = do {
+  v <- (interpTm [] tm)
   ; Just (PB v)
   }
-interp env (PgIs iso) = do {
-  v <- interpIso env iso
+interp (PgIs iso) = do {
+  v <- interpIso [] iso
   ; Just (PI v)
   }
 
