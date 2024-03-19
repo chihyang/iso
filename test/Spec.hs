@@ -1,5 +1,5 @@
 import Convert
-import Data
+import Syntax
 import Interp
 import TypeCheck
 

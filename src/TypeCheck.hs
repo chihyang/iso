@@ -1,351 +1,389 @@
 module TypeCheck (typeInfer) where
 
 import Syntax
+type Result a = Either String a
 
-typeInfer :: TypEnv -> Program -> Program
-typeInfer env (PgTm tm) = PgTm $ snd $ tiTm env tm
-typeInfer env (PgIs iso) = PgIs $ snd $ tiIso env iso
+typeInfer :: Program -> Result Program
+typeInfer (PgTm tm) = do
+  rst <- tiTm [] tm
+  return $ PgTm $ snd rst
+typeInfer (PgIs iso) = do
+  rst <- tiIso [] iso
+  return $ PgIs $ snd rst
 
 {---------- Bidirectional type checking for Terms ----------}
 -- Return a type annotated term together with its type.
-tiTm :: TypEnv -> Term -> (BaseType, Term)
-tiTm _ TmUnit = (BTyUnit , TmAnn TmUnit BTyUnit)
-tiTm _ (TmInt n) = (BTyInt , TmAnn (TmInt n) BTyInt)
-tiTm env (TmVar var) = (ty , TmAnn (TmVar var) ty) where
-  ty = applyBaseEnv env var
-tiTm _ (TmLInj tm) = error $ "Type annotation is required for the term " ++ show (TmLInj tm)
-tiTm _ (TmRInj tm) = error $ "Type annotation is required for the term " ++ show (TmLInj tm)
-tiTm env (TmPair l r) = (oType , TmAnn (TmPair lTm rTm) oType)  where
-  rstL = tiTm env l
-  rstR = tiTm env r
-  lTy = fst rstL
-  rTy = fst rstR
-  lTm = snd rstL
-  rTm = snd rstR
-  oType = (BTyProd lTy rTy)
-tiTm env (TmIsoApp iso tm) =
-  let isoRst = tiIso env iso
-      isoTy = fst isoRst
-      iso' = snd isoRst
-  in case isoTy of
-    ITyBase lT rT ->
-      let rst = tcTm env tm lT
-          argType = fst rst
-          tm' = snd rst
-      in if typeEqual env lT argType
-         then (rT , (TmAnn (TmIsoApp iso' tm') rT))
-         else error $ "The operand " ++ show tm ++ " has the type " ++ show argType ++ " , expect " ++ show lT
-    _ -> error $ "The operator " ++ show iso ++ " should be an IsoBase!"
-tiTm env (TmLet pat rhs body) = (bodyTy , TmAnn (TmLet pat rhs' body') bodyTy) where
-  rhsRst = tiTm env rhs
-  rhsTy = fst rhsRst
-  rhs' = snd rhsRst
-  newEnv = extPatEnv env pat rhsTy
-  bodyRst = tiTm newEnv body
-  bodyTy = fst bodyRst
-  body' = snd bodyRst
+tiTm :: TypEnv -> Term -> Result (BaseType, Term)
+tiTm _ TmUnit = return (BTyUnit , TmAnn TmUnit BTyUnit)
+tiTm _ (TmInt n) = return (BTyInt , TmAnn (TmInt n) BTyInt)
+tiTm env (TmVar var) = do
+  ty <- applyBaseEnv env var
+  return (ty , TmAnn (TmVar var) ty)
+tiTm _ (TmLInj tm) = Left $ "Type annotation is required for the term " ++ show (TmLInj tm)
+tiTm _ (TmRInj tm) = Left $ "Type annotation is required for the term " ++ show (TmLInj tm)
+tiTm env (TmPair l r) = do
+  rstL <- tiTm env l
+  rstR <- tiTm env r
+  let lTy = fst rstL
+  let rTy = fst rstR
+  let lTm = snd rstL
+  let rTm = snd rstR
+  let oType = (BTyProd lTy rTy)
+  return (oType , TmAnn (TmPair lTm rTm) oType)
+tiTm env (TmIsoApp iso tm) = do
+  isoRst <- tiIso env iso
+  let isoTy = fst isoRst
+  let iso' = snd isoRst
+  pair <- tcRator iso' isoTy
+  let randTy = fst pair
+  let bodyTy = snd pair
+  rst <- tcTm env tm randTy
+  let tm' = snd rst
+  return (bodyTy , (TmAnn (TmIsoApp iso' tm') bodyTy))
+tiTm env (TmLet pat rhs body) = do
+  rhsRst <- tiTm env rhs
+  let rhsTy = fst rhsRst
+  let rhs' = snd rhsRst
+  newEnv <- extPatEnv env pat rhsTy
+  bodyRst <- tiTm newEnv body
+  let bodyTy = fst bodyRst
+  let body' = snd bodyRst
+  return (bodyTy , TmAnn (TmLet pat rhs' body') bodyTy)
 tiTm env (TmAnn tm ty) = tcTm env tm ty
 
-tcTm :: TypEnv -> Term -> BaseType -> (BaseType, Term)
+tcTm :: TypEnv -> Term -> BaseType -> Result (BaseType, Term)
 tcTm env TmUnit ty =
   if typeEqual env BTyUnit ty
-  then (BTyUnit , TmAnn TmUnit BTyUnit)
-  else error $ "Expect " ++ show BTyUnit ++ ", got " ++ show ty ++ " in " ++ show TmUnit
+  then return (BTyUnit , TmAnn TmUnit BTyUnit)
+  else Left $ "Expect " ++ show BTyUnit ++ ", got " ++ show ty ++ " in " ++ show TmUnit
 tcTm env (TmInt n) ty =
   if typeEqual env BTyInt ty
-  then (BTyInt , TmAnn (TmInt n) BTyInt)
-  else error $ "Expect " ++ show BTyInt ++ ", got " ++ show ty ++ " in " ++ show (TmInt n)
-tcTm env (TmVar var) ty =
-  let ty' = applyBaseEnv env var
-  in if typeEqual env ty' ty
-     then (ty, TmAnn (TmVar var) ty)
-     else error $ "Expect " ++ show ty ++ ", got " ++ show ty' ++ " in " ++ show (TmVar var)
-tcTm env (TmLInj tm) (BTySum lTy rTy) = (rstTy , TmAnn (TmLInj tm') rstTy) where
-  rst = tcTm env tm lTy
-  tm' = snd rst
-  rstTy = BTySum lTy rTy
-tcTm env (TmRInj tm) (BTySum lTy rTy) =  (rstTy , TmAnn (TmRInj tm') rstTy) where
-  rst = tcTm env tm rTy
-  tm' = snd rst
-  rstTy = BTySum lTy rTy
-tcTm env (TmPair lhs rhs) (BTyProd lTy rTy) =
-  (oType , (TmAnn (TmPair lhs' rhs') oType)) where
-    lRst = tcTm env lhs lTy
-    rRst = tcTm env rhs rTy
-    lhs' = snd lRst
-    rhs' = snd rRst
-    oType = (BTyProd lTy rTy)
-tcTm env (TmIsoApp iso tm) ty =
-  let isoRst = tiIso env iso
-      isoTy = fst isoRst
-      iso' = snd isoRst
-  in case isoTy of
-       ITyBase lT rT ->
-         let rst = tcTm env tm lT
-             argType = fst rst
-             tm' = snd rst
-         in if typeEqual env lT argType
-            then if typeEqual env rT ty
-                 then (ty , (TmAnn (TmIsoApp iso' tm') ty))
-                 else error $ "The return " ++ show (TmIsoApp iso tm) ++
-                      " has the type " ++ show rT ++ " , expect " ++ show ty
-            else error $ "The operand " ++ show tm ++ " has the type " ++ show argType ++ " , expect " ++ show lT
-       _ -> error $ "The operator " ++ show iso ++ " should be an IsoBase!"
-tcTm env (TmLet pat rhs body) ty = (ty , TmAnn (TmLet pat rhs' body') ty) where
-  rhsRst = tiTm env rhs
-  rhsTy = fst rhsRst
-  rhs' = snd rhsRst
-  newEnv = extPatEnv env pat rhsTy
-  bodyRst = tcTm newEnv body ty
-  body' = snd bodyRst
+  then return (BTyInt , TmAnn (TmInt n) BTyInt)
+  else Left $ "Expect " ++ show BTyInt ++ ", got " ++ show ty ++ " in " ++ show (TmInt n)
+tcTm env (TmVar var) ty = do
+  ty' <- applyBaseEnv env var
+  if typeEqual env ty' ty
+    then return (ty, TmAnn (TmVar var) ty)
+    else Left $ "Expect " ++ show ty ++ ", got " ++ show ty' ++ " in " ++ show (TmVar var)
+tcTm env (TmLInj tm) (BTySum lTy rTy) = do
+  rst <- tcTm env tm lTy
+  let tm' = snd rst
+  let rstTy = BTySum lTy rTy
+  return (rstTy , TmAnn (TmLInj tm') rstTy)
+tcTm env (TmRInj tm) (BTySum lTy rTy) = do
+  rst <- tcTm env tm rTy
+  let tm' = snd rst
+  let rstTy = BTySum lTy rTy
+  return (rstTy , TmAnn (TmRInj tm') rstTy)
+tcTm env (TmPair lhs rhs) (BTyProd lTy rTy) = do
+  lRst <- tcTm env lhs lTy
+  rRst <- tcTm env rhs rTy
+  let lhs' = snd lRst
+  let rhs' = snd rRst
+  let oType = (BTyProd lTy rTy)
+  return (oType , (TmAnn (TmPair lhs' rhs') oType))
+tcTm env (TmIsoApp iso tm) ty = do
+  isoRst <- tiIso env iso
+  let isoTy = fst isoRst
+  let iso' = snd isoRst
+  pair <- tcRator iso' isoTy
+  let randTy = fst pair
+  let bodyTy = snd pair
+  rst <- tcTm env tm randTy
+  let argType = fst rst
+  let tm' = snd rst
+  if typeEqual env bodyTy ty
+    then return (bodyTy , (TmAnn (TmIsoApp iso' tm') bodyTy))
+    else Left $ "The operand " ++ show tm ++ " has the type " ++ show argType ++ " , expect " ++ show randTy
+tcTm env (TmLet pat rhs body) ty = do
+  rhsRst <- tiTm env rhs
+  let rhsTy = fst rhsRst
+  let rhs' = snd rhsRst
+  newEnv <- extPatEnv env pat rhsTy
+  bodyRst <- tcTm newEnv body ty
+  let body' = snd bodyRst
+  return (ty , TmAnn (TmLet pat rhs' body') ty)
 tcTm env (TmAnn tm ty) ty' =
   if typeEqual env ty ty'
   then tcTm env tm ty'
-  else error $ "Expect " ++ show tm ++ " to have type " ++ show ty ++ ", conflict with " ++ show ty'
-tcTm _ tm ty = error $ "Expect " ++ show tm ++ " to have type " ++ show ty
+  else Left $ "Expect " ++ show tm ++ " to have type " ++ show ty ++ ", conflict with " ++ show ty'
+tcTm _ tm ty = Left $ "Expect " ++ show tm ++ " to have type " ++ show ty
 
 {---------- Bidirectional type checking for Isos ----------}
-tiIso :: TypEnv -> Iso -> (IsoType, Iso)
-tiIso env (IsoValue pairs) = (otype , ov) where
-  otype = tiIsoPairs env pairs
-  ov = IsoAnn (IsoValue pairs) otype
-tiIso env (IsoVar var) = (otype , ov) where
-  otype = applyIsoEnv env var
-  ov = IsoAnn (IsoVar var) otype
-tiIso env (IsoLam var vLhsTy vRhsTy body) = (otype , ov) where
-  newEnv = extIsoEnv env var (ITyBase vLhsTy vRhsTy)
-  rst = tiIso newEnv body
-  bodyTy = fst rst
-  body' = snd rst
-  otype = ITyFun vLhsTy vRhsTy bodyTy
-  ov = IsoAnn (IsoLam var vLhsTy vRhsTy body') otype
-tiIso env (IsoApp rator rand) =
-  let ratorRst = tiIso env rator
-      ratorTy = fst ratorRst
-      rator' = snd ratorRst
-  in let randRst = tiIso env rand
-         randTy = fst randRst
-         rand' = snd randRst
-     in case (ratorTy , randTy) of
-          (ITyFun lhsTy rhsTy bodyTy, ITyBase randLhsTy randRhsTy) ->
-            if typeEqual env lhsTy randLhsTy && typeEqual env rhsTy randRhsTy
-            then (bodyTy , IsoAnn (IsoApp rator' rand') bodyTy)
-            else error $ "Expect " ++ show rator ++ " and " ++ show rand  ++ " to have matched type!"
-          (_, _) -> error $ "Expect " ++ show rator ++ " to have the type (Iso -> Iso)!"
-tiIso _ (IsoFix _ _) = error $ "IsoFix is not supported yet!"
-tiIso _ (IsoAnn _ _) = error $ "IsoAnn is an internal node!"
+tiIso :: TypEnv -> Iso -> Result (IsoType, Iso)
+tiIso env (IsoValue pairs) = do
+  otype <- tiIsoPairs env pairs
+  let ov = IsoAnn (IsoValue pairs) otype
+  return (otype , ov)
+tiIso env (IsoVar var) = do
+  otype <- applyIsoEnv env var
+  let ov = IsoAnn (IsoVar var) otype
+  return (otype , ov)
+tiIso env (IsoLam var vLhsTy vRhsTy body) = do
+  let newEnv = extIsoEnv env var (ITyBase vLhsTy vRhsTy)
+  rst <- tiIso newEnv body
+  let bodyTy = fst rst
+  let body' = snd rst
+  let otype = ITyFun vLhsTy vRhsTy bodyTy
+  let ov = IsoAnn (IsoLam var vLhsTy vRhsTy body') otype
+  return (otype , ov)
+tiIso env (IsoApp rator rand) = do
+  ratorRst <- tiIso env rator
+  let ratorTy = fst ratorRst
+  let rator' = snd ratorRst
+  randRst <- tiIso env rand
+  let randTy = fst randRst
+  let rand' = snd randRst
+  case (ratorTy , randTy) of
+    (ITyFun lhsTy rhsTy bodyTy, ITyBase randLhsTy randRhsTy) ->
+      if typeEqual env lhsTy randLhsTy && typeEqual env rhsTy randRhsTy
+      then return (bodyTy , IsoAnn (IsoApp rator' rand') bodyTy)
+      else Left $ "Expect " ++ show rator ++ " and " ++ show rand  ++ " to have matched type!"
+    (_, _) -> Left $ "Expect " ++ show rator ++ " to have the type (Iso -> Iso)!"
+tiIso _ (IsoFix _ _) = Left $ "IsoFix is not supported yet!"
+tiIso _ (IsoAnn _ _) = Left $ "IsoAnn is an internal node!"
 
-tiIsoPairs :: TypEnv -> [(Value, Exp)] -> IsoType
-tiIsoPairs _ [] = error $ "There must be at least one pair of values in an iso, given zero!"
-tiIsoPairs env (hd:tl) = tcIsoPairs env tl lhsTy rhsTy where
-  ty = tiIsoPair env hd
-  lhsTy = fst ty
-  rhsTy = snd ty
+tiIsoPairs :: TypEnv -> [(Value, Exp)] -> Result IsoType
+tiIsoPairs _ [] = Left $ "There must be at least one pair of values in an iso, given zero!"
+tiIsoPairs env (hd:tl) = do
+  ty <- tiIsoPair env hd
+  let lhsTy = fst ty
+  let rhsTy = snd ty
+  tcIsoPairs env tl lhsTy rhsTy
 
-tcIsoPairs :: TypEnv -> [(Value, Exp)] -> BaseType -> BaseType -> IsoType
-tcIsoPairs _ [] lhsTy rhsTy = ITyBase lhsTy rhsTy
-tcIsoPairs env (hd:tl) lhsTy rhsTy =
-  tcIsoPairs env tl lhsTy' rhsTy' where
-    rst = tcIsoPair env hd lhsTy rhsTy
-    lhsTy' = fst rst
-    rhsTy' = snd rst
+tcIsoPairs :: TypEnv -> [(Value, Exp)] -> BaseType -> BaseType -> Result IsoType
+tcIsoPairs _ [] lhsTy rhsTy = return $ ITyBase lhsTy rhsTy
+tcIsoPairs env (hd:tl) lhsTy rhsTy = do
+  rst <- tcIsoPair env hd lhsTy rhsTy
+  let lhsTy' = fst rst
+  let rhsTy' = snd rst
+  tcIsoPairs env tl lhsTy' rhsTy'
 
-tiIsoPair :: TypEnv -> (Value, Exp) -> (BaseType, BaseType)
-tiIsoPair env (lhs, rhs) = (lTy , rTy) where
-  lRst = tiValue env lhs
-  lTy = fst $ fst lRst
-  lBinds = snd lRst
-  newEnv = extMultiBaseEnv env lBinds
-  rTy = tiExp newEnv rhs
+tiIsoPair :: TypEnv -> (Value, Exp) -> Result (BaseType, BaseType)
+tiIsoPair env (lhs, rhs) = do
+  lRst <- tiValue env lhs
+  let lTy = fst $ fst lRst
+  let lBinds = snd lRst
+  let newEnv = extMultiBaseEnv env lBinds
+  rTy <- tiExp newEnv rhs
+  return (lTy , rTy)
 
-tcIsoPair :: TypEnv -> (Value, Exp) -> BaseType -> BaseType -> (BaseType, BaseType)
-tcIsoPair env (lhs , rhs) lTy rTy = (lTy' , rTy') where
-  lRst = tcVal env lhs lTy
-  lTy' = fst $ fst lRst
-  lBinds = snd lRst
-  newEnv = extMultiBaseEnv env lBinds
-  rTy' = tcExp newEnv rhs rTy
+tcIsoPair :: TypEnv -> (Value, Exp) -> BaseType -> BaseType -> Result (BaseType, BaseType)
+tcIsoPair env (lhs , rhs) lTy rTy = do
+  lRst <- tcVal env lhs lTy
+  let lTy' = fst $ fst lRst
+  let lBinds = snd lRst
+  let newEnv = extMultiBaseEnv env lBinds
+  rTy' <- tcExp newEnv rhs rTy
+  return (lTy' , rTy')
 
 {---------- Bidirectional type checking for Values -----------}
 -- Return the type of the given value, the type annotated value, and all pattern
 -- variables and the corresponding type in this value.
-tiValue :: TypEnv -> Value -> ((BaseType, Value), [(String, BaseType)])
-tiValue _ ValUnit = ((BTyUnit, ValAnn ValUnit BTyUnit) , [])
-tiValue _ (ValInt n) = ((BTyInt, ValAnn (ValInt n) BTyInt) , [])
-tiValue _ (ValVar var) = error $ "Type annotation is required for a single pattern var " ++ var ++ "!"
-tiValue _ (ValLInj v) = error $ "Type annotation is required for a Left value " ++ show v ++ "!"
-tiValue _ (ValRInj v) = error $ "Type annotation is required for a Right value " ++ show v ++ "!"
-tiValue env (ValPair l r) = ((otype , ov), lBinds ++ rBinds) where
-  lRst = (tiValue env l)
-  rRst = (tiValue env r)
-  lTy = fst $ fst lRst
-  rTy = fst $ fst rRst
-  l' = snd $ fst lRst
-  r' = snd $ fst rRst
-  otype = BTyProd lTy rTy
-  ov = ValAnn (ValPair l' r') otype
-  lBinds = snd lRst
-  rBinds = snd rRst
+tiValue :: TypEnv -> Value -> Result ((BaseType, Value), [(String, BaseType)])
+tiValue _ ValUnit = return ((BTyUnit, ValAnn ValUnit BTyUnit) , [])
+tiValue _ (ValInt n) = return ((BTyInt, ValAnn (ValInt n) BTyInt) , [])
+tiValue _ (ValVar var) = Left $ "Type annotation is required for a single pattern var " ++ var ++ "!"
+tiValue _ (ValLInj v) = Left $ "Type annotation is required for a Left value " ++ show v ++ "!"
+tiValue _ (ValRInj v) = Left $ "Type annotation is required for a Right value " ++ show v ++ "!"
+tiValue env (ValPair l r) = do
+  lRst <- tiValue env l
+  rRst <- tiValue env r
+  let lTy = fst $ fst lRst
+  let rTy = fst $ fst rRst
+  let l' = snd $ fst lRst
+  let r' = snd $ fst rRst
+  let otype = BTyProd lTy rTy
+  let ov = ValAnn (ValPair l' r') otype
+  let lBinds = snd lRst
+  let rBinds = snd rRst
+  return ((otype , ov), lBinds ++ rBinds)
 tiValue env (ValAnn v ty) = tcVal env v ty
 
-tcVal :: TypEnv -> Value -> BaseType -> ((BaseType, Value), [(String, BaseType)])
+tcVal :: TypEnv -> Value -> BaseType -> Result ((BaseType, Value), [(String, BaseType)])
 tcVal env ValUnit ty =
   if typeEqual env BTyUnit ty
-  then ((BTyUnit , ValAnn ValUnit BTyUnit) , [])
-  else error $ "Expect " ++ show BTyUnit ++ ", got " ++ show ty ++ " in " ++ show TmUnit
+  then return ((BTyUnit , ValAnn ValUnit BTyUnit) , [])
+  else Left $ "Expect " ++ show BTyUnit ++ ", got " ++ show ty ++ " in " ++ show TmUnit
 tcVal env (ValInt n) ty =
   if typeEqual env BTyInt ty
-  then ((BTyInt , ValAnn (ValInt n) BTyInt) , [])
-  else error $ "Expect " ++ show BTyInt ++ ", got " ++ show ty ++ " in " ++ show (TmInt n)
+  then return ((BTyInt , ValAnn (ValInt n) BTyInt) , [])
+  else Left $ "Expect " ++ show BTyInt ++ ", got " ++ show ty ++ " in " ++ show (TmInt n)
 -- special case, Var is a pattern
-tcVal _ (ValVar var) ty = ((ty, ValAnn (ValVar var) ty), [(var , ty)])
-tcVal env (ValLInj tm) (BTySum lTy rTy) = ((otype, ov) , binds) where
-  rst = tcVal env tm lTy
-  lTy' = fst $ fst rst
-  tm' = snd $ fst rst
-  otype = BTySum lTy' rTy
-  ov = ValAnn (ValLInj tm') otype
-  binds = snd rst
-tcVal env (ValRInj tm) (BTySum lTy rTy) = ((otype, ov) , binds) where
-  rst = tcVal env tm rTy
-  rTy' = fst $ fst rst
-  tm' = snd $ fst rst
-  otype = BTySum lTy rTy'
-  ov = ValAnn (ValRInj tm') otype
-  binds = snd rst
-tcVal env (ValPair lhs rhs) (BTyProd lTy rTy) =
-  ((otype, ov) , lBinds ++ rBinds) where
-  lRst = tcVal env lhs lTy
-  rRst = tcVal env rhs rTy
-  lTy' = fst $ fst lRst
-  rTy' = fst $ fst rRst
-  lhs' = snd $ fst lRst
-  rhs' = snd $ fst rRst
-  otype = BTyProd lTy' rTy'
-  ov = ValAnn (ValPair lhs' rhs') otype
-  lBinds = snd lRst
-  rBinds = snd rRst
+tcVal _ (ValVar var) ty = return ((ty, ValAnn (ValVar var) ty), [(var , ty)])
+tcVal env (ValLInj tm) (BTySum lTy rTy) = do
+  rst <- tcVal env tm lTy
+  let lTy' = fst $ fst rst
+  let tm' = snd $ fst rst
+  let otype = BTySum lTy' rTy
+  let ov = ValAnn (ValLInj tm') otype
+  let binds = snd rst
+  return ((otype, ov) , binds)
+tcVal env (ValRInj tm) (BTySum lTy rTy) = do
+  rst <- tcVal env tm rTy
+  let rTy' = fst $ fst rst
+  let tm' = snd $ fst rst
+  let otype = BTySum lTy rTy'
+  let ov = ValAnn (ValRInj tm') otype
+  let binds = snd rst
+  return ((otype, ov) , binds)
+tcVal env (ValPair lhs rhs) (BTyProd lTy rTy) = do
+  lRst <- tcVal env lhs lTy
+  rRst <- tcVal env rhs rTy
+  let lTy' = fst $ fst lRst
+  let rTy' = fst $ fst rRst
+  let lhs' = snd $ fst lRst
+  let rhs' = snd $ fst rRst
+  let otype = BTyProd lTy' rTy'
+  let ov = ValAnn (ValPair lhs' rhs') otype
+  let lBinds = snd lRst
+  let rBinds = snd rRst
+  return ((otype, ov) , lBinds ++ rBinds)
 tcVal env (ValAnn v ty) ty' =
   if typeEqual env ty ty'
   then tcVal env v ty'
-  else error $ "Expect " ++ show v ++ " to have type " ++ show ty ++ ", conflict with " ++ show ty'
-tcVal _ tm ty = error $ "Expect " ++ show tm ++ " to have type " ++ show ty
+  else Left $ "Expect " ++ show v ++ " to have type " ++ show ty ++ ", conflict with " ++ show ty'
+tcVal _ tm ty = Left $ "Expect " ++ show tm ++ " to have type " ++ show ty
 
 {-- Bidirectional type checking for Values (Non-pattern) --}
 -- Return the type of the given value.
-tiValNoPat :: TypEnv -> Value -> (BaseType , Value)
-tiValNoPat _ ValUnit = (BTyUnit , ValAnn ValUnit BTyUnit)
-tiValNoPat _ (ValInt n) = (BTyInt , ValAnn (ValInt n) BTyInt)
-tiValNoPat env (ValVar var) = (ty , ValAnn (ValVar var) ty) where
-  ty = applyBaseEnv env var
+tiValNoPat :: TypEnv -> Value -> Result (BaseType , Value)
+tiValNoPat _ ValUnit = return (BTyUnit , ValAnn ValUnit BTyUnit)
+tiValNoPat _ (ValInt n) = return (BTyInt , ValAnn (ValInt n) BTyInt)
+tiValNoPat env (ValVar var) = do
+  ty <- applyBaseEnv env var
+  return (ty , ValAnn (ValVar var) ty)
 tiValNoPat _ (ValLInj v) =
-  error $ "Type annotation is required for a Left value " ++ show v ++ "!"
+  Left $ "Type annotation is required for a Left value " ++ show v ++ "!"
 tiValNoPat _ (ValRInj v) =
-  error $ "Type annotation is required for a Right value " ++ show v ++ "!"
-tiValNoPat env (ValPair l r) = (otype, ov) where
-  lRst = tiValNoPat env l
-  rRst = tiValNoPat env r
-  lTy = fst lRst
-  rTy = fst rRst
-  l' = snd lRst
-  r' = snd rRst
-  otype = BTyProd lTy rTy
-  ov = ValAnn (ValPair l' r') otype
+  Left $ "Type annotation is required for a Right value " ++ show v ++ "!"
+tiValNoPat env (ValPair l r) = do
+  lRst <- tiValNoPat env l
+  rRst <- tiValNoPat env r
+  let lTy = fst lRst
+  let rTy = fst rRst
+  let l' = snd lRst
+  let r' = snd rRst
+  let otype = BTyProd lTy rTy
+  let ov = ValAnn (ValPair l' r') otype
+  return (otype, ov)
 tiValNoPat env (ValAnn v ty) = tcValNoPat env v ty
 
-tcValNoPat :: TypEnv -> Value -> BaseType -> (BaseType , Value)
+tcValNoPat :: TypEnv -> Value -> BaseType -> Result (BaseType , Value)
 tcValNoPat env ValUnit ty =
   if typeEqual env BTyUnit ty
-  then (BTyUnit , ValAnn ValUnit BTyUnit)
-  else error $ "Expect " ++ show BTyUnit ++ ", got " ++ show ty ++ " in " ++ show TmUnit
+  then return (BTyUnit , ValAnn ValUnit BTyUnit)
+  else Left $ "Expect " ++ show BTyUnit ++ ", got " ++ show ty ++ " in " ++ show TmUnit
 tcValNoPat env (ValInt n) ty =
   if typeEqual env BTyInt ty
-  then (BTyInt , ValAnn (ValInt n) BTyInt)
-  else error $ "Expect " ++ show BTyInt ++ ", got " ++ show ty ++ " in " ++ show (TmInt n)
-tcValNoPat env (ValVar var) ty =
-  let ty' = applyBaseEnv env var
-  in if typeEqual env ty' ty
-     then (ty , ValAnn (ValVar var) ty)
-     else error $ "Expect " ++ show ty ++ ", got " ++ show ty' ++ " in " ++ show (ValVar var)
-tcValNoPat env (ValLInj tm) (BTySum lTy rTy) = (otype , ov) where
-  rst = tcValNoPat env tm lTy
-  lTy' = fst rst
-  tm' = snd rst
-  otype = BTySum lTy' rTy
-  ov = ValAnn (ValLInj tm') otype
-tcValNoPat env (ValRInj tm) (BTySum lTy rTy) = (otype , ov) where
-  rst = tcValNoPat env tm rTy
-  rTy' = fst rst
-  tm' = snd rst
-  otype = BTySum lTy rTy'
-  ov = ValAnn (ValLInj tm') otype
-tcValNoPat env (ValPair lhs rhs) (BTyProd lTy rTy) =
-  (otype , ov) where
-    lRst = tcValNoPat env lhs lTy
-    rRst = tcValNoPat env rhs rTy
-    lTy' = fst lRst
-    rTy' = fst rRst
-    lhs' = snd lRst
-    rhs' = snd lRst
-    otype = BTyProd lTy' rTy'
-    ov = ValAnn (ValPair lhs' rhs') otype
+  then return (BTyInt , ValAnn (ValInt n) BTyInt)
+  else Left $ "Expect " ++ show BTyInt ++ ", got " ++ show ty ++ " in " ++ show (TmInt n)
+tcValNoPat env (ValVar var) ty = do
+  ty' <- applyBaseEnv env var
+  if typeEqual env ty' ty
+    then return (ty , ValAnn (ValVar var) ty)
+    else Left $ "Expect " ++ show ty ++ ", got " ++ show ty' ++ " in " ++ show (ValVar var)
+tcValNoPat env (ValLInj tm) (BTySum lTy rTy) = do
+  rst <- tcValNoPat env tm lTy
+  let lTy' = fst rst
+  let tm' = snd rst
+  let otype = BTySum lTy' rTy
+  let ov = ValAnn (ValLInj tm') otype
+  return (otype , ov)
+tcValNoPat env (ValRInj tm) (BTySum lTy rTy) = do
+  rst <- tcValNoPat env tm rTy
+  let rTy' = fst rst
+  let tm' = snd rst
+  let otype = BTySum lTy rTy'
+  let ov = ValAnn (ValLInj tm') otype
+  return (otype , ov)
+tcValNoPat env (ValPair lhs rhs) (BTyProd lTy rTy) = do
+  lRst <- tcValNoPat env lhs lTy
+  rRst <- tcValNoPat env rhs rTy
+  let lTy' = fst lRst
+  let rTy' = fst rRst
+  let lhs' = snd lRst
+  let rhs' = snd lRst
+  let otype = BTyProd lTy' rTy'
+  let ov = ValAnn (ValPair lhs' rhs') otype
+  return (otype , ov)
 tcValNoPat env (ValAnn v ty) ty' =
   if typeEqual env ty ty'
   then tcValNoPat env v ty'
-  else error $ "Expect " ++ show v ++ " to have type " ++ show ty ++ ", conflict with " ++ show ty'
+  else Left $ "Expect " ++ show v ++ " to have type " ++ show ty ++ ", conflict with " ++ show ty'
 tcValNoPat _ tm ty =
-  error $ "Expect " ++ show tm ++ " to have type " ++ show ty
+  Left $ "Expect " ++ show tm ++ " to have type " ++ show ty
 
 {---------- Bidirectional type checking for Exps ----------}
-tiExp :: TypEnv -> Exp -> BaseType
-tiExp env (ExpVal val) = fst $ tiValNoPat env val
-tiExp env (ExpLet pat iso pat' body) =
-  let isoRst = tiIso env iso
-      isoTy = fst isoRst
-  in case isoTy of
-    ITyBase lT rT ->
-      let rst = tiRhsPat env pat'
-      in if typeEqual env lT rst
-         then let newEnv = extPatEnv env pat rT
-              in tiExp newEnv body
-         else error $ "The operand " ++ show pat' ++ " has the type " ++ show rst ++ " , expect " ++ show lT
-    _ -> error $ "The operator " ++ show iso ++ " should be an IsoBase!"
+tiExp :: TypEnv -> Exp -> Result BaseType
+tiExp env (ExpVal val) = do
+  rst <- tiValNoPat env val
+  return $ fst rst
+tiExp env (ExpLet pat iso pat' body) = do
+  isoRst <- tiIso env iso
+  let isoTy = fst isoRst
+  let iso' = snd isoRst
+  pair <- tcRator iso' isoTy
+  let randTy = fst pair
+  let bodyTy = snd pair
+  patTy <- tcRhsPat env randTy pat'
+  newEnv <- extPatEnv env pat bodyTy
+  tiExp newEnv body
 
-tcExp :: TypEnv -> Exp -> BaseType -> BaseType
-tcExp env (ExpVal val) ty = fst $ tcValNoPat env val ty
-tcExp env (ExpLet pat iso pat' body) ty =
-  let isoRst = tiIso env iso
-      isoTy = fst isoRst
-  in case isoTy of
-    ITyBase lT rT ->
-      let rst = tiRhsPat env pat'
-      in if typeEqual env lT rst
-         then let newEnv = extPatEnv env pat rT
-              in tcExp newEnv body ty
-         else error $ "The operand " ++ show pat' ++ " has the type " ++ show rst ++ " , expect " ++ show lT
-    _ -> error $ "The operator " ++ show iso ++ " should be an IsoBase!"
+tcExp :: TypEnv -> Exp -> BaseType -> Result BaseType
+tcExp env (ExpVal val) ty = do
+  rst <- tcValNoPat env val ty
+  return $ fst rst
+tcExp env (ExpLet pat iso pat' body) ty = do
+  isoRst <- tiIso env iso
+  let isoTy = fst isoRst
+  let iso' = snd isoRst
+  pair <- tcRator iso' isoTy
+  let randTy = fst pair
+  let bodyTy = snd pair
+  patTy <- tcRhsPat env randTy pat'
+  newEnv <- extPatEnv env pat bodyTy
+  tcExp newEnv body ty
 
-tiRhsPat :: TypEnv -> Pattern -> BaseType
-tiRhsPat env (PtSingleVar var) = applyBaseEnv env var
-tiRhsPat env (PtMultiVar (var : []) ) = applyBaseEnv env var
-tiRhsPat env (PtMultiVar (var : vars) ) = BTyProd hd tl where
-  hd = applyBaseEnv env var
-  tl = tiRhsPat env (PtMultiVar vars)
-tiRhsPat _ pat = error $ "Invalid pattern " ++ show pat
+tcRator :: (Show a) => a -> IsoType -> Result (BaseType , BaseType)
+tcRator rator ratorTy =
+  case ratorTy of
+    ITyBase lT rT -> return (lT , rT)
+    _ -> Left $ "The operator " ++ show rator ++ " should be an IsoBase, got " ++ show ratorTy
+
+tcRhsPat :: TypEnv -> BaseType -> Pattern -> Result BaseType
+tcRhsPat env ty (PtSingleVar var) = do
+  ty' <- applyBaseEnv env var
+  if typeEqual env ty ty'
+    then return ty
+    else Left $ "Invalid pattern type " ++ show ty' ++ ", expect " ++ show ty
+tcRhsPat env ty (PtMultiVar (var : [])) = do
+  ty' <- applyBaseEnv env var
+  if typeEqual env ty ty'
+    then return ty
+    else Left $ "Invalid pattern type " ++ show ty' ++ ", expect " ++ show ty
+tcRhsPat env ty (PtMultiVar (var : vars)) = do
+  hd <- applyBaseEnv env var
+  tl <- tcRhsPat env ty (PtMultiVar vars)
+  let ty' = (BTyProd hd tl)
+  if typeEqual env ty ty'
+    then return (BTyProd hd tl)
+    else Left $ "Invalid pattern type " ++ show ty' ++ ", expect " ++ show ty
+tcRhsPat _ _ pat = Left $ "Invalid pattern " ++ show pat
 
 {-------------- Helper functions --------------}
 typeEqual :: TypEnv -> BaseType -> BaseType -> Bool
 typeEqual _ ty ty' = (ty == ty')
 
-applyBaseEnv :: TypEnv -> String -> BaseType
+applyBaseEnv :: TypEnv -> String -> Result BaseType
 applyBaseEnv env var = case (lookup var env) of
-  Just (Left bTy) -> bTy
-  v -> error $ "Expect a base type for variable " ++ show var ++ ", got " ++ show v
+  Just (Left bTy) -> return bTy
+  v -> Left $ "Expect a base type for variable " ++ show var ++ ", got " ++ show v
 
-applyIsoEnv :: TypEnv -> String -> IsoType
+applyIsoEnv :: TypEnv -> String -> Result IsoType
 applyIsoEnv env var = case (lookup var env) of
-  Just (Right iTy) -> iTy
-  v -> error $ "Expect an iso type for variable " ++ show var ++ ", got " ++ show v
+  Just (Right iTy) -> return iTy
+  v -> Left $ "Expect an iso type for variable " ++ show var ++ ", got " ++ show v
 
 extIsoEnv :: TypEnv -> String -> IsoType -> TypEnv
 extIsoEnv env var ty = (var, Right ty) : env
@@ -357,10 +395,10 @@ extMultiBaseEnv :: TypEnv -> [(String , BaseType)] -> TypEnv
 extMultiBaseEnv env binds = map f binds ++ env where
   f = \x -> (fst x, Left $ snd x)
 
-extPatEnv :: TypEnv -> Pattern -> BaseType -> TypEnv
-extPatEnv env (PtSingleVar var) ty = extBaseEnv env var ty
+extPatEnv :: TypEnv -> Pattern -> BaseType -> Result TypEnv
+extPatEnv env (PtSingleVar var) ty = return $ extBaseEnv env var ty
 extPatEnv env (PtMultiVar vars) ty = extend env vars ty where
-  extend env' (var : []) ty' = extBaseEnv env' var ty'
+  extend env' (var : []) ty' = return $ extBaseEnv env' var ty'
   extend env' (var : vars') (BTyProd lhsTy rhsTy) =
     extend (extBaseEnv env' var lhsTy) vars' rhsTy
-  extend _ _ _ = error $ "The number of pattern variables " ++ show vars ++ " don't match the type " ++ show ty
+  extend _ _ _ = Left $ "The number of pattern variables " ++ show vars ++ " don't match the type " ++ show ty

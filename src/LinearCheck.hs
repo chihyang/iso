@@ -5,9 +5,17 @@ import Syntax
 type LinearEnv = [(String , Int)]
 type Result a = Either String a
 
-linearCheck :: Program -> Result LinearEnv
-linearCheck (PgTm tm) = lcTm [] tm
-linearCheck (PgIs iso) = lcIso [] iso
+linearCheck :: Program -> Result Program
+linearCheck (PgTm tm) =
+  case lcTm [] tm of
+    Right [] -> return (PgTm tm)
+    Right _ -> error "Impossible case in linear check: an environment is not restored!"
+    Left msg -> Left msg
+linearCheck (PgIs iso) =
+  case lcIso [] iso of
+    Right [] -> return (PgIs iso)
+    Right _ -> error "Impossible case in linear check: an environment is not restored!"
+    Left msg -> Left msg
 
 {---------- Linear checking for Terms ----------}
 lcTm :: LinearEnv -> Term -> Result LinearEnv
