@@ -3,7 +3,7 @@ module LinearCheck (linearCheck) where
 import Syntax
 
 type LinearEnv = [(String , Int)]
-type Result a = Maybe a
+type Result a = Either String a
 
 linearCheck :: Program -> Result LinearEnv
 linearCheck (PgTm tm) = lcTm [] tm
@@ -96,11 +96,11 @@ lcValNoPat env (ValAnn v _) = lcValNoPat env v
 
 {-- Helper functions --}
 increEnv :: LinearEnv -> String -> Result LinearEnv
-increEnv [] var = fail $ show var ++ " not found!"
+increEnv [] var = Left $ show var ++ " not found!"
 increEnv ((var',n):tl) var
   | var' == var =
       if n > 0
-      then fail $ "Variable " ++ show var ++ " is used more than once!"
+      then Left $ "Variable " ++ show var ++ " is used more than once!"
       else return ((var', (n + 1)):tl)
 increEnv ((var',n):tl) var = do
   env' <- increEnv tl var
@@ -114,4 +114,4 @@ dropPat :: LinearEnv -> Pattern -> Result LinearEnv
 dropPat (_:tl) (PtSingleVar _) = return tl
 dropPat env (PtMultiVar []) = return env
 dropPat (_:tl) (PtMultiVar (_:vars)) = dropPat tl (PtMultiVar vars)
-dropPat env pat = fail $ "Environment " ++ show env ++ " doesn't have enough variables for" ++ show pat ++ "!"
+dropPat env pat = Left $ "Environment " ++ show env ++ " doesn't have enough variables for" ++ show pat ++ "!"
