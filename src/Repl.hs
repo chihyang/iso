@@ -61,7 +61,7 @@ quit = const $ do
 
 completer :: WordCompleter IO
 completer n = do
-  let names = ["kirk", "spock", "mccoy"]
+  let names = [":help", ":quit"]
   pure $ filter (isPrefixOf n) names
 
 repl :: IO ()
