@@ -1,4 +1,4 @@
-module Data (module Data) where
+module Syntax (module Syntax) where
 
 -- Type
 data BaseType =

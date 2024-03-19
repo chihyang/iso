@@ -1,6 +1,6 @@
 module Orthogonal (ortho, orthoPairs) where
 
-import Data hiding (ValEnv)
+import Syntax hiding (ValEnv)
 
 type ValEnv = [(String, ProgramBaseValue)]
 

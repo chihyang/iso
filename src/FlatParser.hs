@@ -19,7 +19,7 @@ import FlatParse.Examples.BasicLambda.Lexer hiding (isKeyword)
 import FlatParse.Examples.BasicLambda.Parser (Name, int)
 
 
-import Data
+import Syntax
 
 -- TODO: use TH to expand kw's
 -- keywordsList = ["Unit", "Int", "mu", "unit", "left", "right", "let", "in"]

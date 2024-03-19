@@ -26,13 +26,13 @@ source-repository head
 library
   exposed-modules:
       Convert
-      Data
       Expand
       FlatParser
       Interp
       LinearCheck
       Orthogonal
       Repl
+      Syntax
       TypeCheck
   other-modules:
       Paths_iso

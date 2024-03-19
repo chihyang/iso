@@ -1,6 +1,6 @@
 module Interp (interp) where
 
-import Data
+import Syntax
 import Debug.Trace (trace)
 
 interp :: ValEnv -> Program -> Maybe ProgramValue

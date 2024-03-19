@@ -1,6 +1,6 @@
 module LinearCheck (linearCheck) where
 
-import Data
+import Syntax
 
 type LinearEnv = [(String , Int)]
 

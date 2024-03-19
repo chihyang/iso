@@ -1,5 +1,5 @@
 module Expand where
-import Data
+import Syntax
 
 -- expand a finite type to a list of values of that type
 expandFiniteType :: BaseType -> [ProgramBaseValue]

@@ -1,6 +1,6 @@
 module TypeCheck (typeInfer) where
 
-import Data
+import Syntax
 
 typeInfer :: TypEnv -> Program -> Program
 typeInfer env (PgTm tm) = PgTm $ snd $ typeInferTm env tm
