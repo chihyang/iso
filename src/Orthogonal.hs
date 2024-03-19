@@ -1,4 +1,4 @@
-module Orthogonal (ortho) where
+module Orthogonal (ortho, orthoPairs) where
 
 import Data hiding (ValEnv)
 
@@ -35,3 +35,18 @@ isOrtho env v1 v2 =
 
 ortho :: ProgramBaseValue -> ProgramBaseValue -> Bool
 ortho v1 v2 = isOrtho [] v1 v2
+
+orthoLst1 :: ProgramBaseValue -> [ProgramBaseValue] -> Bool
+orthoLst1 v vs = foldl (\rst v' -> rst && ortho v v') True vs
+
+orthoLst :: [ProgramBaseValue] -> Bool
+orthoLst [] = True
+orthoLst (v:vs) =
+  if orthoLst1 v vs
+  then orthoLst vs
+  else False
+
+orthoPairs :: [(ProgramBaseValue, ProgramBaseValue)] -> Bool
+orthoPairs pairs = orthoLst lhs && orthoLst rhs where
+  lhs = map fst pairs
+  rhs = map snd pairs
