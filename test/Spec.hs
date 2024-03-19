@@ -63,8 +63,8 @@ main = do {
   ; let rhsPat = [ExpVal elPat, ExpVal erPat]
   ; let i2 = IsoValue $ zip lhsPat rhsPat
   ; let i3 = TmIsoApp i2 (TmRInj (TmRInj (TmLInj t0)))
-  ; print (interp [] (PgTm i3))
-  ; print (typeInfer [] (PgTm i3))
+  ; print (interp (PgTm i3))
+  ; print (typeInfer (PgTm i3))
 
   -- ; let e20 = PgIs $ IsoValue [ValUnit] [ExpVal (ValPair ValUnit ValUnit)]
   -- ; print (interp [] e20)
