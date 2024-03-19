@@ -1,15 +1,18 @@
-module Interp (interp) where
+module Interp (interp, interpEnv) where
 
 import Syntax
 import Debug.Trace (trace)
 
 interp :: Program -> Maybe ProgramValue
-interp (PgTm tm) = do {
-  v <- (interpTm [] tm)
+interp pg = interpEnv [] pg
+
+interpEnv :: ValEnv -> Program -> Maybe ProgramValue
+interpEnv env (PgTm tm) = do {
+  v <- (interpTm env tm)
   ; Just (PB v)
   }
-interp (PgIs iso) = do {
-  v <- interpIso [] iso
+interpEnv env (PgIs iso) = do {
+  v <- interpIso env iso
   ; Just (PI v)
   }
 

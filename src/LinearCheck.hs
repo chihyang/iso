@@ -1,4 +1,4 @@
-module LinearCheck (linearCheck) where
+module LinearCheck (linearCheck, linearCheckEnv) where
 
 import Syntax
 
@@ -6,16 +6,22 @@ type LinearEnv = [(String , Int)]
 type Result a = Either String a
 
 linearCheck :: Program -> Result Program
-linearCheck (PgTm tm) =
-  case lcTm [] tm of
-    Right [] -> return (PgTm tm)
-    Right _ -> error "Impossible case in linear check: an environment is not restored!"
-    Left msg -> Left msg
-linearCheck (PgIs iso) =
-  case lcIso [] iso of
-    Right [] -> return (PgIs iso)
-    Right _ -> error "Impossible case in linear check: an environment is not restored!"
-    Left msg -> Left msg
+linearCheck pg = linearCheckEnv [] pg
+
+linearCheckEnv :: LinearEnv -> Program -> Result Program
+linearCheckEnv env (PgTm tm) = do
+  env' <- lcTm env tm
+  if sameVars env' env
+    then return (PgTm tm)
+    else Left "Impossible case in linear check: an environment is not restored!"
+linearCheckEnv env (PgIs iso) = do
+  env' <- lcIso [] iso
+  if sameVars env' env
+    then return (PgIs iso)
+    else Left "Impossible case in linear check: an environment is not restored!"
+
+sameVars :: LinearEnv -> LinearEnv -> Bool
+sameVars env env' = map fst env == map fst env'
 
 {---------- Linear checking for Terms ----------}
 lcTm :: LinearEnv -> Term -> Result LinearEnv

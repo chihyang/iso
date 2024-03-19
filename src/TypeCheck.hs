@@ -1,14 +1,17 @@
-module TypeCheck (typeInfer) where
+module TypeCheck (typeInfer, typeInferEnv) where
 
 import Syntax
 type Result a = Either String a
 
 typeInfer :: Program -> Result Program
-typeInfer (PgTm tm) = do
-  rst <- tiTm [] tm
+typeInfer pg = typeInferEnv [] pg
+
+typeInferEnv :: TypEnv -> Program -> Result Program
+typeInferEnv env (PgTm tm) = do
+  rst <- tiTm env tm
   return $ PgTm $ snd rst
-typeInfer (PgIs iso) = do
-  rst <- tiIso [] iso
+typeInferEnv env (PgIs iso) = do
+  rst <- tiIso env iso
   return $ PgIs $ snd rst
 
 {---------- Bidirectional type checking for Terms ----------}
