@@ -3,7 +3,11 @@
 {-# language StrictData #-}
 {-# language TemplateHaskell #-}
 
-module FlatParser where
+module FlatParser (
+  parse,
+  pProg,
+  Result(..)
+  ) where
 
 --import qualified Language.Haskell.TH as TH
 
@@ -12,7 +16,7 @@ import qualified Data.ByteString as B
 import FlatParse.Basic hiding (Parser, runParser, string, char, cut)
 import FlatParse.Common.Assorted (strToUtf8, utf8ToStr)
 import FlatParse.Examples.BasicLambda.Lexer hiding (isKeyword)
-import FlatParse.Examples.BasicLambda.Parser hiding (ident, ident')
+import FlatParse.Examples.BasicLambda.Parser (Name, int)
 
 
 import Data
@@ -51,7 +55,7 @@ ident' = ident `cut'` (Msg "identifier")
 ident'' = utf8ToStr <$> ident
 
 -- use TH to write this so it's feasible to do `C <$> parens p` with nary constructors?
-parens p = $(symbol "(") *> p <* $(symbol' ")") 
+parens p = $(symbol "(") *> p <* $(symbol' ")")
 brackets p = $(symbol "[") *> p <* $(symbol' "]")
 braces p = $(symbol "{") *> p <* $(symbol' "}")
 
@@ -96,7 +100,7 @@ pITyFun = p1 <* $(symbol' "->") <*> pIsoType
       $(symbol "<->")
       r <- pBaseType
       return $ ITyFun l r
-    
+
 pIsoType = pITyFun <|> pITyBase
 
 {-
@@ -187,13 +191,6 @@ pIsoAnn = parens $ IsoAnn <$> pIso <* $(symbol' "::") <*> pIsoType
 pIso = pIsoValue <|> pIsoLam <|> pIsoApp <|> pIsoFix <|> pIsoAnn <|> pIsoVar
 
 {-
--- Program
--}
-pPgTm = PgTm <$> pTerm
-pPgIs = PgIs <$> pIso
-pProg = pPgTm <|> pPgIs
-
-{-
 -- Term
 -}
 pTmUnit = TmUnit <$ $(keyword "unit")
@@ -214,73 +211,23 @@ pTmLet    = do
   body <- pTerm
   return $ TmLet pat rhs body
 
-pTerm = pTmUnit <|> pTmInt <|> pTmLInj <|> pTmRInj <|> pTmPair <|> pTmAnn
-  <|> pTmIsoApp <|> pTmLet <|> pTmVar
-
+pTerm =
+  pTmUnit <|>
+  pTmInt <|>
+  pTmLInj <|>
+  pTmRInj <|>
+  pTmPair <|>
+  pTmAnn <|>
+  pTmIsoApp <|>
+  pTmLet <|>
+  pTmVar
 
 {-
--- Examples
+-- Program
 -}
-parse p str = runParser p (strToUtf8 str)
+pPgTm = PgTm <$> pTerm
+pPgIs = PgIs <$> pIso
+pProg = pPgTm <|> pPgIs
 
-test p str = putStrLn msg
-  where
-    msg = case parse p str of
-      OK a res -> "OK\n" ++ show a ++ "\n" ++ show res
-      Fail     -> "Failed"
-      Err e    -> prettyError (strToUtf8 str) e 
-
--- Testing base types
-str0 = "Unit"
-res0 = test pBTyUnit str0
-
-str1 = "(Int + Int)"
-res1 = test pBTySum str1
-
-str2 = "mu x. Int"
-res2 = test pBaseType str2
-
-str3 = "(mu var0  . Unit x Int)"
-res3 = test pBaseType str3
-
--- Testing iso types
-str4 = "Int <-> Int"
-res4 = test pIsoType str4
-
-str5 = "mu v . (v + Int) <-> Int"
-res5 = test pIsoType str5
-
-str5' = "mu v . v + Int <-> Int" -- this should fail
-res5' = test pIsoType str5'
-
--- Testing values
-str6 = "unit"
-res6 = test pValue str6
-
-str7 = "left 123"
-res7 = test pValue str7
-
-str8 = "(left 123, right v)"
-res8 = test pValue str8
-
-str9 = "(Nothing :: mu X. (X + Unit))"
-res9 = test pValue str9
-
--- Testing expressions and patterns
-str10 = "let x = f x in let y = g x in x"
-res10 = test pExp str10
-
--- Isos
-str11 = "{ 1 <-> 2 }"
-res11 = test pIsoValue str11
-
-str12 = "\\f :: (Nat <-> Nat) -> { 1 <-> 2 ; x <-> let y = f x in y }"
-res12 = test pIso str12
-
--- Terms
-str13 = "((\\f :: ((Unit + Nat) <-> Nat) -> { left unit <-> 0 ; x <-> let y = f x in y } \n\
-          \{ right z <-> z }) 1)"
-res13 = test pTmIsoApp str13
-
-res14 = test pProg str13
-
+parse :: String -> Result Error Program
+parse str = runParser pProg (strToUtf8 str)
