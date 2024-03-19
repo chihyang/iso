@@ -1,6 +1,3 @@
-{-# language ScopedTypeVariables #-}
-{-# language ViewPatterns #-}
-
 module Repl
   ( repl
   ) where
@@ -83,6 +80,7 @@ parseOneLine parseThis = case parse parseThis of
   OK ast rest ->
     if rest == Byte.empty
     then liftIO $ print ast
-    else liftIO $ print $ "Incomplete input " ++ show rest
-  Fail -> liftIO $ do print "Invalid input!"
+    else liftIO $ do putStr $ id "Incomplete input: "
+                     putStrLn $ show rest
+  Fail -> liftIO $ do putStrLn "Invalid input!"
   Err err -> liftIO $ do print err
