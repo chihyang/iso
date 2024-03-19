@@ -7,9 +7,6 @@ import Control.Monad.IO.Class
 import Data.List
 import System.Exit
 
-import TypeCheck (typeInfer)
-import Orthogonal (ortho)
-import Interp (interp)
 import FlatParser (parse, Result(..))
 import qualified Data.ByteString as Byte
 

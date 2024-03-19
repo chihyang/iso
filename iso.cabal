@@ -30,8 +30,9 @@ library
       FlatParser
       Interp
       LinearCheck
-      Orthogonal
+      OrthoCheck
       Repl
+      Run
       Syntax
       TypeCheck
   other-modules:

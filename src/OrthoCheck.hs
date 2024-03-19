@@ -1,4 +1,4 @@
-module Orthogonal (ortho, orthoPairs) where
+module OrthoCheck (ortho, orthoPairs) where
 
 import Syntax hiding (ValEnv)
 
