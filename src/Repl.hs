@@ -36,7 +36,15 @@ optionsList =
   ]
 
 help :: String -> Repl ()
-help = const (pure ())
+help _ = liftIO $ putStrLn $
+  ":help, :h              Show this information.\n" ++
+  ":load file, :l file    Load a file (Unimplemented yet).\n" ++
+  ":matrix exp, :m exp    Convert the exp into a matrix if exp\n" ++
+  "                       evaluates to an iso.\n" ++
+  ":matrixtyped exp, :mt exp\n" ++
+  "                       Convert the exp into a matrix according to\n" ++
+  "                       its type if exp evaluates to an iso\n" ++
+  ":quit, :q              Quite the program.\n"
 
 load :: String -> Repl ()
 load cmdStr = do
