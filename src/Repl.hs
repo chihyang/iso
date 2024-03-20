@@ -6,6 +6,7 @@ import Control.Monad.IO.Class
 import qualified Data.List as List
 import OrthoCheck
 import Run
+import Convert
 import System.Console.Repline hiding (banner)
 import System.Exit
 
