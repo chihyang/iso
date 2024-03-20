@@ -383,12 +383,12 @@ typeEqual _ ty ty' = (ty == ty')
 applyBaseEnv :: TypEnv -> String -> Result BaseType
 applyBaseEnv env var = case (lookup var env) of
   Just (Left bTy) -> return bTy
-  v -> Left $ moduleName ++ "Expect a base type for variable " ++ show var
+  _ -> Left $ moduleName ++ "Cannot find the base type variable " ++ show var
 
 applyIsoEnv :: TypEnv -> String -> Result IsoType
 applyIsoEnv env var = case (lookup var env) of
   Just (Right iTy) -> return iTy
-  v -> Left $ moduleName ++ "Expect an iso type for variable " ++ show var
+  _ -> Left $ moduleName ++ "Cannot find the iso variable " ++ show var
 
 extIsoEnv :: TypEnv -> String -> IsoType -> TypEnv
 extIsoEnv env var ty = (var, Right ty) : env
