@@ -57,6 +57,7 @@ ident'' = utf8ToStr <$> ident
 parens p = $(symbol "(") *> p <* $(symbol' ")")
 brackets p = $(symbol "[") *> p <* $(symbol' "]")
 braces p = $(symbol "{") *> p <* $(symbol' "}")
+angle p = $(symbol "<") *> p <* $(symbol' ">")
 
 {-
 -- BaseType
@@ -111,7 +112,7 @@ pValVar  = ValVar <$> ident''
 pValLInj = ValLInj <$> ($(keyword "left") *> pValue)
 pValRInj = ValRInj <$> ($(keyword "right") *> pValue)
 --pValPair = ValPair <$> parens (pValue <* $(symbol ",") <*> pValue)
-pValPair = parens (ValPair <$> pValue <* $(symbol ",") <*> pValue)
+pValPair = angle (ValPair <$> pValue <* $(symbol ",") <*> pValue)
 pValAnn  = parens (ValAnn <$> pValue <* $(symbol "::") <*> pBaseType)
 
 pValue = pValUnit <|> pValInt <|> pValLInj <|> pValRInj <|> pValPair <|> pValAnn <|> pValVar
@@ -197,7 +198,7 @@ pTmInt  = TmInt <$> int
 pTmVar  = TmVar <$> ident''
 pTmLInj = TmLInj <$> ($(keyword "left") *> pTerm)
 pTmRInj = TmRInj <$> ($(keyword "right") *> pTerm)
-pTmPair = parens (TmPair <$> pTerm <* $(symbol ",") <*> pTerm)
+pTmPair = angle (TmPair <$> pTerm <* $(symbol ",") <*> pTerm)
 pTmAnn  = parens (TmAnn <$> pTerm <* $(symbol "::") <*> pBaseType)
 -- ^ above are alomost identical with pValue
 pTmIsoApp = parens $ TmIsoApp <$> pIso <*> pTerm

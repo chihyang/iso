@@ -44,7 +44,7 @@ instance Show Value where
   show (ValVar var) = show var
   show (ValLInj v) = "left " ++ show v
   show (ValRInj v) = "right " ++ show v
-  show (ValPair l r) = "(" ++ show l ++ ", " ++ show r ++ ")"
+  show (ValPair l r) = "<" ++ show l ++ ", " ++ show r ++ ">"
   show (ValAnn v t) = "(" ++ show v ++ " :: " ++ show t ++ ")"
 
 data Exp =
@@ -105,7 +105,7 @@ instance Show Term where
   show (TmVar var) = show var
   show (TmLInj v) = "left " ++ show v
   show (TmRInj v) = "right " ++ show v
-  show (TmPair l r) = "(" ++ show l ++ ", " ++ show r ++ ")"
+  show (TmPair l r) = "<" ++ show l ++ ", " ++ show r ++ ">"
   show (TmIsoApp iso tm) = "(" ++ show iso ++ "\n " ++ show tm ++ ")"
   show (TmLet pat rhs body) =
     "let " ++ show pat ++ " = " ++ show rhs ++ "\nin " ++ show body
@@ -135,7 +135,7 @@ instance Show ProgramBaseValue where
   show (PBValVar var) = show var
   show (PBValLeft v) = "left " ++ show v
   show (PBValRight v) = "right " ++ show v
-  show (PBValPair l r) = "(" ++ show l ++ ", " ++ show r ++ ")"
+  show (PBValPair l r) = "<" ++ show l ++ ", " ++ show r ++ ">"
 
 data ProgramIsoValue =
   PIValBase [(ProgramBaseValue , ProgramBaseValue)] ValEnv
