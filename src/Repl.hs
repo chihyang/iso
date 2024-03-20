@@ -36,19 +36,23 @@ commandF input = parseOneLine input
 optionsList :: [(String , String -> Repl ())]
 optionsList =
   [ ("help", help), ("h", help)
-  -- , ("load", load), ("l", load)
+  , ("load", load), ("l", load)
+  , ("matrix", toMatrix), ("m", toMatrix)
   , ("quit", quit), ("q", quit)
   ]
 
 help :: String -> Repl ()
 help = const (pure ())
 
--- load :: [String] -> Repl ()
--- load cmdStr = case parseCommand cmdStr of
---   Load f -> tryAction $ do
---     liftIO $ run f
---   BadCmd -> do
---     liftIO $ putStrLn $ "unknown command"
+load :: String -> Repl ()
+load cmdStr = do
+  input <- liftIO $ readFile cmdStr
+  parseOneLine input
+
+toMatrix :: String -> Repl ()
+toMatrix input = case run input >>= matrixizeIso of
+  Right val -> liftIO $ print val
+  Left err -> liftIO $ putStrLn err
 
 quit :: String -> Repl ()
 quit = const $ do
