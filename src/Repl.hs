@@ -2,12 +2,14 @@ module Repl
   ( repl
   ) where
 
+import Control.Exception
 import Control.Monad.IO.Class
 import qualified Data.List as List
 import Run
 import Convert
 import System.Console.Repline hiding (banner)
 import System.Exit
+import System.IO
 
 type Repl a = HaskelineT IO a
 
@@ -38,7 +40,7 @@ optionsList =
 help :: String -> Repl ()
 help _ = liftIO $ putStrLn $
   ":help, :h              Show this information.\n" ++
-  ":load file, :l file    Load a file (Unimplemented yet).\n" ++
+  ":load file, :l file    Load a file.\n" ++
   ":matrix exp, :m exp    Convert the exp into a matrix if exp\n" ++
   "                       evaluates to an iso.\n" ++
   ":matrixtyped exp, :mt exp\n" ++
@@ -48,7 +50,11 @@ help _ = liftIO $ putStrLn $
 
 load :: String -> Repl ()
 load cmdStr = do
-  input <- liftIO $ readFile cmdStr
+  input <- liftIO $ catch (readFile cmdStr)
+    (\e -> do
+        let err = show (e :: IOException)
+        hPutStr stderr ("Warning: Couldn't open " ++ cmdStr ++ ": " ++ err)
+        return "")
   parseOneLine input
 
 toMatrix :: String -> Repl ()
@@ -84,6 +90,7 @@ repl = evalRepl
   final
 
 parseOneLine :: String -> Repl ()
+parseOneLine "" = liftIO $ putStrLn ""
 parseOneLine parseThis = case run parseThis of
   Right val -> liftIO $ print val
   Left err -> liftIO $ putStrLn err

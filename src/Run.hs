@@ -35,10 +35,11 @@ matrixizeTypedIso (Right (ITyBase lTy rTy)) (PI (PIValBase pairs env)) = do
   rhs <- expandType rTy
   pairs' <- applyToPairs (PIValBase pairs env) lhs
   return $ matrixize (List.sort pairs') lhs rhs
-matrixizeTypedIso ty (PB val) = Left $ moduleName ++ "Cannot convert a base value to matrix: " ++
+matrixizeTypedIso (Left ty) (PB val) = Left $ moduleName ++ "Cannot convert a base value to matrix: " ++
   show val ++ "::" ++ show ty
-matrixizeTypedIso ty (PI val) = Left $ moduleName ++ "Cannot convert an iso lambda to matrix: " ++
+matrixizeTypedIso (Right ty) (PI val) = Left $ moduleName ++ "Cannot convert an iso lambda to matrix: " ++
   show val ++ "::" ++ show ty
+matrixizeTypedIso ty val = Left $ moduleName ++ "Type and value mismatch: " ++ show val ++ ", " ++ show ty
 
 applyToPairs :: ProgramIsoValue -> [ProgramBaseValue] -> S.Result [(ProgramBaseValue , ProgramBaseValue)]
 applyToPairs _ [] = return []
