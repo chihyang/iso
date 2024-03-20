@@ -2,9 +2,6 @@ module LinearCheck (linearCheck, linearCheckEnv) where
 
 import Syntax
 
-type LinearEnv = [(String , Int)]
-type Result a = Either String a
-
 linearCheck :: Program -> Result Program
 linearCheck pg = linearCheckEnv [] pg
 

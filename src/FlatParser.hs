@@ -4,21 +4,20 @@
 {-# language TemplateHaskell #-}
 
 module FlatParser (
+  flatParse,
   parse,
   pProg,
-  Result(..)
+  F.Result(..)
   ) where
 
 --import qualified Language.Haskell.TH as TH
 
 import qualified Data.ByteString as B
 
-import FlatParse.Basic hiding (Parser, runParser, string, char, cut)
+import FlatParse.Basic as F hiding (Parser, runParser, string, char, cut)
 import FlatParse.Common.Assorted (strToUtf8, utf8ToStr)
 import FlatParse.Examples.BasicLambda.Lexer hiding (isKeyword)
 import FlatParse.Examples.BasicLambda.Parser (Name, int)
-
-
 import Syntax
 
 -- TODO: use TH to expand kw's
@@ -229,5 +228,15 @@ pPgTm = PgTm <$> pTerm
 pPgIs = PgIs <$> pIso
 pProg = pPgTm <|> pPgIs
 
-parse :: String -> Result Error Program
-parse str = runParser pProg (strToUtf8 str)
+flatParse :: String -> F.Result Error Program
+flatParse str = runParser pProg (strToUtf8 str)
+
+parse :: String -> Syntax.Result Program
+parse str =
+  case runParser pProg (strToUtf8 str) of
+    OK ast rest ->
+      if rest == B.empty
+      then return ast
+      else Left $ "Incomplete input: " ++ show str
+    Fail -> Left "Invalid input!"
+    Err msg -> Left $ show msg

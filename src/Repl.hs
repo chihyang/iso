@@ -74,10 +74,5 @@ repl = evalRepl
 
 parseOneLine :: String -> Repl ()
 parseOneLine parseThis = case parse parseThis of
-  OK ast rest ->
-    if rest == Byte.empty
-    then liftIO $ print ast
-    else liftIO $ do putStr $ id "Incomplete input: "
-                     putStrLn $ show rest
-  Fail -> liftIO $ do putStrLn "Invalid input!"
-  Err err -> liftIO $ do print err
+  Right ast -> liftIO $ print ast
+  Left err -> liftIO $ putStrLn err

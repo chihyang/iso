@@ -1,7 +1,6 @@
 module TypeCheck (typeInfer, typeInferEnv) where
 
 import Syntax
-type Result a = Either String a
 
 typeInfer :: Program -> Result Program
 typeInfer pg = typeInferEnv [] pg

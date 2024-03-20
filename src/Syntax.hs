@@ -162,3 +162,5 @@ instance Show ProgramValue where
 -- Value Environment
 type ValEnv = [(String , ProgramValue)]
 type TypEnv = [(String , ProgramType)]
+type LinearEnv = [(String , Int)]
+type Result a = Either String a

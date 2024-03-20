@@ -7,39 +7,39 @@ main :: IO ()
 main = do {
   -- test for terms
   let t0 = TmUnit
-  ; print (interp [] (PgTm t0))
+  ; print (interp (PgTm t0))
 
   ; let t1 =  (TmInt 32)
-  ; print (interp [] (PgTm t1))
+  ; print (interp (PgTm t1))
 
   ; let t3 = TmVar "x"
   ; let e3 = (PgTm t3)
   ; let env3 = [("x" , PB PBValUnit) , ("y" , PB $ PBValInt 32)]
-  ; print (interp env3 e3)
+  ; print (interpEnv env3 e3)
 
   ; let env4 = [("x" , PB $ PBValInt 4) , ("y" , PB $ PBValInt 32) , ("x" , PB PBValUnit)]
-  ; print (interp env4 e3)
+  ; print (interpEnv env4 e3)
 
   ; let env5 = [("y" , PB $ PBValInt 32)]
-  ; print (interp env5 e3)
+  ; print (interpEnv env5 e3)
 
   ; let t4 = (TmLInj t3)
-  ; print (interp env5 (PgTm t4))
+  ; print (interpEnv env5 (PgTm t4))
 
   ; let t5 = (TmRInj t1)
-  ; print (interp env5 (PgTm t5))
+  ; print (interpEnv env5 (PgTm t5))
 
   ; let t6 = TmPair t4 t5
-  ; print (interp env3 (PgTm t6))
+  ; print (interpEnv env3 (PgTm t6))
 
   ; let t7 = TmLet (PtMultiVar ["x", "y"]) t6 (TmLInj (TmVar "x"))
-  ; print (interp env3 (PgTm t7))
+  ; print (interpEnv env3 (PgTm t7))
 
   ; let t8 = TmLet (PtMultiVar ["x", "y", "z"]) t6 (TmLInj (TmVar "x"))
-  ; print (interp env3 (PgTm t8))
+  ; print (interpEnv env3 (PgTm t8))
 
   ; let t9 = TmLet (PtSingleVar "x") t6 (TmVar "x")
-  ; print (interp env3 (PgTm t9))
+  ; print (interpEnv env3 (PgTm t9))
 
   -- test for terms
   ; let tlv = (BTySum BTyUnit (BTySum BTyUnit (BTySum BTyUnit BTyUnit)))
@@ -49,10 +49,10 @@ main = do {
   ; let v3 = ValRInj (ValRInj (ValRInj ValUnit))
   ; let lhs = [v0, v1, v2, v3]
   ; let i0 = IsoValue $ zip lhs (map ExpVal (reverse lhs))
-  ; print (interp env3 (PgIs i0))
+  ; print (interpEnv env3 (PgIs i0))
 
   ; let i1 = TmIsoApp i0 (TmLInj t0)
-  ; print (interp [] (PgTm i1))
+  ; print (interp (PgTm i1))
 
   ; let vlPat = ValAnn (ValLInj (ValVar "vl")) tlv
   ; let vrPat = ValAnn (ValRInj (ValVar "vr")) tlv
