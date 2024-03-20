@@ -2,6 +2,7 @@ module Interp (interp, interpEnv, applyIso) where
 
 import Syntax
 import Debug.Trace (trace)
+import OrthoCheck (orthoPairs)
 
 moduleName :: String
 moduleName = "Interpreter: "
@@ -46,7 +47,8 @@ interpTm env (TmAnn tm _) = interpTm env tm
 interpIso :: ValEnv -> Iso -> Result ProgramIsoValue
 interpIso env (IsoValue ps) = do
   pairs <- interpIsoPairs env ps
-  return (PIValBase pairs env)
+  pairs' <- orthoPairs pairs
+  return (PIValBase pairs' env)
 interpIso env (IsoVar var) = lookupIso env var
 interpIso env (IsoLam var _ _ body) = return (PIValLam var body env)
 interpIso env (IsoApp lhs rhs) = do

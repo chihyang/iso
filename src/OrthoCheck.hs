@@ -1,5 +1,6 @@
 module OrthoCheck (ortho, orthoPairs, orthoCheck) where
 
+import Debug.Trace as T (trace)
 import Syntax hiding (ValEnv)
 
 moduleName :: String
@@ -44,6 +45,7 @@ orthoLst1 v (v1:v1s) = do
   orthoLst1 v' v1s
 
 orthoLst :: [ProgramBaseValue] -> Result [ProgramBaseValue]
+-- orthoLst v | T.trace ("orthoLst " ++ show v) False = undefined
 orthoLst [] = return []
 orthoLst (v:vs) = do
   v' <- orthoLst1 v vs

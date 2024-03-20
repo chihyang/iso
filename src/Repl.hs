@@ -4,7 +4,6 @@ module Repl
 
 import Control.Monad.IO.Class
 import qualified Data.List as List
-import OrthoCheck
 import Run
 import Convert
 import System.Console.Repline hiding (banner)
@@ -45,7 +44,7 @@ load cmdStr = do
   parseOneLine input
 
 toMatrix :: String -> Repl ()
-toMatrix input = case run input >>= orthoCheck >>= matrixizeIso of
+toMatrix input = case run input >>= matrixizeIso of
   Right val -> liftIO $ print val
   Left err -> liftIO $ putStrLn err
 
