@@ -160,7 +160,7 @@ interpExpVal env (PBValPair l r) = do
 {---------- Pattern Matching in iso RHS ----------}
 patternMatch :: ValEnv -> [(ProgramBaseValue , ProgramBaseValue)] -> ProgramBaseValue
   -> Result ProgramBaseValue
-patternMatch _ [] _ = Left $ moduleName ++ "Invalid pattern: no pattern variable provided"
+patternMatch _ [] val = Left $ moduleName ++ "Invalid pattern: no match for the value " ++ show val
 patternMatch env ((lhs , rhs) : tl) v =
   if isMatch lhs v
   then let pairs = extracPat lhs v
