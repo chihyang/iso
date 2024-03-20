@@ -35,7 +35,7 @@ interpTm env (TmIsoApp iso tm) = do
   applyIsoTerm fun arg
 interpTm env (TmLet pat rhs body) = do
   vRhs <- interpTm env rhs
-  newEnv <- extendPattern env pat vRhs
+  newEnv <- extPat env pat vRhs
   interpTm newEnv body
 interpTm env (TmAnn tm _) = interpTm env tm
 
@@ -95,27 +95,27 @@ interpValue env (ValAnn val _) = interpValue env val
 {---------- Interpretation of One Pair of Values In An Iso ----------}
 interpIsoPair :: ValEnv -> (Value, Exp) -> Result (ProgramBaseValue, ProgramBaseValue)
 interpIsoPair env (pat, e) = do
-  lhsPair <- interpPattern env pat
+  lhsPair <- interpPat env pat
   let vars = map (\x -> (x , PB (PBValVar x))) (snd lhsPair)
   rhs <- interpExp (vars ++ env) e
   return (fst lhsPair, rhs)
 
 {---------- Interpretation of One Pattern in LHS ----------}
-interpPattern :: ValEnv -> Value -> Result (ProgramBaseValue, [String])
-interpPattern _ ValUnit = return (PBValUnit , [])
-interpPattern _ (ValInt n) = return (PBValInt n , [])
-interpPattern _ (ValVar var) = return (PBValVar var , [var])
-interpPattern env (ValLInj lhs) = do
-  rst <- interpPattern env lhs
+interpPat :: ValEnv -> Value -> Result (ProgramBaseValue, [String])
+interpPat _ ValUnit = return (PBValUnit , [])
+interpPat _ (ValInt n) = return (PBValInt n , [])
+interpPat _ (ValVar var) = return (PBValVar var , [var])
+interpPat env (ValLInj lhs) = do
+  rst <- interpPat env lhs
   return (PBValLeft $ fst rst , snd rst)
-interpPattern env (ValRInj rhs) = do
-  rst <- interpPattern env rhs
+interpPat env (ValRInj rhs) = do
+  rst <- interpPat env rhs
   return (PBValRight $ fst rst , snd rst)
-interpPattern env (ValPair lhs rhs) = do
-  v1 <- interpPattern env lhs
-  v2 <- interpPattern env rhs
+interpPat env (ValPair lhs rhs) = do
+  v1 <- interpPat env lhs
+  v2 <- interpPat env rhs
   return (PBValPair (fst v1) (fst v2) , (snd v1) ++ (snd v2))
-interpPattern env (ValAnn val _) = interpPattern env val
+interpPat env (ValAnn val _) = interpPat env val
 --  TODO: ValFold
 
 {---------- Interpretation of Expressions ----------}
@@ -123,35 +123,35 @@ interpExp :: ValEnv -> Exp -> Result ProgramBaseValue
 interpExp env (ExpVal v) = interpValue env v
 interpExp env (ExpLet pat iso pat' body) = do
   rhsIso <- interpIso env iso
-  rhsVal <- interpRhsPattern env pat'
+  rhsVal <- interpRhsPat env pat'
   vRhs <- applyIsoTerm rhsIso rhsVal
-  newEnv <- extendPattern env pat vRhs
+  newEnv <- extPat env pat vRhs
   interpExp newEnv body
 
 {---------- Interpretation of Patterns in iso RHS' RHS  ----------}
-interpRhsPattern :: ValEnv -> Pattern -> Result ProgramBaseValue
-interpRhsPattern env (PtSingleVar var) = lookupBase env var
-interpRhsPattern env (PtMultiVar (var : [])) = lookupBase env var
-interpRhsPattern env (PtMultiVar (var : vars)) = do
+interpRhsPat :: ValEnv -> Pattern -> Result ProgramBaseValue
+interpRhsPat env (PtSingleVar var) = lookupBase env var
+interpRhsPat env (PtMultiVar (var : [])) = lookupBase env var
+interpRhsPat env (PtMultiVar (var : vars)) = do
   val <- lookupBase env var
-  vals <- interpRhsPattern env (PtMultiVar vars)
+  vals <- interpRhsPat env (PtMultiVar vars)
   return $ PBValPair val vals
-interpRhsPattern _ pat = Left $ "Invalid pattern: " ++ show pat
+interpRhsPat _ pat = Left $ "Invalid pattern: " ++ show pat
 
 {---------- Interpretation of iso RHS values ----------}
-interpExpValue :: ValEnv -> ProgramBaseValue -> Result ProgramBaseValue
-interpExpValue _ PBValUnit = return PBValUnit
-interpExpValue _ (PBValInt n) = return (PBValInt n)
-interpExpValue env (PBValVar var) = lookupBase env var
-interpExpValue env (PBValLeft l) = do
-  lVal <- interpExpValue env l
+interpExpVal :: ValEnv -> ProgramBaseValue -> Result ProgramBaseValue
+interpExpVal _ PBValUnit = return PBValUnit
+interpExpVal _ (PBValInt n) = return (PBValInt n)
+interpExpVal env (PBValVar var) = lookupBase env var
+interpExpVal env (PBValLeft l) = do
+  lVal <- interpExpVal env l
   return (PBValLeft lVal)
-interpExpValue env (PBValRight l) = do
-  lVal <- interpExpValue env l
+interpExpVal env (PBValRight l) = do
+  lVal <- interpExpVal env l
   return (PBValRight lVal)
-interpExpValue env (PBValPair l r) = do
-  lVal <- interpExpValue env l
-  rVal <- interpExpValue env r
+interpExpVal env (PBValPair l r) = do
+  lVal <- interpExpVal env l
+  rVal <- interpExpVal env r
   return (PBValPair lVal rVal)
 
 {---------- Pattern Matching in iso RHS ----------}
@@ -160,9 +160,9 @@ patternMatch :: ValEnv -> [(ProgramBaseValue , ProgramBaseValue)] -> ProgramBase
 patternMatch _ [] _ = Left "Invalid pattern: no pattern variable provided"
 patternMatch env ((lhs , rhs) : tl) v =
   if isMatch lhs v
-  then let pairs = extracPatterns lhs v
+  then let pairs = extracPat lhs v
            newEnv = pairs ++ env
-       in interpExpValue newEnv rhs
+       in interpExpVal newEnv rhs
   else patternMatch env tl v
 
 {---------- Pattern Match Checking ----------}
@@ -176,23 +176,23 @@ isMatch (PBValPair l1 r1) (PBValPair l2 r2) = isMatch l1 l2 && isMatch r1 r2
 isMatch _ _ = False
 
 {---------- Pattern Match Extractions ----------}
-extracPatterns :: ProgramBaseValue -> ProgramBaseValue -> ValEnv
-extracPatterns PBValUnit _ = []
-extracPatterns (PBValInt _) _ = []
-extracPatterns (PBValVar var) val = [(var , PB val)]
-extracPatterns (PBValLeft v1) (PBValLeft v2) = extracPatterns v1 v2
-extracPatterns (PBValRight v1) (PBValRight v2) = extracPatterns v1 v2
-extracPatterns (PBValPair l1 r1) (PBValPair l2 r2) = extracPatterns l1 l2 ++ extracPatterns r1 r2
-extracPatterns _ _ = []
+extracPat :: ProgramBaseValue -> ProgramBaseValue -> ValEnv
+extracPat PBValUnit _ = []
+extracPat (PBValInt _) _ = []
+extracPat (PBValVar var) val = [(var , PB val)]
+extracPat (PBValLeft v1) (PBValLeft v2) = extracPat v1 v2
+extracPat (PBValRight v1) (PBValRight v2) = extracPat v1 v2
+extracPat (PBValPair l1 r1) (PBValPair l2 r2) = extracPat l1 l2 ++ extracPat r1 r2
+extracPat _ _ = []
 
 {---------- Extending Environments With Patterns ----------}
-extendPattern :: ValEnv -> Pattern -> ProgramBaseValue -> Result ValEnv
-extendPattern env (PtSingleVar var) val  = return ((var , PB val) : env)
-extendPattern env (PtMultiVar (var : [])) val  = return ((var , PB val) : env)
-extendPattern env (PtMultiVar (var : vars)) (PBValPair hd tl) = do
-  newTl <- extendPattern env (PtMultiVar vars) tl
+extPat :: ValEnv -> Pattern -> ProgramBaseValue -> Result ValEnv
+extPat env (PtSingleVar var) val  = return ((var , PB val) : env)
+extPat env (PtMultiVar (var : [])) val  = return ((var , PB val) : env)
+extPat env (PtMultiVar (var : vars)) (PBValPair hd tl) = do
+  newTl <- extPat env (PtMultiVar vars) tl
   return ((var , (PB hd)) : newTl)
-extendPattern _ pat val = Left $ "Mismatched pattern and value: " ++ show pat ++ ", " ++ show val
+extPat _ pat val = Left $ "Mismatched pattern and value: " ++ show pat ++ ", " ++ show val
 
 {---------- Environment Lookup ----------}
 lookupBase :: ValEnv -> String -> Result ProgramBaseValue
