@@ -15,7 +15,7 @@ linearCheckEnv env (PgTm tm) = do
     then return (PgTm tm)
     else Left $ moduleName ++ "Impossible case in linear check: an environment is not restored!"
 linearCheckEnv env (PgIs iso) = do
-  env' <- lcIso [] iso
+  env' <- lcIso env iso
   if sameVars env' env
     then return (PgIs iso)
     else Left $ moduleName ++ "Impossible case in linear check: an environment is not restored!"
@@ -65,7 +65,8 @@ lcIsoPair :: LinearEnv -> (Value, Exp) -> Result LinearEnv
 lcIsoPair env (v, e) = do
   let vars = lcVal env v
   env' <- extendPat env (PtMultiVar vars)
-  lcExp env' e
+  env'' <- lcExp env' e
+  dropPat env'' (PtMultiVar vars)
 
 {---------- Linear type checking for Values -----------}
 lcVal :: LinearEnv -> Value -> [String]
