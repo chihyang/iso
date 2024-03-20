@@ -3,20 +3,13 @@ module Repl
   ) where
 
 import Control.Monad.IO.Class
-import qualified Data.ByteString as Byte
-import Data.List
-import FlatParser (parse, Result(..))
+import qualified Data.List as List
+import OrthoCheck
 import Run
 import System.Console.Repline hiding (banner)
 import System.Exit
 
 type Repl a = HaskelineT IO a
-
-data Line = Load FilePath | BadCmd
-
-parseCommand :: [String] -> Line
-parseCommand ["load", f] = Load f
-parseCommand _ = BadCmd
 
 banner :: MultiLine -> Repl String
 banner MultiLine = pure " "
@@ -50,7 +43,7 @@ load cmdStr = do
   parseOneLine input
 
 toMatrix :: String -> Repl ()
-toMatrix input = case run input >>= matrixizeIso of
+toMatrix input = case run input >>= orthoCheck >>= matrixizeIso of
   Right val -> liftIO $ print val
   Left err -> liftIO $ putStrLn err
 
@@ -62,8 +55,8 @@ quit = const $ do
 
 completer :: WordCompleter IO
 completer n = do
-  let names = [":help", ":load", "matrix", ":quit"]
-  pure $ filter (isPrefixOf n) names
+  let names = [":help", ":load", ":matrix", ":quit"]
+  pure $ filter (List.isPrefixOf n) names
 
 repl :: IO ()
 repl = evalRepl
