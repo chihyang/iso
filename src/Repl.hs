@@ -4,6 +4,7 @@ module Repl
 
 import Control.Exception
 import Control.Monad.IO.Class
+import Data.Char
 import qualified Data.List as List
 import Run
 import Convert
@@ -12,6 +13,9 @@ import System.Exit
 import System.IO
 
 type Repl a = HaskelineT IO a
+
+trim :: String -> String
+trim = List.dropWhileEnd isSpace . List.dropWhile isSpace
 
 banner :: MultiLine -> Repl String
 banner MultiLine = pure " "
@@ -26,7 +30,7 @@ final = do
   return Exit
 
 commandF :: String -> Repl ()
-commandF input = parseOneLine input
+commandF input = parseOneLine $ trim input
 
 optionsList :: [(String , String -> Repl ())]
 optionsList =
@@ -55,7 +59,7 @@ load cmdStr = do
         let err = show (e :: IOException)
         hPutStr stderr ("Warning: Couldn't open " ++ cmdStr ++ ": " ++ err)
         return "")
-  parseOneLine input
+  parseOneLine $ trim input
 
 toMatrix :: String -> Repl ()
 toMatrix input = case run input >>= matrixizeIso of
