@@ -2,6 +2,9 @@ module LinearCheck (linearCheck, linearCheckEnv) where
 
 import Syntax
 
+moduleName :: String
+moduleName = "Linear Check: "
+
 linearCheck :: Program -> Result Program
 linearCheck pg = linearCheckEnv [] pg
 
@@ -10,12 +13,12 @@ linearCheckEnv env (PgTm tm) = do
   env' <- lcTm env tm
   if sameVars env' env
     then return (PgTm tm)
-    else Left "Impossible case in linear check: an environment is not restored!"
+    else Left $ moduleName ++ "Impossible case in linear check: an environment is not restored!"
 linearCheckEnv env (PgIs iso) = do
   env' <- lcIso [] iso
   if sameVars env' env
     then return (PgIs iso)
-    else Left "Impossible case in linear check: an environment is not restored!"
+    else Left $ moduleName ++ "Impossible case in linear check: an environment is not restored!"
 
 sameVars :: LinearEnv -> LinearEnv -> Bool
 sameVars env env' = map fst env == map fst env'
@@ -107,11 +110,11 @@ lcValNoPat env (ValAnn v _) = lcValNoPat env v
 
 {-- Helper functions --}
 increEnv :: LinearEnv -> String -> Result LinearEnv
-increEnv [] var = Left $ show var ++ " not found!"
+increEnv [] var = Left $ moduleName ++ show var ++ " not found!"
 increEnv ((var',n):tl) var
   | var' == var =
       if n > 0
-      then Left $ "Variable " ++ show var ++ " is used more than once!"
+      then Left $ moduleName ++ "Variable " ++ show var ++ " is used more than once!"
       else return ((var', (n + 1)):tl)
 increEnv ((var',n):tl) var = do
   env' <- increEnv tl var
@@ -125,4 +128,4 @@ dropPat :: LinearEnv -> Pattern -> Result LinearEnv
 dropPat (_:tl) (PtSingleVar _) = return tl
 dropPat env (PtMultiVar []) = return env
 dropPat (_:tl) (PtMultiVar (_:vars)) = dropPat tl (PtMultiVar vars)
-dropPat env pat = Left $ "Environment " ++ show env ++ " doesn't have enough variables for" ++ show pat ++ "!"
+dropPat env pat = Left $ moduleName ++ "Environment " ++ show env ++ " doesn't have enough variables for" ++ show pat ++ "!"

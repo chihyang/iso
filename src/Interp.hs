@@ -3,6 +3,9 @@ module Interp (interp, interpEnv) where
 import Syntax
 import Debug.Trace (trace)
 
+moduleName :: String
+moduleName = "Interpreter: "
+
 interp :: Program -> Result ProgramValue
 interp pg = interpEnv [] pg
 
@@ -64,7 +67,7 @@ interpIsoPairs env (p:ps) = do
 applyIsoTerm :: ProgramIsoValue -> ProgramBaseValue -> Result ProgramBaseValue
 -- applyIsoTerm l r | trace ("applyIsoTerm " ++ show l ++ " " ++ show r) False = undefined
 applyIsoTerm (PIValBase isos env) rhs = patternMatch env isos rhs
-applyIsoTerm iso base = Left $ "Cannot apply iso " ++ show iso ++ " to " ++ show base
+applyIsoTerm iso base = Left $ moduleName ++ "Cannot apply iso " ++ show iso ++ " to " ++ show base
 
 {---------- Applying An Iso To An Iso ----------}
 applyIsoIso :: ProgramIsoValue -> ProgramIsoValue -> Result ProgramIsoValue
@@ -136,7 +139,7 @@ interpRhsPat env (PtMultiVar (var : vars)) = do
   val <- lookupBase env var
   vals <- interpRhsPat env (PtMultiVar vars)
   return $ PBValPair val vals
-interpRhsPat _ pat = Left $ "Invalid pattern: " ++ show pat
+interpRhsPat _ pat = Left $ moduleName ++ "Invalid pattern: " ++ show pat
 
 {---------- Interpretation of iso RHS values ----------}
 interpExpVal :: ValEnv -> ProgramBaseValue -> Result ProgramBaseValue
@@ -157,7 +160,7 @@ interpExpVal env (PBValPair l r) = do
 {---------- Pattern Matching in iso RHS ----------}
 patternMatch :: ValEnv -> [(ProgramBaseValue , ProgramBaseValue)] -> ProgramBaseValue
   -> Result ProgramBaseValue
-patternMatch _ [] _ = Left "Invalid pattern: no pattern variable provided"
+patternMatch _ [] _ = Left $ moduleName ++ "Invalid pattern: no pattern variable provided"
 patternMatch env ((lhs , rhs) : tl) v =
   if isMatch lhs v
   then let pairs = extracPat lhs v
@@ -192,17 +195,17 @@ extPat env (PtMultiVar (var : [])) val  = return ((var , PB val) : env)
 extPat env (PtMultiVar (var : vars)) (PBValPair hd tl) = do
   newTl <- extPat env (PtMultiVar vars) tl
   return ((var , (PB hd)) : newTl)
-extPat _ pat val = Left $ "Mismatched pattern and value: " ++ show pat ++ ", " ++ show val
+extPat _ pat val = Left $ moduleName ++ "Mismatched pattern and value: " ++ show pat ++ ", " ++ show val
 
 {---------- Environment Lookup ----------}
 lookupBase :: ValEnv -> String -> Result ProgramBaseValue
 lookupBase env var = do
   case lookup var env of
     Just (PB bv) -> return bv
-    _ -> Left $ "Cannot find the value " ++ show var
+    _ -> Left $ moduleName ++ "Cannot find the value " ++ show var
 
 lookupIso :: ValEnv -> String -> Result ProgramIsoValue
 lookupIso env var = do
   case lookup var env of
     Just (PI bv) -> return bv
-    _ -> Left $ "Cannot find the iso " ++ show var
+    _ -> Left $ moduleName ++ "Cannot find the iso " ++ show var
