@@ -26,21 +26,27 @@ checkedLookup l k = case (lookup k l) of
   Nothing -> error "In a checked lookup, we should always find a key!"
 
 collectIndices :: (Ord a , Ord b) =>
-  [(a , Int)] -> [(b , Int)] -> [(a , b)] -> Set.Set (Int , Int)
-collectIndices lhsMap rhsMap pairs =
+  [(a , Int)] -> [(b , Int)] -> [(a , b)] -> [a] -> Set.Set (Int , Int)
+collectIndices lhsMap rhsMap pairs lhs =
   foldl (\r v -> Set.insert v r) Set.empty idPairs where
-    idPairs = map (\p -> (checkedLookup rhsMap $ snd p ,
-                          checkedLookup lhsMap $ fst p))
-              pairs
+    idPairs = mapFilter (\l -> case lookup l pairs of
+                           Just b -> Just (checkedLookup rhsMap b, checkedLookup lhsMap l)
+                           Nothing -> Nothing)
+              lhs
+    mapFilter _ [] = []
+    mapFilter f (v:vs) =
+      case f v of
+        Just b -> b : (mapFilter f vs)
+        _ -> mapFilter f vs
 
-matrixize :: (Ord a , Ord b) => [(a , b)] -> Matrix Int
-matrixize pairs = matrix (length rhsMap) (length lhsMap) fill where
-  lhsMap = indexMap $ map fst pairs
-  rhsMap = indexMap $ map snd pairs
-  idx = collectIndices lhsMap rhsMap pairs
+matrixize :: (Ord a , Ord b) => [(a , b)] -> [a] -> [b] -> Matrix Int
+matrixize pairs lhs rhs = matrix (length rhsMap) (length lhsMap) fill where
+  lhsMap = indexMap lhs
+  rhsMap = indexMap rhs
+  idx = collectIndices lhsMap rhsMap pairs lhs
   fill (x , y) = if Set.member (x - 1, y - 1) idx then 1 else 0
 
-matrixizeIso :: ProgramValue -> S.Result (Matrix Int)
-matrixizeIso (PI (PIValBase pairs _)) = return $ matrixize $ List.sort pairs
+matrixizeIso :: ProgramValue -> Result (Matrix Int)
+matrixizeIso (PI (PIValBase pairs _)) = return $ matrixize (List.sort pairs) (map fst pairs) (map snd pairs)
 matrixizeIso (PB val) = Left $ moduleName ++ "Cannot convert a base value to matrix: " ++ show val
 matrixizeIso (PI val) = Left $ moduleName ++ "Cannot convert an iso lambda to matrix: " ++ show val

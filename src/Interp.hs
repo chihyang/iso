@@ -1,4 +1,4 @@
-module Interp (interp, interpEnv) where
+module Interp (interp, interpEnv, applyIso) where
 
 import Syntax
 import Debug.Trace (trace)
@@ -35,7 +35,7 @@ interpTm env (TmPair t1 t2) = do
 interpTm env (TmIsoApp iso tm) = do
   fun <- interpIso env iso
   arg <- interpTm env tm
-  applyIsoTerm fun arg
+  applyIso fun arg
 interpTm env (TmLet pat rhs body) = do
   vRhs <- interpTm env rhs
   newEnv <- extPat env pat vRhs
@@ -52,7 +52,7 @@ interpIso env (IsoLam var _ _ body) = return (PIValLam var body env)
 interpIso env (IsoApp lhs rhs) = do
   lval <- interpIso env lhs
   rval <- interpIso env rhs
-  applyIsoIso lval rval
+  applyIsoLam lval rval
 interpIso _ (IsoFix _ _) = error "Evaluation of IsoFix is not supported yet!"
 interpIso env (IsoAnn iso _) = interpIso env iso
 
@@ -64,17 +64,17 @@ interpIsoPairs env (p:ps) = do
   return (val:vals)
 
 {---------- Applying An Iso To A Term ----------}
-applyIsoTerm :: ProgramIsoValue -> ProgramBaseValue -> Result ProgramBaseValue
--- applyIsoTerm l r | trace ("applyIsoTerm " ++ show l ++ " " ++ show r) False = undefined
-applyIsoTerm (PIValBase isos env) rhs = patternMatch env isos rhs
-applyIsoTerm iso base = Left $ moduleName ++ "Cannot apply iso " ++ show iso ++ " to " ++ show base
+applyIso :: ProgramIsoValue -> ProgramBaseValue -> Result ProgramBaseValue
+-- applyIso l r | trace ("applyIso " ++ show l ++ " " ++ show r) False = undefined
+applyIso (PIValBase isos env) rhs = patternMatch env isos rhs
+applyIso iso base = Left $ moduleName ++ "Cannot apply iso " ++ show iso ++ " to " ++ show base
 
 {---------- Applying An Iso To An Iso ----------}
-applyIsoIso :: ProgramIsoValue -> ProgramIsoValue -> Result ProgramIsoValue
-applyIsoIso (PIValLam var body env) rhs = interpIso ((var , (PI rhs)) : env) body
-applyIsoIso (PIValFix var body env) _ =
+applyIsoLam :: ProgramIsoValue -> ProgramIsoValue -> Result ProgramIsoValue
+applyIsoLam (PIValLam var body env) rhs = interpIso ((var , (PI rhs)) : env) body
+applyIsoLam (PIValFix var body env) _ =
   error $ "Application of IsoFix is not supported yet, given " ++ show (PIValFix var body env)
-applyIsoIso (PIValBase pairs env) _ =
+applyIsoLam (PIValBase pairs env) _ =
   error $ "Expect an Iso Lambda, given an Iso Base " ++ show (PIValBase pairs env)
 
 {---------- Interpretation of Values ----------}
@@ -127,7 +127,7 @@ interpExp env (ExpVal v) = interpValue env v
 interpExp env (ExpLet pat iso pat' body) = do
   rhsIso <- interpIso env iso
   rhsVal <- interpRhsPat env pat'
-  vRhs <- applyIsoTerm rhsIso rhsVal
+  vRhs <- applyIso rhsIso rhsVal
   newEnv <- extPat env pat vRhs
   interpExp newEnv body
 

@@ -32,6 +32,7 @@ optionsList =
   [ ("help", help), ("h", help)
   , ("load", load), ("l", load)
   , ("matrix", toMatrix), ("m", toMatrix)
+  , ("matrixtyped", toTypedMatrix), ("mt", toTypedMatrix)
   , ("quit", quit), ("q", quit)
   ]
 
@@ -48,6 +49,11 @@ toMatrix input = case run input >>= orthoCheck >>= matrixizeIso of
   Right val -> liftIO $ print val
   Left err -> liftIO $ putStrLn err
 
+toTypedMatrix :: String -> Repl ()
+toTypedMatrix input = case runTypedMat input of
+  Right val -> liftIO $ print val
+  Left err -> liftIO $ putStrLn err
+
 quit :: String -> Repl ()
 quit = const $ do
   liftIO $ do
@@ -56,7 +62,7 @@ quit = const $ do
 
 completer :: WordCompleter IO
 completer n = do
-  let names = [":help", ":load", ":matrix", ":quit"]
+  let names = [":help", ":load", ":matrix", ":matrixtyped", ":quit"]
   pure $ filter (List.isPrefixOf n) names
 
 repl :: IO ()
