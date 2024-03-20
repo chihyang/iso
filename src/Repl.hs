@@ -2,13 +2,13 @@ module Repl
   ( repl
   ) where
 
-import System.Console.Repline hiding (banner)
 import Control.Monad.IO.Class
-import Data.List
-import System.Exit
-
-import FlatParser (parse, Result(..))
 import qualified Data.ByteString as Byte
+import Data.List
+import FlatParser (parse, Result(..))
+import Run
+import System.Console.Repline hiding (banner)
+import System.Exit
 
 type Repl a = HaskelineT IO a
 
@@ -53,7 +53,7 @@ help = const (pure ())
 quit :: String -> Repl ()
 quit = const $ do
   liftIO $ do
-    putStrLn "Exiting TCHi."
+    putStrLn "Leaving IsoCi."
     exitSuccess
 
 completer :: WordCompleter IO
@@ -73,6 +73,6 @@ repl = evalRepl
   final
 
 parseOneLine :: String -> Repl ()
-parseOneLine parseThis = case parse parseThis of
-  Right ast -> liftIO $ print ast
+parseOneLine parseThis = case run parseThis of
+  Right val -> liftIO $ print val
   Left err -> liftIO $ putStrLn err
