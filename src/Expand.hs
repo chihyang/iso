@@ -10,7 +10,7 @@ moduleName = "Convert: "
 expandType :: BaseType -> Result [ProgramBaseValue]
 -- expandType ty | trace ("expandType " ++ show ty) False = undefined
 expandType BTyUnit = return [PBValUnit]
-expandType BTyInt = Left $ moduleName ++ "Infinite type Nat hasn't been supported by this time!"
+expandType BTyInt = Left $ moduleName ++ "Infinite type is not supported yet, given: " ++ show BTyInt
 expandType (BTyVar var) = Left $ moduleName ++ "Cannot expand a type variable " ++ show var
 expandType (BTySum left right) = do
   lhs <- expandType left
