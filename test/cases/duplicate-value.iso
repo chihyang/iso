@@ -1,0 +1,1 @@
+{unit <-> (left unit :: (Unit + Unit)) ; unit <-> (right unit :: (Unit + Unit))}
