@@ -2,7 +2,7 @@ module Interp (interp, interpEnv, applyIso) where
 
 import Syntax
 import Debug.Trace (trace)
-import OrthoCheck (orthoPairs)
+import OrthoCheck (unify, orthoList)
 
 moduleName :: String
 moduleName = "Interpreter: "
@@ -46,9 +46,11 @@ interpTm env (TmAnn tm _) = interpTm env tm
 {---------- Interpretation of Isos ----------}
 interpIso :: ValEnv -> Iso -> Result ProgramIsoValue
 interpIso env (IsoValue ps) = do
-  pairs <- interpIsoPairs env ps
-  pairs' <- orthoPairs pairs
-  return (PIValBase pairs' env)
+  let pats = map fst ps
+  let exps = map snd ps
+  pats' <- interpPats env pats
+  pats'' <- orthoList pats'
+  return (PIValBase (zip pats'' exps) env)
 interpIso env (IsoVar var) = lookupIso env var
 interpIso env (IsoLam var _ _ body) = return (PIValLam var body env)
 interpIso env (IsoApp lhs rhs) = do
@@ -58,21 +60,15 @@ interpIso env (IsoApp lhs rhs) = do
 interpIso _ (IsoFix _ _) = error "Evaluation of IsoFix is not supported yet!"
 interpIso env (IsoAnn iso _) = interpIso env iso
 
-interpIsoPairs :: ValEnv -> [(Value, Exp)] -> Result [(ProgramBaseValue , ProgramBaseValue)]
-interpIsoPairs _ [] = return []
-interpIsoPairs env (p:ps) = do
-  val <- interpIsoPair env p
-  vals <- interpIsoPairs env ps
-  return (val:vals)
-
 {---------- Applying An Iso To A Term ----------}
 applyIso :: ProgramIsoValue -> ProgramBaseValue -> Result ProgramBaseValue
 -- applyIso l r | trace ("applyIso " ++ show l ++ " " ++ show r) False = undefined
-applyIso (PIValBase isos env) rhs = patternMatch env isos rhs
+applyIso (PIValBase pairs env) rhs = patternMatch env pairs rhs
 applyIso iso base = Left $ moduleName ++ "Cannot apply iso " ++ show iso ++ " to " ++ show base
 
 {---------- Applying An Iso To An Iso ----------}
 applyIsoLam :: ProgramIsoValue -> ProgramIsoValue -> Result ProgramIsoValue
+-- applyIsoLam l r | trace ("applyIsoLam " ++ show l ++ " " ++ show r) False = undefined
 applyIsoLam (PIValLam var body env) rhs = interpIso ((var , (PI rhs)) : env) body
 applyIsoLam (PIValFix var body env) _ =
   error $ "Application of IsoFix is not supported yet, given " ++ show (PIValFix var body env)
@@ -97,29 +93,29 @@ interpValue env (ValPair lhs rhs) = do
 interpValue env (ValAnn val _) = interpValue env val
 --  TODO: ValFold
 
-{---------- Interpretation of One Pair of Values In An Iso ----------}
-interpIsoPair :: ValEnv -> (Value, Exp) -> Result (ProgramBaseValue, ProgramBaseValue)
-interpIsoPair env (pat, e) = do
-  lhsPair <- interpPat env pat
-  let vars = map (\x -> (x , PB (PBValVar x))) (snd lhsPair)
-  rhs <- interpExp (vars ++ env) e
-  return (fst lhsPair, rhs)
+{---------- Interpretation of Patterns in LHS ----------}
+interpPats :: ValEnv -> [Value] -> Result [ProgramBaseValue]
+interpPats _ [] = return []
+interpPats env (v:vs) = do
+  v' <- interpPat env v
+  vs' <- interpPats env vs
+  return (v' : vs')
 
 {---------- Interpretation of One Pattern in LHS ----------}
-interpPat :: ValEnv -> Value -> Result (ProgramBaseValue, [String])
-interpPat _ ValUnit = return (PBValUnit , [])
-interpPat _ (ValInt n) = return (PBValInt n , [])
-interpPat _ (ValVar var) = return (PBValVar var , [var])
+interpPat :: ValEnv -> Value -> Result ProgramBaseValue
+interpPat _ ValUnit = return PBValUnit
+interpPat _ (ValInt n) = return $ PBValInt n
+interpPat _ (ValVar var) = return $ PBValVar var
 interpPat env (ValLInj lhs) = do
   rst <- interpPat env lhs
-  return (PBValLeft $ fst rst , snd rst)
+  return $ PBValLeft rst
 interpPat env (ValRInj rhs) = do
   rst <- interpPat env rhs
-  return (PBValRight $ fst rst , snd rst)
+  return $ PBValRight rst
 interpPat env (ValPair lhs rhs) = do
   v1 <- interpPat env lhs
   v2 <- interpPat env rhs
-  return (PBValPair (fst v1) (fst v2) , (snd v1) ++ (snd v2))
+  return $ PBValPair v1 v2
 interpPat env (ValAnn val _) = interpPat env val
 --  TODO: ValFold
 
@@ -143,52 +139,18 @@ interpRhsPat env (PtMultiVar (var : vars)) = do
   return $ PBValPair val vals
 interpRhsPat _ pat = Left $ moduleName ++ "Invalid pattern: " ++ show pat
 
-{---------- Interpretation of iso RHS values ----------}
-interpExpVal :: ValEnv -> ProgramBaseValue -> Result ProgramBaseValue
-interpExpVal _ PBValUnit = return PBValUnit
-interpExpVal _ (PBValInt n) = return (PBValInt n)
-interpExpVal env (PBValVar var) = lookupBase env var
-interpExpVal env (PBValLeft l) = do
-  lVal <- interpExpVal env l
-  return (PBValLeft lVal)
-interpExpVal env (PBValRight l) = do
-  lVal <- interpExpVal env l
-  return (PBValRight lVal)
-interpExpVal env (PBValPair l r) = do
-  lVal <- interpExpVal env l
-  rVal <- interpExpVal env r
-  return (PBValPair lVal rVal)
-
 {---------- Pattern Matching in iso RHS ----------}
-patternMatch :: ValEnv -> [(ProgramBaseValue , ProgramBaseValue)] -> ProgramBaseValue
+patternMatch :: ValEnv -> [(ProgramBaseValue , Exp)] -> ProgramBaseValue
   -> Result ProgramBaseValue
+-- patternMatch env pair val
+--   | trace ("patternMatch " ++ show env ++ " " ++ show pair ++ " " ++ show val) False =
+--       undefined
 patternMatch _ [] val = Left $ moduleName ++ "Invalid pattern: no match for the value " ++ show val
-patternMatch env ((lhs , rhs) : tl) v =
-  if isMatch lhs v
-  then let pairs = extracPat lhs v
-           newEnv = pairs ++ env
-       in interpExpVal newEnv rhs
-  else patternMatch env tl v
-
-{---------- Pattern Match Checking ----------}
-isMatch :: ProgramBaseValue -> ProgramBaseValue -> Bool
-isMatch PBValUnit PBValUnit = True
-isMatch (PBValInt n1) (PBValInt n2) = (n1 == n2)
-isMatch (PBValVar _) _ = True
-isMatch (PBValLeft v1) (PBValLeft v2) = isMatch v1 v2
-isMatch (PBValRight v1) (PBValRight v2) = isMatch v1 v2
-isMatch (PBValPair l1 r1) (PBValPair l2 r2) = isMatch l1 l2 && isMatch r1 r2
-isMatch _ _ = False
-
-{---------- Pattern Match Extractions ----------}
-extracPat :: ProgramBaseValue -> ProgramBaseValue -> ValEnv
-extracPat PBValUnit _ = []
-extracPat (PBValInt _) _ = []
-extracPat (PBValVar var) val = [(var , PB val)]
-extracPat (PBValLeft v1) (PBValLeft v2) = extracPat v1 v2
-extracPat (PBValRight v1) (PBValRight v2) = extracPat v1 v2
-extracPat (PBValPair l1 r1) (PBValPair l2 r2) = extracPat l1 l2 ++ extracPat r1 r2
-extracPat _ _ = []
+patternMatch env ((lhs , rhs) : tl) v = do
+  case unify [] lhs v of
+    Just pairs -> let env' = map (\p -> (fst p, PB $ snd p)) pairs in
+                    interpExp (env' ++ env) rhs
+    Nothing -> patternMatch env tl v
 
 {---------- Extending Environments With Patterns ----------}
 extPat :: ValEnv -> Pattern -> ProgramBaseValue -> Result ValEnv
@@ -201,12 +163,14 @@ extPat _ pat val = Left $ moduleName ++ "Mismatched pattern and value: " ++ show
 
 {---------- Environment Lookup ----------}
 lookupBase :: ValEnv -> String -> Result ProgramBaseValue
+-- lookupBase env var | trace ("lookupBase " ++ show env ++ " " ++ show var) False = undefined
 lookupBase env var = do
   case lookup var env of
     Just (PB bv) -> return bv
     _ -> Left $ moduleName ++ "Cannot find the value " ++ show var
 
 lookupIso :: ValEnv -> String -> Result ProgramIsoValue
+-- lookupIso env var | trace ("lookupIso " ++ show env ++ " " ++ show var) False = undefined
 lookupIso env var = do
   case lookup var env of
     Just (PI bv) -> return bv

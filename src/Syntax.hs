@@ -138,7 +138,7 @@ instance Show ProgramBaseValue where
   show (PBValPair l r) = "<" ++ show l ++ ", " ++ show r ++ ">"
 
 data ProgramIsoValue =
-  PIValBase [(ProgramBaseValue , ProgramBaseValue)] ValEnv
+  PIValBase [(ProgramBaseValue , Exp)] ValEnv
   | PIValLam String Iso ValEnv
   | PIValFix String Iso ValEnv
   deriving (Eq, Ord)

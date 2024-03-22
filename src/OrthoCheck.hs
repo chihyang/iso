@@ -1,4 +1,4 @@
-module OrthoCheck (ortho, orthoPairs, orthoCheck) where
+module OrthoCheck (unify, ortho, orthoList, orthoPairs) where
 
 import Debug.Trace as T (trace)
 import Syntax hiding (ValEnv)
@@ -44,25 +44,19 @@ orthoLst1 v (v1:v1s) = do
   v' <- ortho v v1
   orthoLst1 v' v1s
 
-orthoLst :: [ProgramBaseValue] -> Result [ProgramBaseValue]
--- orthoLst v | T.trace ("orthoLst " ++ show v) False = undefined
-orthoLst [] = return []
-orthoLst (v:vs) = do
+orthoList :: [ProgramBaseValue] -> Result [ProgramBaseValue]
+-- orthoList v | T.trace ("orthoList " ++ show v) False = undefined
+orthoList [] = return []
+orthoList (v:vs) = do
   v' <- orthoLst1 v vs
-  vs' <- orthoLst vs
+  vs' <- orthoList vs
   return (v':vs')
 
 orthoPairs :: [(ProgramBaseValue, ProgramBaseValue)] -> Result [(ProgramBaseValue, ProgramBaseValue)]
+-- orthoPairs pairs | T.trace ("orthoPairs " ++ show pairs) False = undefined
 orthoPairs pairs = do
   let lhs = map fst pairs
   let rhs = map snd pairs
-  lhs' <- orthoLst lhs
-  rhs' <- orthoLst rhs
+  lhs' <- orthoList lhs
+  rhs' <- orthoList rhs
   return $ zip lhs' rhs'
-
-orthoCheck :: ProgramValue -> Result ProgramValue
-orthoCheck (PI (PIValBase pairs env)) = do
-  pairs' <- orthoPairs pairs
-  return (PI (PIValBase pairs' env))
-orthoCheck (PB val) = Left $ moduleName ++ "Cannot check orthogonality of a base value: " ++ show val
-orthoCheck (PI val) = Left $ moduleName ++ "Cannot check orthogonality of an iso value: " ++ show val

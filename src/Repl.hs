@@ -36,8 +36,7 @@ optionsList :: [(String , String -> Repl ())]
 optionsList =
   [ ("help", help), ("h", help)
   , ("load", load), ("l", load)
-  , ("matrix", toMatrix), ("m", toMatrix)
-  , ("matrixtyped", toTypedMatrix), ("mt", toTypedMatrix)
+  , ("matrix", toTypedMatrix), ("m", toTypedMatrix)
   , ("quit", quit), ("q", quit)
   ]
 
@@ -45,9 +44,7 @@ help :: String -> Repl ()
 help _ = liftIO $ putStrLn $
   ":help, :h              Show this information.\n" ++
   ":load file, :l file    Load a file.\n" ++
-  ":matrix exp, :m exp    Convert the exp into a matrix if exp\n" ++
-  "                       evaluates to an iso.\n" ++
-  ":matrixtyped exp, :mt exp\n" ++
+  ":matrix exp, :mt exp\n" ++
   "                       Convert the exp into a matrix according to\n" ++
   "                       its type if exp evaluates to an iso\n" ++
   ":quit, :q              Quite the program.\n"
@@ -60,11 +57,6 @@ load cmdStr = do
         hPutStr stderr ("Warning: Couldn't open " ++ cmdStr ++ ": " ++ err)
         return "")
   parseOneLine $ trim input
-
-toMatrix :: String -> Repl ()
-toMatrix input = case run input >>= matrixizeIso of
-  Right val -> liftIO $ print val
-  Left err -> liftIO $ putStrLn err
 
 toTypedMatrix :: String -> Repl ()
 toTypedMatrix input = case runTypedMat input of
