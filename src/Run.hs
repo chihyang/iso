@@ -38,9 +38,10 @@ matrixizeTypedIso (Right (ITyBase lTy rTy)) (PI (PIValBase pairs env)) = do
   pairs' <- applyToPairs (PIValBase pairs env) lhs
   let lhs' = map fst pairs'
   rhs' <- orthoList (map snd pairs')
-  return $ matrixize (List.sort (zip lhs' rhs')) lhs rhs
-matrixizeTypedIso (Left ty) (PB val) = Left $ moduleName ++ "Cannot convert a base value to matrix: " ++
-  show val ++ "::" ++ show ty
+  return $ matrixizePairs (List.sort (zip lhs' rhs')) lhs rhs
+matrixizeTypedIso (Left ty) (PB val) = do
+  vals <- expandType ty
+  return $ matrixize (List.sort vals) val
 matrixizeTypedIso (Right ty) (PI val) = Left $ moduleName ++ "Cannot convert an iso lambda to matrix: " ++
   show val ++ "::" ++ show ty
 matrixizeTypedIso ty val = Left $ moduleName ++ "Type and value mismatch: " ++ show val ++ ", " ++ show ty

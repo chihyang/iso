@@ -1,9 +1,7 @@
-module Convert (matrixize, matrixizeIso) where
+module Convert (matrixize, matrixizePairs) where
 
 import Data.Matrix
 import qualified Data.Set as Set
-import qualified Data.List as List
-import Syntax as S
 
 moduleName :: String
 moduleName = "Matrixize: "
@@ -39,14 +37,21 @@ collectIndices lhsMap rhsMap pairs lhs =
         Just b -> b : (mapFilter f vs)
         _ -> mapFilter f vs
 
-matrixize :: (Ord a , Ord b) => [(a , b)] -> [a] -> [b] -> Matrix Int
-matrixize pairs lhs rhs = matrix (length rhsMap) (length lhsMap) fill where
+collectIndex :: (Ord a) => [(a , Int)] -> a -> Int
+collectIndex valMap val =
+  case lookup val valMap of
+    Just b -> b
+    Nothing -> -1
+
+matrixizePairs :: (Ord a , Ord b) => [(a , b)] -> [a] -> [b] -> Matrix Int
+matrixizePairs pairs lhs rhs = matrix (length rhsMap) (length lhsMap) fill where
   lhsMap = indexMap lhs
   rhsMap = indexMap rhs
   idx = collectIndices lhsMap rhsMap pairs lhs
   fill (x , y) = if Set.member (x - 1, y - 1) idx then 1 else 0
 
-matrixizeIso :: ProgramValue -> Result (Matrix Int)
-matrixizeIso (PI (PIValBase pairs _)) = return $ matrixize (List.sort pairs) (map fst pairs) (map snd pairs)
-matrixizeIso (PB val) = Left $ moduleName ++ "Cannot convert a base value to matrix: " ++ show val
-matrixizeIso (PI val) = Left $ moduleName ++ "Cannot convert an iso lambda to matrix: " ++ show val
+matrixize :: (Ord a) => [a] -> a -> Matrix Int
+matrixize vals val = matrix (length valMap) 1 fill where
+  valMap = indexMap vals
+  idx = collectIndex valMap val
+  fill (x , _) = if (x - 1) == idx then 1 else 0
