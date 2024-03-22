@@ -26,7 +26,7 @@ initial = liftIO $ putStrLn "Welcome to ISOCi"
 
 final :: Repl ExitDecision
 final = do
-  liftIO $ putStrLn "Goodbye!"
+  liftIO $ putStrLn "Leaving IsoCi."
   return Exit
 
 commandF :: String -> Repl ()
