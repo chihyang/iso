@@ -36,6 +36,7 @@ optionsList =
   [ ("help", help), ("h", help)
   , ("load", load), ("l", load)
   , ("matrix", toTypedMatrix), ("m", toTypedMatrix)
+  , ("lm", loadMatrix)
   , ("quit", quit), ("q", quit)
   ]
 
@@ -46,16 +47,26 @@ help _ = liftIO $ putStrLn $
   ":matrix exp, :mt exp\n" ++
   "                       Convert the exp into a matrix according to\n" ++
   "                       its type if exp evaluates to an iso\n" ++
+  ":lm file               Convert the file into a matrix according to\n" ++
+  "                       its type if exp evaluates to an iso\n" ++
   ":quit, :q              Quite the program.\n"
+
+loadFile :: String -> IO String
+loadFile file =
+  catch (readFile file)
+  (\e -> do let err = show (e :: IOException)
+            hPutStr stderr ("Warning: Couldn't open " ++ file ++ ": " ++ err)
+            return "")
 
 load :: String -> Repl ()
 load cmdStr = do
-  input <- liftIO $ catch (readFile cmdStr)
-    (\e -> do
-        let err = show (e :: IOException)
-        hPutStr stderr ("Warning: Couldn't open " ++ cmdStr ++ ": " ++ err)
-        return "")
+  input <- liftIO $ loadFile cmdStr
   parseOneLine $ trim input
+
+loadMatrix :: String -> Repl ()
+loadMatrix cmdStr = do
+  input <- liftIO $ loadFile cmdStr
+  toTypedMatrix $ trim input
 
 toTypedMatrix :: String -> Repl ()
 toTypedMatrix input = case runTypedMat input of
@@ -70,7 +81,7 @@ quit = const $ do
 
 completer :: WordCompleter IO
 completer n = do
-  let names = [":help", ":load", ":matrix", ":matrixtyped", ":quit"]
+  let names = [":help", ":load", ":lm", ":matrix", ":matrixtyped", ":quit"]
   pure $ filter (List.isPrefixOf n) names
 
 repl :: IO ()
