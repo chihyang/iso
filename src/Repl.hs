@@ -7,7 +7,6 @@ import Control.Monad.IO.Class
 import Data.Char
 import qualified Data.List as List
 import Run
-import Convert
 import System.Console.Repline hiding (banner)
 import System.Exit
 import System.IO
