@@ -1,0 +1,10 @@
+{
+  <(right unit :: (Unit + Unit)), (x :: (Unit + Unit))> <->
+  <(right unit :: (Unit + Unit)), (x :: (Unit + Unit))> ;
+
+  <(left unit :: (Unit + Unit)), (right unit :: (Unit + Unit))> <->
+  <(left unit :: (Unit + Unit)), (left unit :: (Unit + Unit))> ;
+
+  <(left unit :: (Unit + Unit)), (left unit :: (Unit + Unit))> <->
+  <(left unit :: (Unit + Unit)), (right unit :: (Unit + Unit))>
+}

@@ -1,0 +1,7 @@
+(\f :: ((Unit + Unit) <-> (Unit + Unit)) ->
+  {
+    <(a :: (Unit + Unit)) , (left unit :: (Unit + Unit))> <-> let v = f a in <v , (right unit :: (Unit + Unit))> ;
+    <(a :: (Unit + Unit)) , (right unit :: (Unit + Unit))> <-> <a , (left unit :: (Unit + Unit))>
+  }
+{ (left x :: (Unit + Unit)) <-> (right x :: (Unit + Unit)) ;
+  (right x :: (Unit + Unit)) <-> (left x :: (Unit + Unit)) })
