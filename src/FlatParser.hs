@@ -13,20 +13,22 @@ module FlatParser (
 --import qualified Language.Haskell.TH as TH
 
 import qualified Data.ByteString as B
+import qualified Data.Complex as C
 
-import FlatParse.Basic as F hiding (Parser, runParser, string, char, cut)
-import FlatParse.Common.Assorted (strToUtf8, utf8ToStr)
+import FlatParse.Basic as F hiding (Parser, runParser, string, cut)
+import FlatParse.Common.Parser (PureMode)
 import FlatParse.Examples.BasicLambda.Lexer hiding (isKeyword)
-import FlatParse.Examples.BasicLambda.Parser (Name, int)
+import FlatParse.Examples.BasicLambda.Parser (Name, int, digit)
 import Syntax
 
+type FParser a = F.ParserT PureMode Error a
 -- TODO: use TH to expand kw's
 -- keywordsList = ["Unit", "Int", "mu", "unit", "left", "right", "let", "in"]
 -- kw = map (\str -> [| $(str) -> pure () |] keywordsList
 -- isKeyword = foldl1 <|> . map macro
 
 isKeyword :: Span -> Parser ()
-isKeyword span = inSpan span $ do
+isKeyword spn = inSpan spn $ do
   $(switch [| case _ of
       "Unit"  -> pure ()
       "Int"   -> pure ()
@@ -46,11 +48,9 @@ isKeyword span = inSpan span $ do
 
 ident :: Parser Name
 ident = token $ byteStringOf $
-  withSpan (identStartChar *> skipMany identChar) (\_ span -> fails (isKeyword span))
+  withSpan (identStartChar *> skipMany identChar) (\_ spn -> fails (isKeyword spn))
 
-ident' :: Parser Name
-ident' = ident `cut'` (Msg "identifier")
-
+ident'' :: Parser String
 ident'' = utf8ToStr <$> ident
 
 -- use TH to write this so it's feasible to do `C <$> parens p` with nary constructors?
@@ -120,8 +120,10 @@ pValue = pValUnit <|> pValInt <|> pValLInj <|> pValRInj <|> pValPair <|> pValAnn
 {-
 -- Exp
 -}
+pExpVal :: FParser Exp
 pExpVal = ExpVal <$> pValue
 
+pExpLet :: FParser Exp
 pExpLet = do
   $(keyword "let")
   pat <- pPattern
@@ -132,7 +134,70 @@ pExpLet = do
   body <- pExp
   return $ ExpLet pat iso pat' body
 
-pExp = pExpLet <|> pExpVal
+double :: Parser Double
+double = token $ do
+  whole <- some digit
+  $(char '.')
+  frac <- some digit
+  let wholeVal = foldl (\acc e -> acc * 10.0 + fromIntegral e) 0.0 whole
+  let fracVal = foldr (\e acc -> acc / 10.0 + fromIntegral e / 10) 0.0 frac
+  return $ (wholeVal + fracVal)
+
+pNumber :: Parser Double
+pNumber = double <|> (fromIntegral <$> int)
+
+pNegNumber :: Parser Double
+pNegNumber = do
+  $(symbol "(")
+  $(symbol "-")
+  n <- pNumber
+  $(symbol ")")
+  return ((-1) * n)
+
+pAllNumber :: Parser Double
+pAllNumber = pNegNumber <|> pNumber
+
+pComplex :: FParser Scale
+pComplex = do
+  $(symbol "(")
+  real <- pAllNumber
+  $(symbol' ":+")
+  imag <- pAllNumber
+  $(symbol ")")
+  return $ real C.:+ imag
+
+pScale :: FParser Scale
+pScale = pComplex <|> ((\r -> r :+ 0) <$> pNumber)
+
+pExpScale :: FParser Exp
+pExpScale = do
+  scale <- pScale
+  $(symbol "*")
+  e <- pExp
+  return $ ExpScale scale e
+
+pExpAdd :: FParser Exp
+pExpAdd = $(symbol "+") *> pExp
+
+pExpSub :: FParser Exp
+pExpSub = do
+  $(symbol "-")
+  v <- pExp
+  return $ ExpScale ((-1.0) :+ 0) v
+
+pExpAdditive :: FParser Exp
+pExpAdditive = pExpAdd <|> pExpSub
+
+pExpPlus :: FParser Exp
+pExpPlus = do
+  $(symbol "[")
+  l <- pExp
+  r <- pExpAdditive
+  $(symbol "]")
+  return $ ExpPlus [l,r]
+
+pExp :: FParser Exp
+pExp = pExpLet <|> pExpPlus <|> pExpScale <|> pExpVal
 
 {-
 -- Pattern
@@ -159,8 +224,7 @@ pIsoClause = do
   return (lhs, rhs)
 
 -- !! `some` would not work here even for positive cases
-pIsoValue = braces $ IsoValue <$> ((:) <$> pIsoClause <*>
-  many ($(symbol ";") *> pIsoClause))
+pIsoValue = braces $ IsoValue <$> ((:) <$> pIsoClause <*> many ($(symbol ";") *> pIsoClause))
 
 pIsoVar = IsoVar <$> ident''
 
@@ -225,8 +289,13 @@ pTerm =
 {-
 -- Program
 -}
+pPgTm :: FParser Program
 pPgTm = PgTm <$> pTerm
+
+pPgIs :: FParser Program
 pPgIs = PgIs <$> pIso
+
+pProg :: FParser Program
 pProg = pPgTm <|> pPgIs
 
 flatParse :: String -> F.Result Error Program
