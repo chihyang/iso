@@ -1,0 +1,18 @@
+{
+  <(left unit :: (Unit + Unit)), (x :: (Unit + Unit))> <->
+  let y =
+  {
+    (left unit :: (Unit + Unit)) <->
+    [0.707106781188 * (left unit :: (Unit + Unit)) +
+     0.707106781188 * (right unit :: (Unit + Unit))];
+    (right unit :: (Unit + Unit)) <->
+    [0.707106781188 * (left unit :: (Unit + Unit)) -
+     0.707106781188 * (right unit :: (Unit + Unit))]
+  } x
+  in [0.707106781188 * <(left unit :: (Unit + Unit)), (y :: (Unit + Unit))> +
+      0.707106781188 * <(right unit :: (Unit + Unit)), (y :: (Unit + Unit))>];
+  <(right unit :: (Unit + Unit)), (x :: (Unit + Unit))> <->
+  let y = { (x :: (Unit + Unit)) <-> x } x
+  in [0.707106781188 * <(left unit :: (Unit + Unit)), (y :: (Unit + Unit))> -
+      0.707106781188 * <(right unit :: (Unit + Unit)), (y :: (Unit + Unit))>]
+}

@@ -1,0 +1,4 @@
+{
+  (left unit :: (Unit + Unit)) <-> [0.707106781188 * (left unit :: (Unit + Unit)) + 0.707106781188 * (right unit :: (Unit + Unit))];
+  (right unit :: (Unit + Unit)) <-> [0.707106781188 * (left unit :: (Unit + Unit)) - 0.707106781188 * (right unit :: (Unit + Unit))]
+}
