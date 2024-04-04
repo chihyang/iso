@@ -25,39 +25,41 @@ check str =
 run :: String -> S.Result ProgramValue
 run str = Right str >>= check >>= interp
 
-runTypedMat :: String -> S.Result (M.Matrix Int)
+runTypedMat :: String -> S.Result (M.Matrix Scale)
 runTypedMat str = do
   pg <- check str
   val <- interp pg
   matrixizePg pg val
 
-matrixizeTypedIso :: ProgramType -> ProgramValue -> S.Result (Matrix Int)
+matrixizeTypedIso :: ProgramType -> ProgramValue -> S.Result (Matrix Scale)
 matrixizeTypedIso (Right (ITyBase lTy rTy)) (PI (PIValBase pairs env)) = do
   lhs <- expandType lTy
   rhs <- expandType rTy
   pairs' <- applyToPairs (PIValBase pairs env) lhs
-  let lhs' = map fst pairs'
-  rhs' <- orthoList (map snd pairs')
-  return $ matrixizePairs (List.sort (zip lhs' rhs')) lhs rhs
+  let rhs' = map snd pairs'
+  return $ matrixizeScale rhs' rhs
 matrixizeTypedIso (Left ty) (PB val) = do
   vals <- expandType ty
   return $ matrixize (List.sort vals) val
+matrixizeTypedIso (Left ty) (PQ vals) = do
+  allVals <- expandType ty
+  return $ matrixizeEntangled vals allVals
 matrixizeTypedIso (Right ty) (PI val) = Left $ moduleName ++ "Cannot convert an iso lambda to matrix: " ++
   show val ++ "::" ++ show ty
 matrixizeTypedIso ty val = Left $ moduleName ++ "Type and value mismatch: " ++ show val ++ ", " ++ show ty
 
-applyToPairs :: ProgramIsoValue -> [ProgramBaseValue] -> S.Result [(ProgramBaseValue , ProgramBaseValue)]
+applyToPairs :: ProgramIsoValue -> [ProgramBaseValue] -> S.Result [(ProgramBaseValue , EntangledValue)]
 -- applyToPairs iso pairs | T.trace ("applyToPairs " ++ show iso ++ ", " ++ show pairs) False = undefined
 applyToPairs _ [] = return []
 applyToPairs iso (l:ls) =
-  case applyIso iso l of
+  case applyIso iso [(1, l)] of
     Right r -> do
       pairs <- applyToPairs iso ls
       return ((l,r): pairs)
     Left _ -> applyToPairs iso ls
 
 -- The given program must be type annotated
-matrixizePg :: Program -> ProgramValue -> S.Result (Matrix Int)
+matrixizePg :: Program -> ProgramValue -> S.Result (Matrix Scale)
 matrixizePg pg val = do
   ty <- extractType pg
   matrixizeTypedIso ty val

@@ -1,7 +1,10 @@
-module Convert (matrixize, matrixizePairs) where
+module Convert (matrixize, matrixizeScale, matrixizeEntangled) where
 
+import Syntax
 import Data.Matrix
+import qualified Data.List as L
 import qualified Data.Set as Set
+import Debug.Trace as T (trace)
 
 moduleName :: String
 moduleName = "Matrixize: "
@@ -18,40 +21,32 @@ indexMap l = zip l' idx where
   l' = Set.toAscList $ Set.fromList l
   idx = listToIndices l'
 
-checkedLookup :: (Eq a) => [(a , b)] -> a -> b
-checkedLookup l k = case (lookup k l) of
-  Just v -> v
-  Nothing -> error "In a checked lookup, we should always find a key!"
-
-collectIndices :: (Ord a , Ord b) =>
-  [(a , Int)] -> [(b , Int)] -> [(a , b)] -> [a] -> Set.Set (Int , Int)
-collectIndices lhsMap rhsMap pairs lhs =
-  foldl (\r v -> Set.insert v r) Set.empty idPairs where
-    idPairs = mapFilter (\l -> case lookup l pairs of
-                           Just b -> Just (checkedLookup rhsMap b, checkedLookup lhsMap l)
-                           Nothing -> Nothing)
-              lhs
-    mapFilter _ [] = []
-    mapFilter f (v:vs) =
-      case f v of
-        Just b -> b : (mapFilter f vs)
-        _ -> mapFilter f vs
-
 collectIndex :: (Ord a) => [(a , Int)] -> a -> Int
 collectIndex valMap val =
   case lookup val valMap of
     Just b -> b
     Nothing -> -1
 
-matrixizePairs :: (Ord a , Ord b) => [(a , b)] -> [a] -> [b] -> Matrix Int
-matrixizePairs pairs lhs rhs = matrix (length rhsMap) (length lhsMap) fill where
-  lhsMap = indexMap lhs
-  rhsMap = indexMap rhs
-  idx = collectIndices lhsMap rhsMap pairs lhs
-  fill (x , y) = if Set.member (x - 1, y - 1) idx then 1 else 0
+matrixizeScale :: (Show a, Ord a) => [[(Scale , a)]] -> [a] -> Matrix Scale
+-- matrixizeScale scaled keys | T.trace ("matrixizeScale " ++ show scaled ++ ", " ++ show keys) False = undefined
+matrixizeScale scaled keys = matrix (length keys) (length scaled) fill where
+  fill (x , y) = do
+    let vals = scaled!!(y-1)
+    let key = keys!!(x-1)
+    case L.find (\v -> key == snd v) vals of
+      Just (s, _) -> s
+      Nothing -> (0 :+ 0)
 
-matrixize :: (Ord a) => [a] -> a -> Matrix Int
+matrixize :: (Ord a) => [a] -> a -> Matrix Scale
 matrixize vals val = matrix (length valMap) 1 fill where
   valMap = indexMap vals
   idx = collectIndex valMap val
   fill (x , _) = if (x - 1) == idx then 1 else 0
+
+matrixizeEntangled :: (Ord a) => [(Scale, a)] -> [a] -> Matrix Scale
+matrixizeEntangled scaled keys = matrix (length keys) 1 fill where
+  fill (x , _) = do
+    let key = keys!!(x-1)
+    case L.find (\v -> key == snd v) scaled of
+      Just (s, _) -> s
+      Nothing -> (0 :+ 0)
