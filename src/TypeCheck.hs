@@ -1,6 +1,7 @@
 module TypeCheck (typeInfer, typeInferEnv) where
 
 import Syntax
+import Debug.Trace (trace)
 
 moduleName :: String
 moduleName = "Type Check: "
@@ -321,6 +322,7 @@ tcValNoPat _ tm ty =
 
 {---------- Bidirectional type checking for Exps ----------}
 tiExp :: TypEnv -> Exp -> Result BaseType
+-- tiExp env e | trace ("tiExp " ++ show env ++ " " ++ show e) False = undefined
 tiExp env (ExpVal val) = do
   rst <- tiValNoPat env val
   return $ fst rst
@@ -331,11 +333,17 @@ tiExp env (ExpLet pat iso pat' body) = do
   pair <- tcRator iso' isoTy
   let randTy = fst pair
   let bodyTy = snd pair
-  patTy <- tcRhsPat env randTy pat'
+  _ <- tcRhsPat env randTy pat'
   newEnv <- extPatEnv env pat bodyTy
   tiExp newEnv body
+tiExp env (ExpScale _ e) = tiExp env e
+tiExp _ (ExpPlus []) = Left $ moduleName ++ "Given zero operand, cannot infer the type of an ExpPlus expression!"
+tiExp env (ExpPlus (e:es)) = do
+  lhsTy <- tiExp env e
+  tcExp env (ExpPlus es) lhsTy
 
 tcExp :: TypEnv -> Exp -> BaseType -> Result BaseType
+-- tcExp env e ty | trace ("tcExp " ++ show env ++ " " ++ show e ++ " " ++ show ty) False = undefined
 tcExp env (ExpVal val) ty = do
   rst <- tcValNoPat env val ty
   return $ fst rst
@@ -346,9 +354,14 @@ tcExp env (ExpLet pat iso pat' body) ty = do
   pair <- tcRator iso' isoTy
   let randTy = fst pair
   let bodyTy = snd pair
-  patTy <- tcRhsPat env randTy pat'
+  _ <- tcRhsPat env randTy pat'
   newEnv <- extPatEnv env pat bodyTy
   tcExp newEnv body ty
+tcExp env (ExpScale _ e) ty = tcExp env e ty
+tcExp _ (ExpPlus []) ty = return ty
+tcExp env (ExpPlus (e:es)) ty = do
+  lhsTy <- tcExp env e ty
+  tcExp env (ExpPlus es) lhsTy
 
 tcRator :: (Show a) => a -> IsoType -> Result (BaseType , BaseType)
 tcRator rator ratorTy =
@@ -381,6 +394,7 @@ typeEqual :: TypEnv -> BaseType -> BaseType -> Bool
 typeEqual _ ty ty' = (ty == ty')
 
 applyBaseEnv :: TypEnv -> String -> Result BaseType
+-- applyBaseEnv env var | trace ("applyBaseEnv " ++ show env ++ " " ++ show var) False = undefined
 applyBaseEnv env var = case (lookup var env) of
   Just (Left bTy) -> return bTy
   _ -> Left $ moduleName ++ "Cannot find the base type variable " ++ show var
@@ -401,6 +415,7 @@ extMultiBaseEnv env binds = map f binds ++ env where
   f = \x -> (fst x, Left $ snd x)
 
 extPatEnv :: TypEnv -> Pattern -> BaseType -> Result TypEnv
+-- extPatEnv env pat ty | trace ("extPatEnv " ++ show env ++ " " ++ show pat ++ " " ++ show ty) False = undefined
 extPatEnv env (PtSingleVar var) ty = return $ extBaseEnv env var ty
 extPatEnv env (PtMultiVar vars) ty = extend env vars ty where
   extend env' (var : []) ty' = return $ extBaseEnv env' var ty'

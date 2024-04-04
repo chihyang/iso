@@ -89,6 +89,12 @@ lcExp env (ExpLet pat iso pat' body) = do
   env''' <- extendPat env'' pat
   env'''' <- lcExp env''' body
   dropPat env'''' pat
+lcExp env (ExpScale _ e) = lcExp env e
+lcExp env (ExpPlus []) = return env
+lcExp env (ExpPlus (e:es)) = do
+  _ <- lcExp env e
+  -- every sum is checked separately
+  lcExp env (ExpPlus es)
 
 lcRhsPat :: LinearEnv -> Pattern -> Result LinearEnv
 lcRhsPat env (PtSingleVar var) = increEnv env var
