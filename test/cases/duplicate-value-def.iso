@@ -1,0 +1,4 @@
+dup:: Unit <-> (Unit + Unit)
+dup = {x <-> left unit ; unit <-> right unit}
+
+dup

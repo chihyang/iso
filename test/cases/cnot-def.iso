@@ -1,0 +1,9 @@
+cnot :: ((Unit + Unit) x (Unit + Unit)) <-> ((Unit + Unit) x (Unit + Unit))
+cnot =
+{
+  <right unit, x> <-> <right unit, x>;
+  <left unit, right unit> <-> <left unit, left unit>;
+  <left unit, left unit> <-> <left unit, right unit>
+}
+
+cnot

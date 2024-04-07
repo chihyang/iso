@@ -1,0 +1,12 @@
+sort :: ((Unit + Unit) <-> (Unit + Unit)) -> ((Unit + Unit) x (Unit + Unit)) <-> ((Unit + Unit) x (Unit + Unit))
+
+sort = \f :: ((Unit + Unit) <-> (Unit + Unit)) ->
+  {
+    <a , left unit> <-> let v = f a in <v , right unit>;
+    <a , right unit> <-> <a , left unit>
+  }
+
+neg :: (Unit + Unit) <-> (Unit + Unit)
+neg = { left x <-> right x; right x <-> left x }
+
+[sort neg]

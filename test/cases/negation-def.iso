@@ -1,0 +1,4 @@
+neg :: (Unit + Unit) <-> (Unit + Unit)
+neg = { left x <-> right x; right x <-> left x }
+
+neg

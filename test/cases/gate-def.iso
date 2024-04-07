@@ -1,0 +1,18 @@
+Had :: (Unit + Unit) <-> (Unit + Unit)
+Had =
+{
+  left unit <-> [0.707106781188 * left unit + 0.707106781188 * right unit];
+  right unit <-> [0.707106781188 * left unit - 0.707106781188 * right unit]
+}
+
+Id :: (Unit + Unit) <-> (Unit + Unit)
+Id = { x <-> x }
+
+Gate :: ((Unit + Unit) x (Unit + Unit)) <-> ((Unit + Unit) x (Unit + Unit))
+Gate =
+{
+  <left unit, x> <-> let y = Had x in [0.707106781188 * <left unit, y> + 0.707106781188 * <right unit, y>];
+  <right unit, x> <-> let y = Id x in [0.707106781188 * <left unit, y> - 0.707106781188 * <right unit, y>]
+}
+
+Gate

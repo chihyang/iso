@@ -1,0 +1,8 @@
+neg :: (Unit + Unit) <-> (Unit + Unit)
+neg = { left x <-> right x; right x <-> left x }
+
+higherOrder :: ((Unit + Unit) <-> (Unit + Unit)) -> (Unit + Unit) <-> (Unit + Unit)
+higherOrder =
+\neg :: ((Unit + Unit) <-> (Unit + Unit)) -> { (x :: (Unit + Unit)) <-> let y = neg x in let z = neg y in z }
+
+[higherOrder neg]
