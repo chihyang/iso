@@ -19,7 +19,7 @@ instance Show BaseType where
   show BTyInt = "Int"
   show (BTyVar var) = var
   show (BTySum lt rt) = "(" ++ show lt ++ " + " ++ show rt ++ ")"
-  show (BTyProd lt rt) = "(" ++ show lt ++ " × " ++ show rt ++ ")"
+  show (BTyProd lt rt) = "(" ++ show lt ++ " x " ++ show rt ++ ")"
   show (BTyMu var bodyT) = "Mu " ++ show var ++ ". " ++ show bodyT
 
 data IsoType =
@@ -219,3 +219,6 @@ type TypEnv = [(String , ProgramType)]
 type LinearEnv = [(String , Int)]
 type Result a = Either String a
 type EntangledValue = [(Scale, ProgramBaseValue)]
+type Declaration = Either IsoType Iso
+type Declarations = [(String, Either IsoType Iso)]
+type Definitions = [(String, Iso)]

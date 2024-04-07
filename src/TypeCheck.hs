@@ -1,4 +1,4 @@
-module TypeCheck (typeInfer, typeInferEnv) where
+module TypeCheck (typeInfer, typeInferDefsPg, typeInferEnv) where
 
 import Syntax
 import Debug.Trace (trace)
@@ -6,6 +6,32 @@ import Debug.Trace (trace)
 moduleName :: String
 moduleName = "Type Check: "
 
+{---------- Type infer declarations ----------}
+typeInferDefsPg :: (Definitions, Program) -> Result (Definitions, Program)
+typeInferDefsPg (defs, pgm) = do
+  env <- collectTypes defs
+  defs' <- checkDefs env defs
+  pgm' <- typeInferEnv env pgm
+  return (defs', pgm')
+
+-- Given a sorted list of declarations, return a list of possibly type
+-- annotated isos.
+collectTypes :: Definitions -> Result TypEnv
+collectTypes [] = return []
+collectTypes ((var, (IsoAnn _ ty)):ds) = do
+  env <- collectTypes ds
+  return $ (var, Right ty):env
+collectTypes ((var, d):_) = Left $ "Invalid definition: " ++ var ++ " = " ++ show d
+
+checkDefs :: TypEnv -> Definitions -> Result Definitions
+checkDefs _ [] = return []
+checkDefs env ((var,(IsoAnn d ty)):ds) = do
+  defs <- checkDefs env ds
+  (ty', d') <- tcIso env d ty
+  return $ (var,(IsoAnn d' ty')):defs
+checkDefs _ ((var,_):_) = Left $ moduleName ++ var ++ " doesn't have a type declaration!"
+
+{---------- Type infer program ----------}
 typeInfer :: Program -> Result Program
 typeInfer pg = typeInferEnv [] pg
 
@@ -147,7 +173,48 @@ tiIso env (IsoApp rator rand) = do
       else Left $ moduleName ++ "Expect " ++ show rator ++ " and " ++ show rand  ++ " to have matched type!"
     (_, _) -> Left $ moduleName ++ "Expect " ++ show rator ++ " to have the type (Iso -> Iso)!"
 tiIso _ (IsoFix _ _) = Left $ moduleName ++ "IsoFix is not supported yet!"
-tiIso _ (IsoAnn _ _) = Left $ moduleName ++ "IsoAnn is an internal node!"
+tiIso env (IsoAnn iso ty) = tcIso env iso ty
+
+tcIso :: TypEnv -> Iso -> IsoType -> Result (IsoType, Iso)
+tcIso env (IsoValue pairs) (ITyBase lhsTy rhsTy) = do
+  otype <- tcIsoPairs env pairs lhsTy rhsTy
+  let ov = IsoAnn (IsoValue pairs) otype
+  return (otype , ov)
+tcIso env (IsoVar var) ty = do
+  ty' <- applyIsoEnv env var
+  if isoTypeEqual env ty' ty
+    then return (ty, IsoAnn (IsoVar var) ty)
+    else Left $ moduleName ++ "Expect " ++ show ty ++ ", got " ++ show ty' ++ " in " ++ show (IsoVar var)
+tcIso env (IsoLam var vLhsTy vRhsTy body) ty =
+  case ty of
+    ITyFun vLhsTy' vRhsTy' bodyTy
+      | typeEqual env vLhsTy vLhsTy' && typeEqual env vRhsTy vRhsTy' ->
+        do let newEnv = extIsoEnv env var (ITyBase vLhsTy vRhsTy)
+           rst <- tcIso newEnv body bodyTy
+           let bodyTy' = fst rst
+           let body' = snd rst
+           let otype = ITyFun vLhsTy vRhsTy bodyTy'
+           let ov = IsoAnn (IsoLam var vLhsTy vRhsTy body') otype
+           return (otype , ov)
+    _ -> Left $ moduleName ++ "Expect " ++ show ty ++ ", got " ++ show (IsoLam var vLhsTy vRhsTy body)
+tcIso env (IsoApp rator rand) ty = do
+  ratorRst <- tiIso env rator
+  let ratorTy = fst ratorRst
+  let rator' = snd ratorRst
+  case ratorTy of
+    ITyFun lhsTy rhsTy bodyTy
+      | isoTypeEqual env bodyTy ty ->
+        do
+          (_, rand') <- tcIso env rand (ITyBase lhsTy rhsTy)
+          return $ (ty, (IsoAnn (IsoApp rator' rand') ty))
+    _ -> Left $ moduleName ++ "Expect " ++ show rator ++ " to have the type (Iso -> Iso)!"
+tcIso _ (IsoFix _ _) _ = Left $ moduleName ++ "IsoFix is not supported yet!"
+tcIso env (IsoAnn iso ty) ty' | isoTypeEqual env ty ty' = tcIso env iso ty'
+tcIso _ (IsoAnn iso ty) ty' =
+  Left $ moduleName ++ "IsoAnn " ++ show iso ++ " has two different type declarations: " ++
+  show ty ++ ", " ++ show ty'
+tcIso _ iso ty =
+  Left $ moduleName ++ "IsoAnn " ++ show iso ++ " has incorrect type: " ++ show ty
 
 tiIsoPairs :: TypEnv -> [(Value, Exp)] -> Result IsoType
 tiIsoPairs _ [] = Left $ moduleName ++ "There must be at least one pair of values in an iso, given zero!"
@@ -390,6 +457,9 @@ tcRhsPat env ty (PtMultiVar (var : vars)) = do
 tcRhsPat _ _ pat = Left $ moduleName ++ "Invalid pattern " ++ show pat
 
 {-------------- Helper functions --------------}
+isoTypeEqual :: TypEnv -> IsoType -> IsoType -> Bool
+isoTypeEqual _ ty ty' = (ty == ty')
+
 typeEqual :: TypEnv -> BaseType -> BaseType -> Bool
 typeEqual _ ty ty' = (ty == ty')
 

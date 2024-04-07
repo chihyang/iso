@@ -9,29 +9,32 @@ import qualified Data.List as List
 import Interp
 import LinearCheck
 import OrthoCheck
+import Reduce
 import Syntax as S
 import TypeCheck
 
 moduleName :: String
 moduleName = "Run: "
 
-check :: String -> S.Result Program
+check :: String -> S.Result (Definitions, Program)
 check str =
   Right str >>=
-  parse >>=
-  typeInfer >>=
-  linearCheck
+  parseDefsPg >>=
+  foldDefsPg >>=
+  typeInferDefsPg >>=
+  linearCheckDefsPg
 
 run :: String -> S.Result ProgramValue
-run str = Right str >>= check >>= interp
+run str = Right str >>= check >>= interpDefsPg
 
 runTypedMat :: String -> S.Result (M.Matrix Scale)
 runTypedMat str = do
-  pg <- check str
-  val <- interp pg
+  (defs, pg) <- check str
+  val <- interpDefsPg (defs, pg)
   matrixizePg pg val
 
 matrixizeTypedIso :: ProgramType -> ProgramValue -> S.Result (Matrix Scale)
+-- matrixizeTypedIso ty v | T.trace ("matrixizeTypedIso " ++ show ty ++ " " ++ show v) False = undefined
 matrixizeTypedIso (Right (ITyBase lTy rTy)) (PI (PIValBase pairs env)) = do
   lhs <- expandType lTy
   rhs <- expandType rTy

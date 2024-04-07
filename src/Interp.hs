@@ -1,12 +1,34 @@
-module Interp (interp, interpEnv, applyIso) where
+module Interp (interp, interpDefsPg, interpEnv, applyIso) where
 
 import Syntax
 import Data.List (sortBy)
 import Debug.Trace (trace)
 import OrthoCheck (unify, orthoList)
 
+type Stack = [String]
+
 moduleName :: String
 moduleName = "Interpreter: "
+
+interpDefsPg :: (Definitions, Program) -> Result ProgramValue
+interpDefsPg (defs, pg) = do
+  env <- interpDefs defs
+  let env' = map (replaceVal env) env
+  interpEnv env' pg
+  where
+    replaceVal env (var, (PI iso)) = (var, (PI (replaceIsoEnv env iso)))
+    replaceVal _ v = v
+
+    replaceIsoEnv env (PIValBase pairs env') = PIValBase pairs env
+    replaceIsoEnv env (PIValLam var iso env') = PIValLam var iso env
+    replaceIsoEnv env (PIValFix var iso env') = PIValFix var iso env
+
+interpDefs :: Definitions -> Result ValEnv
+interpDefs [] = return []
+interpDefs ((var,def):defs) = do
+  isos <- interpDefs defs
+  iso <- interpIso [] def
+  return ((var,(PI iso)):isos)
 
 interp :: Program -> Result ProgramValue
 interp pg = interpEnv [] pg

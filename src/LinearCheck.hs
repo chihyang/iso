@@ -1,9 +1,24 @@
-module LinearCheck (linearCheck, linearCheckEnv) where
+module LinearCheck (linearCheck, linearCheckEnv, linearCheckDefsPg) where
 
 import Syntax
+import Debug.Trace (trace)
 
 moduleName :: String
 moduleName = "Linear Check: "
+
+linearCheckDefsPg :: (Definitions, Program) -> Result (Definitions, Program)
+-- linearCheckDefsPg (defs, pg) | trace ("linearCheckDefsPg " ++ show defs ++ " " ++ show pg) False = undefined
+linearCheckDefsPg (defs, pg) = do
+  defs' <- lcDefs defs
+  pg' <- linearCheck pg
+  return (defs', pg')
+
+lcDefs :: Definitions -> Result Definitions
+lcDefs [] = return []
+lcDefs ((var,iso):defs) = do
+  defs' <- lcDefs defs
+  _ <- lcIso [] iso
+  return ((var,iso):defs')
 
 linearCheck :: Program -> Result Program
 linearCheck pg = linearCheckEnv [] pg

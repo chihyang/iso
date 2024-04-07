@@ -6,7 +6,9 @@
 module FlatParser (
   flatParse,
   parse,
+  parseDefsPg,
   pProg,
+  pDefsPg,
   F.Result(..)
   ) where
 
@@ -241,7 +243,7 @@ pIsoLam = do
   body <- pIso
   return $ IsoLam var l r body
 
-pIsoApp = parens (IsoApp <$> pIso <*> pIso)
+pIsoApp = brackets (IsoApp <$> pIso <*> pIso)
 
 pIsoFix = do
   $(keyword "fix")
@@ -287,6 +289,25 @@ pTerm =
   pTmVar
 
 {-
+-- Definitions
+-}
+pDefType :: FParser (String, Either IsoType Iso)
+pDefType = do
+  var <- ident''
+  $(symbol "::")
+  ty <- pIsoType
+  return (var, Left ty)
+
+pDefIso :: FParser (String, Either IsoType Iso)
+pDefIso = do
+  var <- ident''
+  $(symbol "=")
+  iso <- pIso
+  return (var, Right iso)
+
+pDef = pDefType <|> pDefIso
+
+{-
 -- Program
 -}
 pPgTm :: FParser Program
@@ -296,7 +317,13 @@ pPgIs :: FParser Program
 pPgIs = PgIs <$> pIso
 
 pProg :: FParser Program
-pProg = pPgTm <|> pPgIs
+pProg = pPgIs <|> pPgTm
+
+pDefsPg :: FParser (Declarations, Program)
+pDefsPg = do
+  decs <- many pDef
+  pg <- pProg
+  return (decs, pg)
 
 flatParse :: String -> F.Result Error Program
 flatParse str = runParser pProg (strToUtf8 str)
@@ -307,6 +334,16 @@ parse str =
     OK ast rest ->
       if rest == B.empty
       then return ast
-      else Left $ "Incomplete input: " ++ show str
+      else Left $ "Incomplete input:\n" ++ str
+    Fail -> Left "Invalid input!"
+    Err msg -> Left $ show msg
+
+parseDefsPg :: String -> Syntax.Result (Declarations, Program)
+parseDefsPg str =
+  case runParser pDefsPg (strToUtf8 str) of
+    OK ast rest ->
+      if rest == B.empty
+      then return ast
+      else Left $ "Incomplete input:\n" ++ str
     Fail -> Left "Invalid input!"
     Err msg -> Left $ show msg
