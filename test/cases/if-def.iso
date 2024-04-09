@@ -1,0 +1,15 @@
+if :: ((Unit + Unit) <-> (Unit + Unit)) ->
+        ((Unit + Unit) <-> (Unit + Unit)) ->
+          ((Unit + Unit) x (Unit + Unit)) <->
+          ((Unit + Unit) x (Unit + Unit))
+if = \f :: ((Unit + Unit) <-> (Unit + Unit)) ->
+       \g :: ((Unit + Unit) <-> (Unit + Unit)) ->
+         {
+            <left unit, x> <-> let y = g x in <left unit, y>;
+            <right unit, x> <-> let y = g x in <right unit, y>
+         }
+
+neg :: (Unit + Unit) <-> (Unit + Unit)
+neg = { left x <-> right x; right x <-> left x }
+
+[[if neg] neg]
