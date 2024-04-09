@@ -252,9 +252,7 @@ pIsoFix = do
   iso <- pIso
   return $ IsoFix var iso
 
-pIsoAnn = parens $ IsoAnn <$> pIso <* $(symbol' "::") <*> pIsoType
-
-pIso = pIsoValue <|> pIsoLam <|> pIsoApp <|> pIsoFix <|> pIsoAnn <|> pIsoVar
+pIso = pIsoValue <|> pIsoLam <|> pIsoApp <|> pIsoFix <|> pIsoVar
 
 {-
 -- Term
