@@ -40,12 +40,7 @@ isKeyword spn = inSpan spn $ do
       "left"  -> pure ()
       "right" -> pure ()
       "let"   -> pure ()
-      "in"    -> pure ()
-      "if"    -> pure ()
-      "then"  -> pure ()
-      "else"  -> pure ()
-      "true"  -> pure ()
-      "false" -> pure ()  |])
+      "in"    -> pure () |])
   eof
 
 ident :: Parser Name
