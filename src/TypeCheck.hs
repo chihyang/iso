@@ -17,10 +17,10 @@ typeInferDefsPg (defs, pgm) = do
 -- Given a sorted list of declarations, return a list of possibly type
 -- annotated isos.
 collectTypes :: Definitions -> Result TypEnv
-collectTypes [] = return []
+collectTypes [] = return emptyTypEnv
 collectTypes ((var, (IsoAnn _ ty)):ds) = do
   env <- collectTypes ds
-  return $ (var, Right ty):env
+  return $ extIsoEnv env var ty
 collectTypes ((var, d):_) = Left $ "Invalid definition: " ++ var ++ " = " ++ show d
 
 checkDefs :: TypEnv -> Definitions -> Result Definitions
@@ -33,7 +33,7 @@ checkDefs _ ((var,_):_) = Left $ moduleName ++ var ++ " doesn't have a type decl
 
 {---------- Type infer program ----------}
 typeInfer :: Program -> Result Program
-typeInfer pg = typeInferEnv [] pg
+typeInfer pg = typeInferEnv emptyTypEnv pg
 
 typeInferEnv :: TypEnv -> Program -> Result Program
 typeInferEnv env (PgTm tm) = do
@@ -462,6 +462,9 @@ isoTypeEqual _ ty ty' = (ty == ty')
 
 typeEqual :: TypEnv -> BaseType -> BaseType -> Bool
 typeEqual _ ty ty' = (ty == ty')
+
+emptyTypEnv :: TypEnv
+emptyTypEnv = []
 
 applyBaseEnv :: TypEnv -> String -> Result BaseType
 -- applyBaseEnv env var | trace ("applyBaseEnv " ++ show env ++ " " ++ show var) False = undefined
