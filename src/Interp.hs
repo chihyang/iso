@@ -19,9 +19,9 @@ interpDefsPg (defs, pg) = do
     replaceVal env (var, (PI iso)) = (var, (PI (replaceIsoEnv env iso)))
     replaceVal _ v = v
 
-    replaceIsoEnv env (PIValBase pairs env') = PIValBase pairs env
-    replaceIsoEnv env (PIValLam var iso env') = PIValLam var iso env
-    replaceIsoEnv env (PIValFix var iso env') = PIValFix var iso env
+    replaceIsoEnv env (PIValBase pairs _) = PIValBase pairs env
+    replaceIsoEnv env (PIValLam var iso _) = PIValLam var iso env
+    replaceIsoEnv env (PIValFix var iso _) = PIValFix var iso env
 
 interpDefs :: Definitions -> Result ValEnv
 interpDefs [] = return []
