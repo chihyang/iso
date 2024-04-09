@@ -80,7 +80,7 @@ interpIso env (IsoApp lhs rhs) = do
   lval <- interpIso env lhs
   rval <- interpIso env rhs
   applyIsoLam lval rval
-interpIso _ (IsoFix _ _) = error "Evaluation of IsoFix is not supported yet!"
+interpIso _ (IsoFix _ _ _ _) = error "Evaluation of IsoFix is not supported yet!"
 interpIso env (IsoAnn iso _) = interpIso env iso
 
 {---------- Applying An Iso To A Term ----------}

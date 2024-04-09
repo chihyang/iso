@@ -107,7 +107,7 @@ data Iso =
   | IsoVar String
   | IsoLam String BaseType BaseType Iso
   | IsoApp Iso Iso
-  | IsoFix String Iso
+  | IsoFix String BaseType BaseType Iso
   | IsoAnn Iso IsoType
   deriving (Eq, Ord)
 instance Show Iso where
@@ -119,7 +119,10 @@ instance Show Iso where
     show var ++ " :: (" ++ show lhs ++ " <-> " ++ show rhs ++ ")" ++
     " ->" ++ show body
   show (IsoApp rator rand) = "(" ++ show rator ++ " " ++ show rand ++ ")"
-  show (IsoFix var iso) = "fix " ++ show var ++ ". " ++ show iso
+  show (IsoFix var lhs rhs iso) =
+    "fix " ++
+    show var ++ " :: (" ++ show lhs ++ " <-> " ++ show rhs ++ ")" ++
+    " ->" ++ show iso
   show (IsoAnn iso ty) = "(" ++ show iso ++ " :: " ++ show ty ++ ")"
 
 data Term =

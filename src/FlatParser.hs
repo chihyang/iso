@@ -243,9 +243,15 @@ pIsoApp = brackets (IsoApp <$> pIso <*> pIso)
 pIsoFix = do
   $(keyword "fix")
   var <- ident''
-  $(symbol' ".")
+  $(symbol' "::")
+  $(symbol' "(")
+  l <- pBaseType
+  $(symbol "<->")
+  r <- pBaseType
+  $(symbol' ")")
+  $(symbol' "->")
   iso <- pIso
-  return $ IsoFix var iso
+  return $ IsoFix var l r iso
 
 pIso = pIsoValue <|> pIsoLam <|> pIsoApp <|> pIsoFix <|> pIsoVar
 
