@@ -217,7 +217,12 @@ scaleEnt :: Scale -> EntangledValue -> EntangledValue
 scaleEnt s vs = map (\v -> (s * fst v, snd v)) vs
 
 -- Value Environment
-type ValEnv = [(String , ProgramValue)]
+data ValEnv =
+  EmptyVEnv
+  | ExtendIsoVEnv String ProgramIsoValue ValEnv
+  | ExtendBaseVEnv String EntangledValue ValEnv
+  deriving (Eq, Show)
+
 type TypEnv = [(String , ProgramType)]
 type LinearEnv = [(String , Int)]
 type Result a = Either String a

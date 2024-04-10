@@ -5,33 +5,34 @@ import Data.List (sortBy)
 import Debug.Trace (trace)
 import OrthoCheck (unify, orthoList)
 
-type Stack = [String]
-
 moduleName :: String
 moduleName = "Interpreter: "
 
 interpDefsPg :: (Definitions, Program) -> Result ProgramValue
 interpDefsPg (defs, pg) = do
   env <- interpDefs defs
-  let env' = map (replaceVal env) env
+  let env' = replaceVal env env
   interpEnv env' pg
   where
-    replaceVal env (var, (PI iso)) = (var, (PI (replaceIsoEnv env iso)))
-    replaceVal _ v = v
+    replaceVal _ EmptyVEnv = EmptyVEnv
+    replaceVal env (ExtendIsoVEnv var iso env') =
+      extendIsoEnv var (replaceIsoEnv env iso) (replaceVal env env')
+    replaceVal env (ExtendBaseVEnv var val env') =
+      extendBaseEnv var val (replaceVal env env')
 
     replaceIsoEnv env (PIValBase pairs _) = PIValBase pairs env
     replaceIsoEnv env (PIValLam var iso _) = PIValLam var iso env
     replaceIsoEnv env (PIValFix var iso _) = PIValFix var iso env
 
 interpDefs :: Definitions -> Result ValEnv
-interpDefs [] = return []
+interpDefs [] = return emptyEnv
 interpDefs ((var,def):defs) = do
   isos <- interpDefs defs
-  iso <- interpIso [] def
-  return ((var,(PI iso)):isos)
+  iso <- interpIso emptyEnv def
+  return $ extendIsoEnv var iso isos
 
 interp :: Program -> Result ProgramValue
-interp pg = interpEnv [] pg
+interp pg = interpEnv emptyEnv pg
 
 interpEnv :: ValEnv -> Program -> Result ProgramValue
 interpEnv env (PgTm tm) = do
@@ -80,21 +81,23 @@ interpIso env (IsoApp lhs rhs) = do
   lval <- interpIso env lhs
   rval <- interpIso env rhs
   applyIsoLam lval rval
-interpIso _ (IsoFix _ _ _ _) = error "Evaluation of IsoFix is not supported yet!"
+interpIso env (IsoFix var _ _ body) = return (PIValFix var body env)
 interpIso env (IsoAnn iso _) = interpIso env iso
 
 {---------- Applying An Iso To A Term ----------}
 applyIso :: ProgramIsoValue -> EntangledValue -> Result EntangledValue
 -- applyIso l r | trace ("applyIso " ++ show l ++ " " ++ show r) False = undefined
 applyIso (PIValBase pairs env) rhs = patternMatchEnt env pairs rhs
+applyIso (PIValFix var body env) rhs =
+  Left $ moduleName ++ "Cannot apply iso " ++ show (PIValFix var body env) ++ " to " ++ show rhs
 applyIso iso base = Left $ moduleName ++ "Cannot apply iso " ++ show iso ++ " to " ++ show base
 
 {---------- Applying An Iso To An Iso ----------}
 applyIsoLam :: ProgramIsoValue -> ProgramIsoValue -> Result ProgramIsoValue
 -- applyIsoLam l r | trace ("applyIsoLam " ++ show l ++ " " ++ show r) False = undefined
-applyIsoLam (PIValLam var body env) rhs = interpIso ((var , (PI rhs)) : env) body
-applyIsoLam (PIValFix var body env) _ =
-  error $ "Application of IsoFix is not supported yet, given " ++ show (PIValFix var body env)
+applyIsoLam (PIValLam var body env) rhs = interpIso (extendIsoEnv var rhs env) body
+applyIsoLam (PIValFix var body env) rhs =
+  Left $ moduleName ++ "Application of IsoFix is not supported yet, given " ++ show (PIValFix var body env)
 applyIsoLam (PIValBase pairs env) _ =
   error $ "Expect an Iso Lambda, given an Iso Base " ++ show (PIValBase pairs env)
 
@@ -191,22 +194,24 @@ patternMatch :: ValEnv -> [(ProgramBaseValue , Exp)] -> ProgramBaseValue -> Resu
 patternMatch _ [] val = Left $ moduleName ++ "Invalid pattern: no match for the value " ++ show val
 patternMatch env ((lhs , rhs) : tl) v = do
   case unify [] lhs v of
-    Just pairs -> let env' = map (\p -> (fst p, PB $ snd p)) pairs in
-                    interpExp (env' ++ env) rhs
+    Just pairs -> let env' = foldl (\acc (var, val) ->
+                                      extendBaseEnv var [(1, val)] acc)
+                             env pairs
+                  in interpExp env' rhs
     Nothing -> patternMatch env tl v
 
 {---------- Extending Environments With Patterns For A List of Values ----------}
 extScalePat :: ValEnv -> Pattern -> EntangledValue -> Result ValEnv
 -- extScalePat env pat val | trace ("extScalePat " ++ show env ++ " " ++ show pat ++ " " ++ show val) False = undefined
-extScalePat env (PtSingleVar var) val  = return ((var , PQ val) : env)
-extScalePat env (PtMultiVar (var : [])) val  = return ((var , PQ val) : env)
+extScalePat env (PtSingleVar var) val  = return $ extendBaseEnv var val env
+extScalePat env (PtMultiVar (var : [])) val  = return $ extendBaseEnv var val env
 extScalePat env (PtMultiVar (var : vars)) val =
   if allPair val
   then do
     let hds = map (\v -> (fst v, getHead $ snd v)) val
     let tls = map (\v -> (fst v, getTail $ snd v)) val
     newTl <- extScalePat env (PtMultiVar vars) tls
-    return ((var , (PQ hds)) : newTl)
+    return $ extendBaseEnv var hds newTl
   else
     Left $ moduleName ++ "Mismatched pattern and value: " ++ show (var:vars) ++ ", " ++ show val
   where
@@ -226,17 +231,31 @@ extScalePat env (PtMultiVar (var : vars)) val =
 extScalePat _ pat val = Left $ moduleName ++ "Mismatched pattern and value: " ++ show pat ++ ", " ++ show val
 
 {---------- Environment Lookup ----------}
+emptyEnv :: ValEnv
+emptyEnv = EmptyVEnv
+
+extendBaseEnv :: String -> EntangledValue -> ValEnv -> ValEnv
+extendBaseEnv var val env = ExtendBaseVEnv var val env
+
+extendIsoEnv :: String -> ProgramIsoValue -> ValEnv -> ValEnv
+extendIsoEnv var val env = ExtendIsoVEnv var val env
+
 lookupBase :: ValEnv -> String -> Result EntangledValue
 -- lookupBase env var | trace ("lookupBase " ++ show env ++ " " ++ show var) False = undefined
-lookupBase env var = do
-  case lookup var env of
-    Just (PB bv) -> return $ [(1, bv)]
-    Just (PQ bv) -> return bv
-    _ -> Left $ moduleName ++ "Cannot find the value " ++ show var
+lookupBase EmptyVEnv var = Left $ moduleName ++ "Cannot find the value " ++ var
+lookupBase (ExtendIsoVEnv var _ env) var'
+  | var == var' = Left $ moduleName ++ var ++ " is not a base value!"
+  | otherwise = lookupBase env var'
+lookupBase (ExtendBaseVEnv var val env) var'
+  | var == var' = return val
+  | otherwise = lookupBase env var'
 
 lookupIso :: ValEnv -> String -> Result ProgramIsoValue
 -- lookupIso env var | trace ("lookupIso " ++ show env ++ " " ++ show var) False = undefined
-lookupIso env var = do
-  case lookup var env of
-    Just (PI bv) -> return bv
-    _ -> Left $ moduleName ++ "Cannot find the iso " ++ show var
+lookupIso EmptyVEnv var = Left $ moduleName ++ "Cannot find the value " ++ var
+lookupIso (ExtendIsoVEnv var iso env) var'
+  | var == var' = return iso
+  | otherwise = lookupIso env var'
+lookupIso (ExtendBaseVEnv var _ env) var'
+  | var == var' = Left $ moduleName ++ var ++ " is not an iso value!"
+  | otherwise = lookupIso env var'
