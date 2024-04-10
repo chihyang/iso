@@ -172,7 +172,14 @@ tiIso env (IsoApp rator rand) = do
       then return (bodyTy , IsoAnn (IsoApp rator' rand') bodyTy)
       else Left $ moduleName ++ "Expect " ++ show rator ++ " and " ++ show rand  ++ " to have matched type!"
     (_, _) -> Left $ moduleName ++ "Expect " ++ show rator ++ " to have the type (Iso -> Iso)!"
-tiIso _ (IsoFix _ _ _ _) = Left $ moduleName ++ "IsoFix is not supported yet!"
+tiIso env (IsoFix var lhs rhs body) = do
+  let newEnv = extIsoEnv env var (ITyBase lhs rhs)
+  rst <- tiIso newEnv body
+  let bodyTy = fst rst
+  let body' = snd rst
+  let otype = bodyTy
+  let ov = IsoAnn (IsoFix var lhs rhs body') otype
+  return (otype , ov)
 tiIso env (IsoAnn iso ty) = tcIso env iso ty
 
 tcIso :: TypEnv -> Iso -> IsoType -> Result (IsoType, Iso)
@@ -208,7 +215,14 @@ tcIso env (IsoApp rator rand) ty = do
           (_, rand') <- tcIso env rand (ITyBase lhsTy rhsTy)
           return $ (ty, (IsoAnn (IsoApp rator' rand') ty))
     _ -> Left $ moduleName ++ "Expect " ++ show rator ++ " to have the type (Iso -> Iso)!"
-tcIso _ (IsoFix _ _ _ _) _ = Left $ moduleName ++ "IsoFix is not supported yet!"
+tcIso env (IsoFix var lhs rhs body) ty = do
+  let newEnv = extIsoEnv env var (ITyBase lhs rhs)
+  rst <- tcIso newEnv body ty
+  let bodyTy = fst rst
+  let body' = snd rst
+  let otype = bodyTy
+  let ov = IsoAnn (IsoFix var lhs rhs body') otype
+  return (otype , ov)
 tcIso env (IsoAnn iso ty) ty' | isoTypeEqual env ty ty' = tcIso env iso ty'
 tcIso _ (IsoAnn iso ty) ty' =
   Left $ moduleName ++ "IsoAnn " ++ show iso ++ " has two different type declarations: " ++

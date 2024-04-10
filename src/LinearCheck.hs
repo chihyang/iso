@@ -67,7 +67,7 @@ lcIso env (IsoLam _ _ _ body) = lcIso env body
 lcIso env (IsoApp rator rand) = do
   env' <- lcIso env rand
   lcIso env' rator
-lcIso _ (IsoFix _ _ _ _) = error $ "IsoFix is not supported yet!"
+lcIso env (IsoFix _ _ _ body) = lcIso env body
 lcIso env (IsoAnn iso _) = lcIso env iso
 
 lcIsoPairs :: LinearEnv -> [(Value, Exp)] -> Result LinearEnv
