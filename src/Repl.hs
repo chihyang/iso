@@ -7,7 +7,7 @@ import Control.Monad.IO.Class
 import Data.Char
 import qualified Data.List as List
 import Run
-import System.Console.Repline hiding (banner)
+import System.Console.Repline as Repline hiding (banner)
 import System.Exit
 import System.IO
 
@@ -81,8 +81,10 @@ quit = const $ do
 
 completer :: WordCompleter IO
 completer n = do
-  let names = [":help", ":load", ":lm", ":matrix", ":matrixtyped", ":quit"]
+  let names = [":help", ":load", ":lm", ":matrix", ":quit"]
   pure $ filter (List.isPrefixOf n) names
+
+prefixCompleter = Repline.Prefix (wordCompleter completer) [(":load" , fileCompleter), (":lm" , fileCompleter)]
 
 repl :: IO ()
 repl = evalRepl
@@ -91,7 +93,7 @@ repl = evalRepl
   optionsList
   (Just ':')
   Nothing
-  (Word completer)
+  prefixCompleter
   initial
   final
 
