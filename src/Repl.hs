@@ -17,7 +17,7 @@ trim :: String -> String
 trim = List.dropWhileEnd isSpace . List.dropWhile isSpace
 
 banner :: MultiLine -> Repl String
-banner MultiLine = pure " "
+banner MultiLine = pure "| "
 banner SingleLine = pure ">>> "
 
 initial :: Repl ()
@@ -81,7 +81,7 @@ quit = const $ do
 
 completer :: WordCompleter IO
 completer n = do
-  let names = [":help", ":load", ":lm", ":matrix", ":quit"]
+  let names = [":help", ":load", ":lm", ":matrix", ":paste", ":quit"]
   pure $ filter (List.isPrefixOf n) names
 
 prefixCompleter = Repline.Prefix (wordCompleter completer) [(":load" , fileCompleter), (":lm" , fileCompleter)]
@@ -92,7 +92,7 @@ repl = evalRepl
   commandF
   optionsList
   (Just ':')
-  Nothing
+  (Just "paste")
   prefixCompleter
   initial
   final
