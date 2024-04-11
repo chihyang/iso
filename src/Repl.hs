@@ -44,11 +44,12 @@ help :: String -> Repl ()
 help _ = liftIO $ putStrLn $
   ":help, :h              Show this information.\n" ++
   ":load file, :l file    Load a file.\n" ++
-  ":matrix exp, :mt exp\n" ++
+  ":matrix exp, :m exp\n" ++
   "                       Convert the exp into a matrix according to\n" ++
   "                       its type if exp evaluates to an iso\n" ++
   ":lm file               Convert the file into a matrix according to\n" ++
-  "                       its type if exp evaluates to an iso\n" ++
+  "                       its type if exp evaluates to an iso or a base value\n" ++
+  ":paste                 Enter multi-line input mode\n" ++
   ":quit, :q              Quite the program.\n"
 
 loadFile :: String -> IO String
@@ -81,7 +82,7 @@ quit = const $ do
 
 completer :: WordCompleter IO
 completer n = do
-  let names = [":help", ":load", ":lm", ":matrix", ":paste", ":quit"]
+  let names = [":help", ":load", ":lm", ":matrix", ":m", ":paste", ":quit"]
   pure $ filter (List.isPrefixOf n) names
 
 prefixCompleter = Repline.Prefix (wordCompleter completer) [(":load" , fileCompleter), (":lm" , fileCompleter)]
