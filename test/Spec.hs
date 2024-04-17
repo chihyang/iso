@@ -14,13 +14,15 @@ main = do {
 
   ; let t3 = TmVar "x"
   ; let e3 = (PgTm t3)
-  ; let env3 = [("x" , PB PBValUnit) , ("y" , PB $ PBValInt 32)]
+  ; let env3 = ExtendBaseVEnv "x" [(1, PBValUnit)] $ ExtendBaseVEnv "y" [(1, PBValInt 32)] EmptyVEnv
   ; print (interpEnv env3 e3)
 
-  ; let env4 = [("x" , PB $ PBValInt 4) , ("y" , PB $ PBValInt 32) , ("x" , PB PBValUnit)]
+  ; let env4 = ExtendBaseVEnv "x" [(1,  PBValInt 4)] $
+               ExtendBaseVEnv "y" [(1, PBValInt 32)] $
+               ExtendBaseVEnv "x" [(1, PBValUnit)] EmptyVEnv
   ; print (interpEnv env4 e3)
 
-  ; let env5 = [("y" , PB $ PBValInt 32)]
+  ; let env5 = ExtendBaseVEnv "y" [(1, PBValInt 32)] EmptyVEnv
   ; print (interpEnv env5 e3)
 
   ; let t4 = (TmLInj t3)
@@ -67,7 +69,7 @@ main = do {
   ; print (typeInfer (PgTm i3))
 
   -- ; let e20 = PgIs $ IsoValue [ValUnit] [ExpVal (ValPair ValUnit ValUnit)]
-  -- ; print (interp [] e20)
+  -- ; print (interp e20)
   -- ; let m1 = matrixize [("a" , 0 :: Int) , ("b" , 2 :: Int), ("c" , 3 :: Int)]
   -- ; print m1
   }
