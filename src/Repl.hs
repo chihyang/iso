@@ -50,7 +50,7 @@ help _ = liftIO $ putStrLn $
   ":lm file               Convert the file into a matrix according to\n" ++
   "                       its type if exp evaluates to an iso or a base value\n" ++
   ":paste                 Enter multi-line input mode\n" ++
-  ":quit, :q              Quite the program.\n"
+  ":quit, :q              Quit the program.\n"
 
 loadFile :: String -> IO String
 loadFile file =
