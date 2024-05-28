@@ -59,15 +59,20 @@ loadFile file =
             hPutStr stderr ("Warning: Couldn't open " ++ file ++ ": " ++ err)
             return "")
 
+loadF :: (String -> Repl ()) -> String -> Repl ()
+loadF f cmdStr =
+  let str = trim cmdStr in
+  if str == ""
+  then liftIO $ putStrLn "File name required!"
+  else do
+    input <- liftIO $ loadFile $ trim str
+    f $ input
+
 load :: String -> Repl ()
-load cmdStr = do
-  input <- liftIO $ loadFile cmdStr
-  parseOneLine $ trim input
+load = loadF parseOneLine
 
 loadMatrix :: String -> Repl ()
-loadMatrix cmdStr = do
-  input <- liftIO $ loadFile cmdStr
-  toTypedMatrix $ trim input
+loadMatrix = loadF toTypedMatrix
 
 toTypedMatrix :: String -> Repl ()
 toTypedMatrix input = case runTypedMat input of
@@ -85,6 +90,7 @@ completer n = do
   let names = [":help", ":load", ":lm", ":matrix", ":m", ":paste", ":quit"]
   pure $ filter (List.isPrefixOf n) names
 
+prefixCompleter :: CompleterStyle IO
 prefixCompleter = Repline.Prefix (wordCompleter completer) [(":load" , fileCompleter), (":lm" , fileCompleter)]
 
 repl :: IO ()
