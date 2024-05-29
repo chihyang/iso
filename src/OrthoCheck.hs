@@ -19,6 +19,9 @@ find _ val = val
 unify :: ValEnv -> ProgramBaseValue -> ProgramBaseValue -> Maybe ValEnv
 unify env v1 v2 | v1 == v2 = Just env
 unify env (PBValVar var) v = Just $ (var , v) : env
+unify env (PBValCons v1 vs1) (PBValCons v2 vs2) = do
+  env' <- unify env v1 v2
+  unify env' vs1 vs2
 unify env (PBValLeft v1) (PBValLeft v2) = unify env v1 v2
 unify env (PBValRight v1) (PBValRight v2) = unify env v1 v2
 unify env (PBValPair l1 r1) (PBValPair l2 r2) = do
