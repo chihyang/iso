@@ -115,8 +115,14 @@ makeIsoApp :: Iso -> [String] -> Iso
 makeIsoApp iso vars = foldl (\acc var -> (IsoApp acc (IsoVar var))) iso vars
 
 makeIsoLam :: Iso -> String -> [String] -> IsoType -> Iso
+-- At bottom, we need an extra iso that looks like:
+-- {
+--   v <-> let out = (((\f -> w) (res f1 ...)) f1 ...) v in out
+-- }
 makeIsoLam body baseVar [] (ITyBase _ _) =
-  IsoValue [(ValVar baseVar, ExpLet (PtSingleVar baseVar) body (PtSingleVar baseVar) (ExpVal (ValVar baseVar)))]
+  IsoValue [(ValVar baseVar,
+             ExpLet (PtSingleVar baseVar) body (PtSingleVar baseVar)
+             (ExpVal (ValVar baseVar)))]
 makeIsoLam body baseVar (var:vars) (ITyFun lTy rTy bodyTy) =
   IsoLam var lTy rTy (makeIsoLam body baseVar vars bodyTy)
 makeIsoLam _ _ vars ty =

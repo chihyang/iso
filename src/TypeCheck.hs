@@ -182,6 +182,7 @@ tiIso env (IsoApp rator rand) = do
       then return (bodyTy , IsoAnn (IsoApp rator' rand') bodyTy)
       else Left $ moduleName ++ "Expect " ++ show rator ++ " and " ++ show rand  ++ " to have matched type!"
     (_, _) -> Left $ moduleName ++ "Expect " ++ show rator ++ " to have the type (Iso -> Iso)!"
+-- TODO: structural recursion check
 tiIso env (IsoFix var lhs rhs body) = do
   let newEnv = extIsoEnv env var (ITyBase lhs rhs)
   rst <- tiIso newEnv body
@@ -225,6 +226,7 @@ tcIso env (IsoApp rator rand) ty = do
           (_, rand') <- tcIso env rand (ITyBase lhsTy rhsTy)
           return $ (ty, (IsoAnn (IsoApp rator' rand') ty))
     _ -> Left $ moduleName ++ "Expect " ++ show rator ++ " to have the type (Iso -> Iso)!"
+-- TODO: structural recursion check
 tcIso env (IsoFix var lhs rhs body) ty = do
   let newEnv = extIsoEnv env var (ITyBase lhs rhs)
   rst <- tcIso newEnv body ty
