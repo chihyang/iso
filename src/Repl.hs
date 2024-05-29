@@ -91,7 +91,8 @@ completer n = do
   pure $ filter (List.isPrefixOf n) names
 
 prefixCompleter :: CompleterStyle IO
-prefixCompleter = Repline.Prefix (wordCompleter completer) [(":load" , fileCompleter), (":lm" , fileCompleter)]
+prefixCompleter = Repline.Prefix (wordCompleter completer)
+  [(":l" , fileCompleter), (":load" , fileCompleter), (":lm" , fileCompleter)]
 
 repl :: IO ()
 repl = evalRepl
