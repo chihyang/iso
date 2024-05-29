@@ -42,6 +42,10 @@ sameVars env env' = map fst env == map fst env'
 lcTm :: LinearEnv -> Term -> Result LinearEnv
 lcTm env TmUnit = return env
 lcTm env (TmInt _) = return env
+lcTm env TmEmpty = return env
+lcTm env (TmCons v vs) = do
+  env' <- lcTm env v
+  lcTm env' vs
 lcTm env (TmVar var) = increEnv env var
 lcTm env (TmLInj tm) = lcTm env tm
 lcTm env (TmRInj tm) = lcTm env tm
@@ -87,6 +91,10 @@ lcIsoPair env (v, e) = do
 lcVal :: LinearEnv -> Value -> [String]
 lcVal _ ValUnit = []
 lcVal _ (ValInt _) = []
+lcVal _ ValEmpty = []
+lcVal env (ValCons v vs) = vars ++ vars' where
+  vars = lcVal env v
+  vars' = lcVal env vs
 lcVal _ (ValVar var) = [var]
 lcVal env (ValLInj v) = lcVal env v
 lcVal env (ValRInj v) = lcVal env v
@@ -122,6 +130,10 @@ lcRhsPat env (PtMultiVar (var:vars)) = do
 lcValNoPat :: LinearEnv -> Value -> Result LinearEnv
 lcValNoPat env ValUnit = return env
 lcValNoPat env (ValInt _) = return env
+lcValNoPat env ValEmpty = return env
+lcValNoPat env (ValCons v vs) = do
+  env' <- lcValNoPat env v
+  lcValNoPat env' vs
 lcValNoPat env (ValVar var) = increEnv env var
 lcValNoPat env (ValLInj v) = lcValNoPat env v
 lcValNoPat env (ValRInj v) = lcValNoPat env v
