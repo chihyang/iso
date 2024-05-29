@@ -9,6 +9,7 @@ type Scale = Complex Double
 data BaseType =
   BTyUnit
   | BTyInt
+  | BTyList BaseType
   | BTyVar String
   | BTySum BaseType BaseType
   | BTyProd BaseType BaseType
@@ -17,6 +18,7 @@ data BaseType =
 instance Show BaseType where
   show BTyUnit = "Unit"
   show BTyInt = "Int"
+  show (BTyList t) = "List " ++ show t
   show (BTyVar var) = var
   show (BTySum lt rt) = "(" ++ show lt ++ " + " ++ show rt ++ ")"
   show (BTyProd lt rt) = "(" ++ show lt ++ " x " ++ show rt ++ ")"
@@ -36,6 +38,8 @@ type ProgramType = Either BaseType IsoType
 data Value =
   ValUnit
   | ValInt Int
+  | ValEmpty
+  | ValCons Value Value
   | ValVar String
   | ValLInj Value
   | ValRInj Value
@@ -46,6 +50,9 @@ data Value =
 instance Show Value where
   show ValUnit = "unit"
   show (ValInt n) = show n
+  show ValEmpty = "[]"
+  show (ValCons v1 ValEmpty) = "[" ++ show v1 ++ "]"
+  show (ValCons v1 v2) = show v1 ++ ":" ++ show v2
   show (ValVar var) = var
   show (ValLInj v) = "left " ++ show v
   show (ValRInj v) = "right " ++ show v
@@ -128,6 +135,8 @@ instance Show Iso where
 data Term =
   TmUnit
   | TmInt Int
+  | TmEmpty
+  | TmCons Term Term
   | TmVar String
   | TmLInj Term
   | TmRInj Term
@@ -140,6 +149,9 @@ data Term =
 instance Show Term where
   show TmUnit = "unit"
   show (TmInt n) = show n
+  show TmEmpty = "[]"
+  show (TmCons v1 TmEmpty) = "[" ++ show v1 ++ "]"
+  show (TmCons v1 v2) = show v1 ++ ":" ++ show v2
   show (TmVar var) = var
   show (TmLInj v) = "left " ++ show v
   show (TmRInj v) = "right " ++ show v
@@ -161,6 +173,8 @@ instance Show Program where
 data ProgramBaseValue =
   PBValUnit
   | PBValInt Int
+  | PBValEmpty
+  | PBValCons ProgramBaseValue ProgramBaseValue
   | PBValVar String
   | PBValLeft ProgramBaseValue
   | PBValRight ProgramBaseValue
@@ -170,6 +184,9 @@ data ProgramBaseValue =
 instance Show ProgramBaseValue where
   show PBValUnit = "unit"
   show (PBValInt n) = show n
+  show PBValEmpty = "[]"
+  show (PBValCons v PBValEmpty) = "[" ++ show v ++"]"
+  show (PBValCons v vs) = "(" ++ show v ++ ":" ++ show vs ++ ")"
   show (PBValVar var) = var
   show (PBValLeft v) = "left " ++ show v
   show (PBValRight v) = "right " ++ show v
@@ -221,6 +238,7 @@ data ValEnv =
   EmptyVEnv
   | ExtendIsoVEnv String ProgramIsoValue ValEnv
   | ExtendBaseVEnv String EntangledValue ValEnv
+  | ExtendIsoRecEnv String Iso ValEnv
   deriving (Eq, Show)
 
 type TypEnv = [(String , ProgramType)]
