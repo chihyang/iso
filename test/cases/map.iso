@@ -1,0 +1,13 @@
+map :: Unit <-> (Unit + Unit) -> [Unit] <-> [(Unit + Unit)]
+map =
+\g :: (Unit <-> (Unit + Unit)) ->
+  fix f :: ([Unit] <-> [(Unit + Unit)]) ->
+    { [] <-> []; h : t <-> let x = g h in let y = f t in x : y }
+
+g :: Unit <-> (Unit + Unit)
+g =
+{
+  unit <-> left unit
+}
+
+([map g] [unit, unit, unit])

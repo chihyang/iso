@@ -1,0 +1,7 @@
+iso :: (Unit + Unit) <-> (Unit + Unit)
+iso = {
+ left unit <-> left unit ;
+ right unit <-> left unit
+}
+
+iso
