@@ -37,6 +37,7 @@ optionsList =
   , ("load", load), ("l", load)
   , ("matrix", toTypedMatrix), ("m", toTypedMatrix)
   , ("lm", loadMatrix)
+  , ("lt", typeOfF), ("type", typeOfPg)
   , ("quit", quit), ("q", quit)
   ]
 
@@ -46,10 +47,12 @@ help _ = liftIO $ putStrLn $
   ":load file, :l file    Load a file.\n" ++
   ":matrix exp, :m exp\n" ++
   "                       Convert the exp into a matrix according to\n" ++
-  "                       its type if exp evaluates to an iso\n" ++
+  "                       its type if exp evaluates to an iso.\n" ++
   ":lm file               Convert the file into a matrix according to\n" ++
-  "                       its type if exp evaluates to an iso or a base value\n" ++
-  ":paste                 Enter multi-line input mode\n" ++
+  "                       its type if exp evaluates to an iso or a base value.\n" ++
+  ":lt file               Show the type of the program in the file.\n" ++
+  ":type exp, :t exp      Show the type of the given expression.\n" ++
+  ":paste                 Enter multi-line input mode.\n" ++
   ":quit, :q              Quit the program.\n"
 
 loadFile :: String -> IO String
@@ -74,6 +77,15 @@ load = loadF parseOneLine
 loadMatrix :: String -> Repl ()
 loadMatrix = loadF toTypedMatrix
 
+typeOfF :: String -> Repl ()
+typeOfF = loadF typeOfPg
+
+typeOfPg :: String -> Repl ()
+typeOfPg parseThis = case typeOf $ trim parseThis of
+  Right (Left ty) -> liftIO $ print ty
+  Right (Right ty) -> liftIO $ print ty
+  Left err -> liftIO $ putStrLn err
+
 toTypedMatrix :: String -> Repl ()
 toTypedMatrix input = case runTypedMat input of
   Right val -> liftIO $ print val
@@ -87,12 +99,13 @@ quit = const $ do
 
 completer :: WordCompleter IO
 completer n = do
-  let names = [":help", ":load", ":lm", ":matrix", ":m", ":paste", ":quit"]
+  let names = [":help", ":load", ":lm", ":matrix", ":m", ":lt", ":type", ":paste", ":quit"]
   pure $ filter (List.isPrefixOf n) names
 
 prefixCompleter :: CompleterStyle IO
 prefixCompleter = Repline.Prefix (wordCompleter completer)
-  [(":l" , fileCompleter), (":load" , fileCompleter), (":lm" , fileCompleter)]
+  [(":l" , fileCompleter), (":load" , fileCompleter),
+   (":lm" , fileCompleter), (":lt" , fileCompleter)]
 
 repl :: IO ()
 repl = evalRepl

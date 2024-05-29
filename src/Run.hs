@@ -1,4 +1,4 @@
-module Run (check, run, runTypedMat) where
+module Run (check, typeOf, run, runTypedMat) where
 
 import Convert
 import Debug.Trace as T (trace)
@@ -8,7 +8,6 @@ import Data.Matrix as M
 import qualified Data.List as List
 import Interp
 import LinearCheck
-import OrthoCheck
 import Reduce
 import Syntax as S
 import TypeCheck
@@ -26,6 +25,14 @@ check str =
 
 run :: String -> S.Result ProgramValue
 run str = Right str >>= check >>= interpDefsPg
+
+typeOf :: String -> S.Result ProgramType
+typeOf str = do
+  (_, pg) <- check str
+  typeOfPg pg where
+    typeOfPg (PgTm (TmAnn _ ty)) = return $ Left ty
+    typeOfPg (PgIs (IsoAnn _ ty)) = return $ Right ty
+    typeOfPg _ = Left $ moduleName ++ "Failed to get the type of the program!"
 
 runTypedMat :: String -> S.Result (M.Matrix Scale)
 runTypedMat str = do
