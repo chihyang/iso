@@ -27,7 +27,7 @@ collectIndex valMap val =
     Just b -> b
     Nothing -> -1
 
-matrixizeScale :: (Show a, Ord a) => [[(Scale , a)]] -> [a] -> Matrix Scale
+matrixizeScale :: (Ord a) => [[(Scale , a)]] -> [a] -> Matrix Scale
 -- matrixizeScale scaled keys | T.trace ("matrixizeScale " ++ show scaled ++ ", " ++ show keys) False = undefined
 matrixizeScale scaled keys = matrix (length keys) (length scaled) fill where
   fill (x , y) = do
