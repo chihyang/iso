@@ -19,6 +19,8 @@ interpDefsPg (defs, pg) = do
       extendIsoEnv var (replaceIsoEnv env iso) (replaceVal env env')
     replaceVal env (ExtendBaseVEnv var val env') =
       extendBaseEnv var val (replaceVal env env')
+    replaceVal env (ExtendIsoRecEnv var body env') =
+      extendIsoRecEnv var body (replaceVal env env')
 
     replaceIsoEnv env (PIValBase pairs _) = PIValBase pairs env
     replaceIsoEnv env (PIValLam var iso _) = PIValLam var iso env
@@ -45,6 +47,11 @@ interpEnv env (PgIs iso) = do
 interpTm :: ValEnv -> Term -> Result EntangledValue
 interpTm _ TmUnit = return [(1, PBValUnit)]
 interpTm _ (TmInt n) = return [(1, PBValInt n)]
+interpTm _ TmEmpty = return [(1, PBValEmpty)]
+interpTm env (TmCons v vs) = do
+  v' <- interpTm env v
+  vs' <- interpTm env vs
+  return $ distrib2 PBValCons v' vs'
 interpTm env (TmVar var) = lookupBase env var
 interpTm env (TmLInj tm) = do
   v <- interpTm env tm
@@ -80,7 +87,40 @@ interpIso env (IsoApp lhs rhs) = do
   lval <- interpIso env lhs
   rval <- interpIso env rhs
   applyIsoLam lval rval
+interpIso _ (IsoFix var lTy rTy body) =
+  Left $ moduleName ++ "Untyped fix iso " ++ show (IsoFix var lTy rTy body) ++ " cannot be evaluated!"
+interpIso env (IsoAnn (IsoFix var lTy rTy body) otype) =
+  interpIso newEnv (IsoVar res) where
+    res = uniqueName env
+    body' = translateFix res var lTy rTy body otype
+    newEnv = extendIsoRecEnv res body' env
 interpIso env (IsoAnn iso _) = interpIso env iso
+
+translateFix :: String -> String -> BaseType -> BaseType -> Iso -> IsoType -> Iso
+translateFix res var lTy rTy body ty =
+  makeIsoLam body' baseVar vars ty where
+    baseVar = newName res
+    vars = genBinds baseVar ty
+    rator = IsoLam var lTy rTy body
+    rand = makeIsoApp (IsoVar res) vars
+    body' = makeIsoApp (IsoApp rator rand) vars
+
+genBinds :: String -> IsoType -> [String]
+genBinds base (ITyBase _ _) = []
+genBinds base (ITyFun _ _ b) = newId : genBinds newId b where
+  newId = newName base
+
+makeIsoApp :: Iso -> [String] -> Iso
+-- makeIsoApp iso vars | trace ("makeIsoApp " ++ show iso ++ " " ++ show vars) False = undefined
+makeIsoApp iso vars = foldl (\acc var -> (IsoApp acc (IsoVar var))) iso vars
+
+makeIsoLam :: Iso -> String -> [String] -> IsoType -> Iso
+makeIsoLam body baseVar [] (ITyBase _ _) =
+  IsoValue [(ValVar baseVar, ExpLet (PtSingleVar baseVar) body (PtSingleVar baseVar) (ExpVal (ValVar baseVar)))]
+makeIsoLam body baseVar (var:vars) (ITyFun lTy rTy bodyTy) =
+  IsoLam var lTy rTy (makeIsoLam body baseVar vars bodyTy)
+makeIsoLam _ _ vars ty =
+  error $ moduleName ++ "variable list " ++ show vars ++ " and iso type " ++ show ty ++ " mismatch!"
 
 {---------- Applying An Iso To A Term ----------}
 applyIso :: ProgramIsoValue -> EntangledValue -> Result EntangledValue
@@ -99,6 +139,11 @@ applyIsoLam (PIValBase pairs env) _ =
 interpValue :: ValEnv -> Value -> Result EntangledValue
 interpValue _ ValUnit = return [(1, PBValUnit)]
 interpValue _ (ValInt n) = return [(1, PBValInt n)]
+interpValue _ ValEmpty = return [(1, PBValEmpty)]
+interpValue env (ValCons v vs) = do
+  v' <- interpValue env v
+  vs' <- interpValue env vs
+  return $ distrib2 PBValCons v' vs'
 interpValue env (ValVar var) = lookupBase env var
 interpValue env (ValLInj lhs) = do
   v <- interpValue env lhs
@@ -125,6 +170,11 @@ interpPats env (v:vs) = do
 interpPat :: ValEnv -> Value -> Result ProgramBaseValue
 interpPat _ ValUnit = return PBValUnit
 interpPat _ (ValInt n) = return $ PBValInt n
+interpPat _ ValEmpty = return $ PBValEmpty
+interpPat env (ValCons v vs) = do
+  v' <- interpPat env v
+  vs' <- interpPat env vs
+  return $ PBValCons v' vs'
 interpPat _ (ValVar var) = return $ PBValVar var
 interpPat env (ValLInj lhs) = do
   rst <- interpPat env lhs
@@ -234,10 +284,27 @@ extendBaseEnv var val env = ExtendBaseVEnv var val env
 extendIsoEnv :: String -> ProgramIsoValue -> ValEnv -> ValEnv
 extendIsoEnv var val env = ExtendIsoVEnv var val env
 
+extendIsoRecEnv :: String -> Iso -> ValEnv -> ValEnv
+extendIsoRecEnv var body env = ExtendIsoRecEnv var body env
+
+uniqueName :: ValEnv -> String
+uniqueName env = "id_" ++ (show $ envLength env) where
+  envLength :: ValEnv -> Int
+  envLength EmptyVEnv = 0
+  envLength (ExtendIsoVEnv var _ env') = max (length var) (envLength env')
+  envLength (ExtendBaseVEnv var _ env') = max (length var) (envLength env')
+  envLength (ExtendIsoRecEnv var _ env') = max (length var) (envLength env')
+
+newName :: String -> String
+newName var = "_" ++ var
+
 lookupBase :: ValEnv -> String -> Result EntangledValue
 -- lookupBase env var | trace ("lookupBase " ++ show env ++ " " ++ show var) False = undefined
 lookupBase EmptyVEnv var = Left $ moduleName ++ "Cannot find the value " ++ var
 lookupBase (ExtendIsoVEnv var _ env) var'
+  | var == var' = Left $ moduleName ++ var ++ " is not a base value!"
+  | otherwise = lookupBase env var'
+lookupBase (ExtendIsoRecEnv var _ env) var'
   | var == var' = Left $ moduleName ++ var ++ " is not a base value!"
   | otherwise = lookupBase env var'
 lookupBase (ExtendBaseVEnv var val env) var'
@@ -249,6 +316,15 @@ lookupIso :: ValEnv -> String -> Result ProgramIsoValue
 lookupIso EmptyVEnv var = Left $ moduleName ++ "Cannot find the value " ++ var
 lookupIso (ExtendIsoVEnv var iso env) var'
   | var == var' = return iso
+  | otherwise = lookupIso env var'
+lookupIso (ExtendIsoRecEnv var (IsoLam bVar lTy rTy bBody) env) var'
+  | var == var' = return $ PIValLam bVar bBody (ExtendIsoRecEnv var (IsoLam bVar lTy rTy bBody) env)
+  | otherwise = lookupIso env var'
+lookupIso (ExtendIsoRecEnv var (IsoValue [(ValVar v, exp)]) env) var'
+  | var == var' = return $ PIValBase [(PBValVar v, exp)] (ExtendIsoRecEnv var (IsoValue [(ValVar v, exp)]) env)
+  | otherwise = lookupIso env var'
+lookupIso (ExtendIsoRecEnv var body env) var'
+  | var == var' = Left $ "Invalid recursive environment binding: " ++ show var ++ " = " ++ show body
   | otherwise = lookupIso env var'
 lookupIso (ExtendBaseVEnv var _ env) var'
   | var == var' = Left $ moduleName ++ var ++ " is not an iso value!"
