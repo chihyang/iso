@@ -61,7 +61,9 @@ angle p = $(symbol "<") *> p <* $(symbol' ">")
 -}
 pBTyUnit = BTyUnit <$ $(keyword "Unit")
 pBTyInt = BTyInt <$ $(keyword "Int")
+pBTyList = BTyList <$> (brackets pBaseType)
 pBTyVar = BTyVar <$> ident''
+pBTyParen = parens pBaseType
 pBTySum = parens $ do
   l <- pBaseType
   $(symbol "+")
@@ -79,7 +81,14 @@ pBTyMu = do
   body <- pBaseType
   return $ BTyMu var body
 
-pBaseType = pBTyUnit <|> pBTyInt <|> pBTySum <|> pBTyProd <|> pBTyMu <|> pBTyVar
+pBaseType = pBTyUnit <|>
+  pBTyInt <|>
+  pBTySum <|>
+  pBTyProd <|>
+  pBTyMu <|>
+  pBTyVar <|>
+  pBTyList <|>
+  pBTyParen
 
 {-
 -- IsoType
@@ -105,14 +114,58 @@ pIsoType = pITyFun <|> pITyBase
 -}
 pValUnit = ValUnit <$ $(keyword "unit")
 pValInt  = ValInt <$> int
+pValEmpty = ValEmpty <$ $(symbol "[") <* $(symbol "]")
 pValVar  = ValVar <$> ident''
-pValLInj = ValLInj <$> ($(keyword "left") *> pValue)
-pValRInj = ValRInj <$> ($(keyword "right") *> pValue)
---pValPair = ValPair <$> parens (pValue <* $(symbol ",") <*> pValue)
+pValLInj = ValLInj <$> ($(keyword "left") *> pValStart)
+pValRInj = ValRInj <$> ($(keyword "right") *> pValStart)
 pValPair = angle (ValPair <$> pValue <* $(symbol ",") <*> pValue)
-pValAnn  = parens (ValAnn <$> pValue <* $(symbol "::") <*> pBaseType)
+pValParen = parens pValue
 
-pValue = pValUnit <|> pValInt <|> pValLInj <|> pValRInj <|> pValPair <|> pValAnn <|> pValVar
+pValStart :: ParserT PureMode Error Value
+pValStart = pListValColon
+
+pListValColon :: ParserT PureMode Error Value
+pListValColon = do
+  tm <- pListVal
+  tms <- many ($(symbol ":") *> pValStart)
+  return $ makeColonVal (tm:tms)
+
+makeColonVal :: [Value] -> Value
+makeColonVal [] = error "Impossible case!"
+makeColonVal [tm] = tm
+makeColonVal (tm:tms) = ValCons tm (makeColonVal tms)
+
+pListValComma :: ParserT PureMode Error Value
+pListValComma = do
+  $(symbol "[")
+  tm <- pValue
+  tms <- many ($(symbol ",") *> pValue)
+  $(symbol "]")
+  return $ makeCommaVal (tm:tms)
+
+makeCommaVal :: [Value] -> Value
+makeCommaVal [] = ValEmpty
+makeCommaVal (tm:tms) = ValCons tm (makeCommaVal tms)
+
+pListVal :: ParserT PureMode Error Value
+pListVal =
+  pValUnit <|>
+  pValEmpty <|>
+  pValInt <|>
+  pValLInj <|>
+  pValRInj <|>
+  pValPair <|>
+  pValVar <|>
+  pListValComma <|>
+  pValParen
+
+pValue :: ParserT PureMode Error Value
+pValue = do
+  first <- pValStart
+  rest <- optional ($(symbol "::") *> pBaseType)
+  case rest of
+    Just ty -> return $ ValAnn first ty
+    Nothing -> return first
 
 {-
 -- Exp
@@ -260,13 +313,13 @@ pIso = pIsoValue <|> pIsoLam <|> pIsoApp <|> pIsoFix <|> pIsoVar
 -}
 pTmUnit = TmUnit <$ $(keyword "unit")
 pTmInt  = TmInt <$> int
+pTmEmpty = TmEmpty <$ $(symbol "[") <* $(symbol "]")
 pTmVar  = TmVar <$> ident''
-pTmLInj = TmLInj <$> ($(keyword "left") *> pTerm)
-pTmRInj = TmRInj <$> ($(keyword "right") *> pTerm)
+pTmLInj = TmLInj <$> ($(keyword "left") *> pTmStart)
+pTmRInj = TmRInj <$> ($(keyword "right") *> pTmStart)
 pTmPair = angle (TmPair <$> pTerm <* $(symbol ",") <*> pTerm)
-pTmAnn  = parens (TmAnn <$> pTerm <* $(symbol "::") <*> pBaseType)
 -- ^ above are alomost identical with pValue
-pTmIsoApp = parens $ TmIsoApp <$> pIso <*> pTerm
+pTmIsoApp = TmIsoApp <$> pIso <*> pTerm
 pTmLet    = do
   $(keyword "let")
   pat <- pPattern
@@ -275,17 +328,56 @@ pTmLet    = do
   $(keyword' "in")
   body <- pTerm
   return $ TmLet pat rhs body
+pTmParen = parens pTerm
 
-pTerm =
+-- left recursive case
+pTmStart :: ParserT PureMode Error Term
+pTmStart = pListTmColon
+
+pListTmColon :: ParserT PureMode Error Term
+pListTmColon = do
+  tm <- pListTm
+  tms <- many ($(symbol ":") *> pTmStart)
+  return $ makeColonList (tm:tms)
+
+makeColonList :: [Term] -> Term
+makeColonList [] = error "Impossible case!"
+makeColonList [tm] = tm
+makeColonList (tm:tms) = TmCons tm (makeColonList tms)
+
+pListTmComma :: ParserT PureMode Error Term
+pListTmComma = do
+  $(symbol "[")
+  tm <- pTerm
+  tms <- many ($(symbol ",") *> pTerm)
+  $(symbol "]")
+  return $ makeCommaList (tm:tms)
+
+makeCommaList :: [Term] -> Term
+makeCommaList [] = TmEmpty
+makeCommaList (tm:tms) = TmCons tm (makeCommaList tms)
+
+pListTm :: ParserT PureMode Error Term
+pListTm =
   pTmUnit <|>
+  pTmEmpty <|>
   pTmInt <|>
   pTmLInj <|>
   pTmRInj <|>
   pTmPair <|>
-  pTmAnn <|>
   pTmIsoApp <|>
   pTmLet <|>
-  pTmVar
+  pTmVar <|>
+  pListTmComma <|>
+  pTmParen
+
+pTerm :: ParserT PureMode Error Term
+pTerm = do
+  first <- pTmStart
+  rest <- optional ($(symbol "::") *> pBaseType)
+  case rest of
+    Just ty -> return $ TmAnn first ty
+    Nothing -> return first
 
 {-
 -- Definitions
