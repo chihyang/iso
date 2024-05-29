@@ -93,21 +93,26 @@ pBaseType = pBTyUnit <|>
 {-
 -- IsoType
 -}
-pITyBase = do
+pITy :: ParserT PureMode Error (BaseType, BaseType)
+pITy = do
   l <- pBaseType
-  $(symbol "<->")
+  $(symbol' "<->")
   r <- pBaseType
-  return $ ITyBase l r
+  return $ (l, r)
 
-pITyFun = p1 <* $(symbol' "->") <*> pIsoType
-  where
-    p1 = parens $ do
-      l <- pBaseType
-      $(symbol "<->")
-      r <- pBaseType
-      return $ ITyFun l r
+pITyPair :: ParserT PureMode Error (BaseType, BaseType)
+pITyPair = pITy
 
-pIsoType = pITyFun <|> pITyBase
+pITyFun :: ParserT PureMode Error IsoType
+pITyFun = do
+  (l, r) <- pITyPair
+  pb <- optional ($(symbol "->") *> pIsoType)
+  case pb of
+    Just ty -> return $ ITyFun l r ty
+    Nothing -> return $ ITyBase l r
+
+pIsoType :: ParserT PureMode Error IsoType
+pIsoType = pITyFun
 
 {-
 -- Value

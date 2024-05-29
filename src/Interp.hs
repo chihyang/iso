@@ -22,7 +22,6 @@ interpDefsPg (defs, pg) = do
 
     replaceIsoEnv env (PIValBase pairs _) = PIValBase pairs env
     replaceIsoEnv env (PIValLam var iso _) = PIValLam var iso env
-    replaceIsoEnv env (PIValFix var iso _) = PIValFix var iso env
 
 interpDefs :: Definitions -> Result ValEnv
 interpDefs [] = return emptyEnv
@@ -81,23 +80,18 @@ interpIso env (IsoApp lhs rhs) = do
   lval <- interpIso env lhs
   rval <- interpIso env rhs
   applyIsoLam lval rval
-interpIso env (IsoFix var _ _ body) = return (PIValFix var body env)
 interpIso env (IsoAnn iso _) = interpIso env iso
 
 {---------- Applying An Iso To A Term ----------}
 applyIso :: ProgramIsoValue -> EntangledValue -> Result EntangledValue
 -- applyIso l r | trace ("applyIso " ++ show l ++ " " ++ show r) False = undefined
 applyIso (PIValBase pairs env) rhs = patternMatchEnt env pairs rhs
-applyIso (PIValFix var body env) rhs =
-  Left $ moduleName ++ "Cannot apply iso " ++ show (PIValFix var body env) ++ " to " ++ show rhs
 applyIso iso base = Left $ moduleName ++ "Cannot apply iso " ++ show iso ++ " to " ++ show base
 
 {---------- Applying An Iso To An Iso ----------}
 applyIsoLam :: ProgramIsoValue -> ProgramIsoValue -> Result ProgramIsoValue
 -- applyIsoLam l r | trace ("applyIsoLam " ++ show l ++ " " ++ show r) False = undefined
 applyIsoLam (PIValLam var body env) rhs = interpIso (extendIsoEnv var rhs env) body
-applyIsoLam (PIValFix var body env) rhs =
-  Left $ moduleName ++ "Application of IsoFix is not supported yet, given " ++ show (PIValFix var body env)
 applyIsoLam (PIValBase pairs env) _ =
   error $ "Expect an Iso Lambda, given an Iso Base " ++ show (PIValBase pairs env)
 

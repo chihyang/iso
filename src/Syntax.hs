@@ -22,7 +22,7 @@ instance Show BaseType where
   show (BTyVar var) = var
   show (BTySum lt rt) = "(" ++ show lt ++ " + " ++ show rt ++ ")"
   show (BTyProd lt rt) = "(" ++ show lt ++ " x " ++ show rt ++ ")"
-  show (BTyMu var bodyT) = "Mu " ++ show var ++ ". " ++ show bodyT
+  show (BTyMu var bodyT) = "Mu " ++ var ++ ". " ++ show bodyT
 
 data IsoType =
   ITyBase BaseType BaseType
@@ -57,7 +57,7 @@ instance Show Value where
   show (ValLInj v) = "left " ++ show v
   show (ValRInj v) = "right " ++ show v
   show (ValPair l r) = "<" ++ show l ++ ", " ++ show r ++ ">"
-  show (ValAnn v t) = "(" ++ show v ++ " :: " ++ show t ++ ")"
+  show (ValAnn v _) = show v
 
 data Exp =
   ExpVal Value
@@ -123,14 +123,14 @@ instance Show Iso where
   show (IsoVar var) = var
   show (IsoLam var lhs rhs body) =
     "\\" ++
-    show var ++ " :: (" ++ show lhs ++ " <-> " ++ show rhs ++ ")" ++
+    var ++ " :: (" ++ show lhs ++ " <-> " ++ show rhs ++ ")" ++
     " ->" ++ show body
   show (IsoApp rator rand) = "(" ++ show rator ++ " " ++ show rand ++ ")"
   show (IsoFix var lhs rhs iso) =
     "fix " ++
-    show var ++ " :: (" ++ show lhs ++ " <-> " ++ show rhs ++ ")" ++
+    var ++ " :: (" ++ show lhs ++ " <-> " ++ show rhs ++ ")" ++
     " ->" ++ show iso
-  show (IsoAnn iso ty) = "(" ++ show iso ++ " :: " ++ show ty ++ ")"
+  show (IsoAnn iso _) = show iso
 
 data Term =
   TmUnit
@@ -159,7 +159,7 @@ instance Show Term where
   show (TmIsoApp iso tm) = "(" ++ show iso ++ " " ++ show tm ++ ")"
   show (TmLet pat rhs body) =
     "let " ++ show pat ++ " = " ++ show rhs ++ "in " ++ show body
-  show (TmAnn v t) = "(" ++ show v ++ " :: " ++ show t ++ ")"
+  show (TmAnn v _) = show v
 
 data Program =
   PgTm Term
@@ -195,13 +195,11 @@ instance Show ProgramBaseValue where
 data ProgramIsoValue =
   PIValBase [(ProgramBaseValue , Exp)] ValEnv
   | PIValLam String Iso ValEnv
-  | PIValFix String Iso ValEnv
   deriving (Eq)
 instance Show ProgramIsoValue where
   show (PIValBase pairs _) =
     "{" ++ (L.intercalate "; " (map (\(f,s) -> (show f) ++ " <-> " ++ (show s)) pairs)) ++ "}"
-  show (PIValLam var iso _) = "\\" ++ show var ++ " -> " ++ show iso
-  show (PIValFix var iso _) = "mu." ++ show var ++ " -> " ++ show iso
+  show (PIValLam var iso _) = "\\" ++ var ++ " -> " ++ show iso
 
 data ProgramValue =
   PB ProgramBaseValue
