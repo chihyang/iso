@@ -2,19 +2,13 @@ module Repl
   ( repl
   ) where
 
-import Control.Exception
+import qualified Command as Cmd
 import Control.Monad.IO.Class
-import Data.Char
 import qualified Data.List as List
-import Run
 import System.Console.Repline as Repline hiding (banner)
 import System.Exit
-import System.IO
 
 type Repl a = HaskelineT IO a
-
-trim :: String -> String
-trim = List.dropWhileEnd isSpace . List.dropWhile isSpace
 
 banner :: MultiLine -> Repl String
 banner MultiLine = pure "| "
@@ -27,9 +21,6 @@ final :: Repl ExitDecision
 final = do
   liftIO $ putStrLn "Leaving IsoCi."
   return Exit
-
-commandF :: String -> Repl ()
-commandF input = parseOneLine $ trim input
 
 optionsList :: [(String , String -> Repl ())]
 optionsList =
@@ -55,41 +46,23 @@ help _ = liftIO $ putStrLn $
   ":paste                 Enter multi-line input mode.\n" ++
   ":quit, :q              Quit the program.\n"
 
-loadFile :: String -> IO String
-loadFile file =
-  catch (readFile file)
-  (\e -> do let err = show (e :: IOException)
-            hPutStr stderr ("Warning: Couldn't open " ++ file ++ ": " ++ err)
-            return "")
-
-loadF :: (String -> Repl ()) -> String -> Repl ()
-loadF f cmdStr =
-  let str = trim cmdStr in
-  if str == ""
-  then liftIO $ putStrLn "File name required!"
-  else do
-    input <- liftIO $ loadFile $ trim str
-    f $ input
+eval :: String -> Repl ()
+eval = liftIO . Cmd.eval
 
 load :: String -> Repl ()
-load = loadF parseOneLine
-
-loadMatrix :: String -> Repl ()
-loadMatrix = loadF toTypedMatrix
+load = liftIO . Cmd.evalFile
 
 typeOfF :: String -> Repl ()
-typeOfF = loadF typeOfPg
+typeOfF = liftIO . Cmd.typeOfFile
 
 typeOfPg :: String -> Repl ()
-typeOfPg parseThis = case typeOf $ trim parseThis of
-  Right (Left ty) -> liftIO $ print ty
-  Right (Right ty) -> liftIO $ print ty
-  Left err -> liftIO $ putStrLn err
+typeOfPg = liftIO . Cmd.typeOf
+
+loadMatrix :: String -> Repl ()
+loadMatrix = liftIO . Cmd.evalToMatrixFile
 
 toTypedMatrix :: String -> Repl ()
-toTypedMatrix input = case runTypedMat input of
-  Right val -> liftIO $ print val
-  Left err -> liftIO $ putStrLn err
+toTypedMatrix = liftIO . Cmd.evalToMatrix
 
 quit :: String -> Repl ()
 quit = const $ do
@@ -110,16 +83,10 @@ prefixCompleter = Repline.Prefix (wordCompleter completer)
 repl :: IO ()
 repl = evalRepl
   banner
-  commandF
+  eval
   optionsList
   (Just ':')
   (Just "paste")
   prefixCompleter
   initial
   final
-
-parseOneLine :: String -> Repl ()
-parseOneLine "" = liftIO $ putStrLn ""
-parseOneLine parseThis = case run parseThis of
-  Right val -> liftIO $ print val
-  Left err -> liftIO $ putStrLn err
