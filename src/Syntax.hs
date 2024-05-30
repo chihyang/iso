@@ -18,7 +18,7 @@ data BaseType =
 instance Show BaseType where
   show BTyUnit = "Unit"
   show BTyInt = "Int"
-  show (BTyList t) = "List " ++ show t
+  show (BTyList t) = "[" ++ show t ++ "]"
   show (BTyVar var) = var
   show (BTySum lt rt) = "(" ++ show lt ++ " + " ++ show rt ++ ")"
   show (BTyProd lt rt) = "(" ++ show lt ++ " x " ++ show rt ++ ")"

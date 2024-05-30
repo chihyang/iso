@@ -21,9 +21,36 @@ import FlatParse.Basic as F hiding (Parser, runParser, string, cut)
 import FlatParse.Common.Parser (PureMode)
 import FlatParse.Examples.BasicLambda.Lexer hiding (isKeyword)
 import FlatParse.Examples.BasicLambda.Parser (Name, int, digit)
-import Syntax
+import Syntax as Syntax
 
-type FParser a = F.ParserT PureMode Error a
+moduleName :: String
+moduleName = "Parser: "
+
+-- General type for disambiguity
+data GType =
+  GUnit
+  | GInt
+  | GList GType
+  | GVar String
+  | GSum GType GType
+  | GProd GType GType
+  | GMu String GType
+  | GDArr GType GType
+  | GArr GType GType
+  deriving (Eq, Ord)
+instance Show GType where
+  show GUnit = "Unit"
+  show GInt = "Int"
+  show (GList t) = "[" ++ show t ++ "]"
+  show (GVar var) = var
+  show (GSum lt rt) = "(" ++ show lt ++ " + " ++ show rt ++ ")"
+  show (GProd lt rt) = "(" ++ show lt ++ " x " ++ show rt ++ ")"
+  show (GMu var bodyT) = "Mu " ++ var ++ ". " ++ show bodyT
+  show (GDArr lt rt) = "(" ++ show lt ++ " <-> " ++ show rt ++ ")"
+  show (GArr vT bodyT) = show vT ++ " -> " ++ show bodyT
+
+-- Parser is a type defined in the Lexer example
+-- type Parser a = F.ParserT PureMode Error a
 -- TODO: use TH to expand kw's
 -- keywordsList = ["Unit", "Int", "mu", "unit", "left", "right", "let", "in"]
 -- kw = map (\str -> [| $(str) -> pure () |] keywordsList
@@ -63,56 +90,125 @@ pBTyUnit = BTyUnit <$ $(keyword "Unit")
 pBTyInt = BTyInt <$ $(keyword "Int")
 pBTyList = BTyList <$> (brackets pBaseType)
 pBTyVar = BTyVar <$> ident''
-pBTyParen = parens pBaseType
-pBTySum = parens $ do
-  l <- pBaseType
-  $(symbol "+")
-  r <- pBaseType
-  return $ BTySum l r
-pBTyProd = parens $ do
-  l <- pBaseType
-  $(symbol "x")
-  r <- pBaseType
-  return $ BTyProd l r
 pBTyMu = do
   $(keyword "mu")
   var <- ident''
   $(symbol' ".")
   body <- pBaseType
   return $ BTyMu var body
+pBTyParen = parens pBaseType
 
-pBaseType = pBTyUnit <|>
+pBaseProdStart :: ParserT PureMode Error BaseType
+pBaseProdStart =
+  pBTyUnit <|>
   pBTyInt <|>
-  pBTySum <|>
-  pBTyProd <|>
   pBTyMu <|>
   pBTyVar <|>
   pBTyList <|>
   pBTyParen
 
-{-
--- IsoType
--}
-pITy :: ParserT PureMode Error (BaseType, BaseType)
-pITy = do
-  l <- pBaseType
-  $(symbol' "<->")
-  r <- pBaseType
-  return $ (l, r)
+pBaseStart :: ParserT PureMode Error BaseType
+pBaseStart = do
+  l <- pBaseProdStart
+  ty <- optional ($(symbol "x") *> pBaseType)
+  case ty of
+    Just r -> return $ BTyProd l r
+    Nothing -> return l
 
-pITyPair :: ParserT PureMode Error (BaseType, BaseType)
-pITyPair = pITy
+pBaseType :: ParserT PureMode Error BaseType
+pBaseType = do
+  l <- pBaseStart
+  ty <- optional ($(symbol "+") *> pBaseType)
+  case ty of
+    Just r -> return $ BTySum l r
+    Nothing -> return l
 
-pITyFun :: ParserT PureMode Error IsoType
-pITyFun = do
-  (l, r) <- pITyPair
-  pb <- optional ($(symbol "->") *> pIsoType)
-  case pb of
-    Just ty -> return $ ITyFun l r ty
-    Nothing -> return $ ITyBase l r
+pMixTyUnit = GUnit <$ $(keyword "Unit")
+pMixTyInt = GInt <$ $(keyword "Int")
+pMixTyList = GList <$> (brackets pMixType)
+pMixTyVar = GVar <$> ident''
+pMixTyMu = do
+  $(keyword "mu")
+  var <- ident''
+  $(symbol' ".")
+  body <- pMixType
+  return $ GMu var body
+pMixTyParen = parens pMixType
 
-pIsoType :: ParserT PureMode Error IsoType
-pIsoType = pITyFun
+pMixProdStart :: ParserT PureMode Error GType
+pMixProdStart =
+  pMixTyUnit <|>
+  pMixTyInt <|>
+  pMixTyMu <|>
+  pMixTyVar <|>
+  pMixTyList <|>
+  pMixTyParen
+
+pMixDArrStart :: ParserT PureMode Error GType
+pMixDArrStart = do
+  l <- pMixProdStart
+  ty <- optional ($(symbol "<->") *> pMixType)
+  case ty of
+    Just r -> return $ GDArr l r
+    Nothing -> return l
+
+pMixArrStart :: ParserT PureMode Error GType
+pMixArrStart = do
+  l <- pMixDArrStart
+  ty <- optional ($(symbol "->") *> pMixType)
+  case ty of
+    Just r -> return $ GArr l r
+    Nothing -> return l
+
+pMixStart :: ParserT PureMode Error GType
+pMixStart = do
+  l <- pMixArrStart
+  ty <- optional ($(symbol "x") *> pMixType)
+  case ty of
+    Just r -> return $ GProd l r
+    Nothing -> return l
+
+pMixType :: ParserT PureMode Error GType
+pMixType = do
+  l <- pMixStart
+  ty <- optional ($(symbol "+") *> pMixType)
+  case ty of
+    Just r -> return $ GSum l r
+    Nothing -> return l
+
+g2Base :: GType -> Syntax.Result BaseType
+g2Base GUnit = return BTyUnit
+g2Base (GList gty) = do
+  bty <- g2Base gty
+  return $ BTyList bty
+g2Base (GVar var) = return (BTyVar var)
+g2Base (GSum ty1 ty2) = do
+  bty1 <- g2Base ty1
+  bty2 <- g2Base ty2
+  return $ BTySum bty1 bty2
+g2Base (GProd ty1 ty2) = do
+  bty1 <- g2Base ty1
+  bty2 <- g2Base ty2
+  return $ BTyProd bty1 bty2
+g2Base (GMu var ty) = do
+  bty <- g2Base ty
+  return $ BTyMu var bty
+g2Base (GDArr ty1 ty2) = Left $ moduleName ++ "Expect a base type, given an iso type: " ++ show (GDArr ty1 ty2)
+g2Base (GArr ty1 ty2) = Left $ moduleName ++ "Expect a base type, given an iso type: " ++ show (GArr ty1 ty2)
+
+g2Iso :: GType -> Syntax.Result IsoType
+g2Iso (GDArr ty1 ty2) = do
+  bty1 <- g2Base ty1
+  bty2 <- g2Base ty2
+  return $ (ITyBase bty1 bty2)
+g2Iso (GArr ty1 ty2) = do
+  ity1 <- g2Iso ty1
+  case ity1 of
+    (ITyBase bty1 bty2) -> do
+      ity2 <- g2Iso ty2
+      return $ ITyFun bty1 bty2 ity2
+    ty -> Left $ moduleName ++ "Invalid argument type, expect a `<->` type, given: " ++ show ty
+g2Iso ty = Left $ moduleName ++ "Invalid iso type, expect a `<->` or an `->` type, given: " ++ show ty
 
 {-
 -- Value
@@ -175,10 +271,10 @@ pValue = do
 {-
 -- Exp
 -}
-pExpVal :: FParser Exp
+pExpVal :: Parser Exp
 pExpVal = ExpVal <$> pValue
 
-pExpLet :: FParser Exp
+pExpLet :: Parser Exp
 pExpLet = do
   $(keyword "let")
   pat <- pPattern
@@ -212,7 +308,7 @@ pNegNumber = do
 pAllNumber :: Parser Double
 pAllNumber = pNegNumber <|> pNumber
 
-pComplex :: FParser Scale
+pComplex :: Parser Scale
 pComplex = do
   $(symbol "(")
   real <- pAllNumber
@@ -221,29 +317,29 @@ pComplex = do
   $(symbol ")")
   return $ real C.:+ imag
 
-pScale :: FParser Scale
+pScale :: Parser Scale
 pScale = pComplex <|> ((\r -> r :+ 0) <$> pNumber)
 
-pExpScale :: FParser Exp
+pExpScale :: Parser Exp
 pExpScale = do
   scale <- pScale
   $(symbol "*")
   e <- pExp
   return $ ExpScale scale e
 
-pExpAdd :: FParser Exp
+pExpAdd :: Parser Exp
 pExpAdd = $(symbol "+") *> pExp
 
-pExpSub :: FParser Exp
+pExpSub :: Parser Exp
 pExpSub = do
   $(symbol "-")
   v <- pExp
   return $ ExpScale ((-1.0) :+ 0) v
 
-pExpAdditive :: FParser Exp
+pExpAdditive :: Parser Exp
 pExpAdditive = pExpAdd <|> pExpSub
 
-pExpPlus :: FParser Exp
+pExpPlus :: Parser Exp
 pExpPlus = do
   $(symbol "[")
   l <- pExp
@@ -251,7 +347,7 @@ pExpPlus = do
   $(symbol "]")
   return $ ExpPlus [l,r]
 
-pExp :: FParser Exp
+pExp :: Parser Exp
 pExp = pExpLet <|> pExpPlus <|> pExpScale <|> pExpVal
 
 {-
@@ -387,35 +483,40 @@ pTerm = do
 {-
 -- Definitions
 -}
-pDefType :: FParser (String, Either IsoType Iso)
+pDefType :: ParserT PureMode Error (Either IsoType Iso)
 pDefType = do
-  var <- ident''
   $(symbol "::")
-  ty <- pIsoType
-  return (var, Left ty)
+  ty <- pMixType
+  case g2Iso ty of
+    Right ity -> return $ Left ity
+    Left msg -> do
+      pos <- getPos
+      err $ Imprecise pos [Msg msg]
 
-pDefIso :: FParser (String, Either IsoType Iso)
+pDefIso :: ParserT PureMode Error (Either IsoType Iso)
 pDefIso = do
-  var <- ident''
   $(symbol "=")
   iso <- pIso
-  return (var, Right iso)
+  return $ Right iso
 
-pDef = pDefType <|> pDefIso
+pDef = do
+  var <- ident''
+  val <- (pDefType <|> pDefIso)
+  return $ (var, val)
 
 {-
 -- Program
 -}
-pPgTm :: FParser Program
+pPgTm :: Parser Program
 pPgTm = PgTm <$> pTerm
 
-pPgIs :: FParser Program
+pPgIs :: Parser Program
 pPgIs = PgIs <$> pIso
 
-pProg :: FParser Program
+pProg :: Parser Program
 pProg = pPgIs <|> pPgTm
 
-pDefsPg :: FParser (Declarations, Program)
+pDefsPg :: Parser (Declarations, Program)
 pDefsPg = do
   decs <- many pDef
   pg <- pProg
