@@ -1,4 +1,4 @@
-map :: Unit <-> (Unit + Unit) -> [Unit] <-> [(Unit + Unit)]
+map :: (Unit <-> (Unit + Unit)) -> [Unit] <-> [(Unit + Unit)]
 map =
 \g :: (Unit <-> (Unit + Unit)) ->
   fix f :: ([Unit] <-> [(Unit + Unit)]) ->
