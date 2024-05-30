@@ -26,6 +26,7 @@ dependencies:
 - bytestring >= 0.11.5.3
 - flatparse >= 0.5.0.2
 - repline >= 0.4.2.0
+- cmdargs >= 0.10.22
 
 ghc-options:
 - -Wall
