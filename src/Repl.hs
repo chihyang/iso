@@ -78,7 +78,8 @@ completer n = do
 prefixCompleter :: CompleterStyle IO
 prefixCompleter = Repline.Prefix (wordCompleter completer)
   [(":l" , fileCompleter), (":load" , fileCompleter),
-   (":lm" , fileCompleter), (":lt" , fileCompleter)]
+   (":lm" , fileCompleter), (":lt" , fileCompleter),
+   (":m" , fileCompleter), (":matrix" , fileCompleter)]
 
 repl :: IO ()
 repl = evalRepl
