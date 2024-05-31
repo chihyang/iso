@@ -178,6 +178,7 @@ pMixType = do
 
 g2Base :: GType -> Syntax.Result BaseType
 g2Base GUnit = return BTyUnit
+g2Base GInt = return BTyInt
 g2Base (GList gty) = do
   bty <- g2Base gty
   return $ BTyList bty
@@ -499,6 +500,7 @@ pDefIso = do
   iso <- pIso
   return $ Right iso
 
+pDef :: ParserT PureMode Error (String, Declaration)
 pDef = do
   var <- ident''
   val <- (pDefType <|> pDefIso)
