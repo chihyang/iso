@@ -62,6 +62,7 @@ isKeyword spn = inSpan spn $ do
       "Unit"  -> pure ()
       "Int"   -> pure ()
       "mu"    -> pure ()
+      "μ"    -> pure ()
       "fix"    -> pure ()
       "unit"  -> pure ()
       "left"  -> pure ()
@@ -77,6 +78,24 @@ ident = token $ byteStringOf $
 ident'' :: Parser String
 ident'' = utf8ToStr <$> ident
 
+dArrow :: ParserT PureMode Error ()
+dArrow = $(symbol "<->") <|> $(symbol "↔")
+
+arrow :: ParserT PureMode Error ()
+arrow = $(symbol "->") <|> $(symbol "→")
+
+prod :: ParserT PureMode Error ()
+prod = $(symbol "x") <|> $(symbol "×")
+
+dColon :: ParserT PureMode Error ()
+dColon = $(symbol "::") <|> $(symbol "∷")
+
+dColon' :: ParserT PureMode Error ()
+dColon' = $(symbol' "::") <|> $(symbol' "∷")
+
+mu :: ParserT PureMode Error ()
+mu = $(keyword "mu") <|> $(keyword "μ")
+
 -- use TH to write this so it's feasible to do `C <$> parens p` with nary constructors?
 parens p = $(symbol "(") *> p <* $(symbol' ")")
 brackets p = $(symbol "[") *> p <* $(symbol' "]")
@@ -91,7 +110,7 @@ pBTyInt = BTyInt <$ $(keyword "Int")
 pBTyList = BTyList <$> (brackets pBaseType)
 pBTyVar = BTyVar <$> ident''
 pBTyMu = do
-  $(keyword "mu")
+  mu
   var <- ident''
   $(symbol' ".")
   body <- pBaseType
@@ -110,7 +129,7 @@ pBaseProdStart =
 pBaseStart :: ParserT PureMode Error BaseType
 pBaseStart = do
   l <- pBaseProdStart
-  ty <- optional ($(symbol "x") *> pBaseType)
+  ty <- optional (prod *> pBaseType)
   case ty of
     Just r -> return $ BTyProd l r
     Nothing -> return l
@@ -128,7 +147,7 @@ pMixTyInt = GInt <$ $(keyword "Int")
 pMixTyList = GList <$> (brackets pMixType)
 pMixTyVar = GVar <$> ident''
 pMixTyMu = do
-  $(keyword "mu")
+  mu
   var <- ident''
   $(symbol' ".")
   body <- pMixType
@@ -147,7 +166,7 @@ pMixProdStart =
 pMixDArrStart :: ParserT PureMode Error GType
 pMixDArrStart = do
   l <- pMixProdStart
-  ty <- optional ($(symbol "<->") *> pMixType)
+  ty <- optional (dArrow *> pMixType)
   case ty of
     Just r -> return $ GDArr l r
     Nothing -> return l
@@ -155,7 +174,7 @@ pMixDArrStart = do
 pMixArrStart :: ParserT PureMode Error GType
 pMixArrStart = do
   l <- pMixDArrStart
-  ty <- optional ($(symbol "->") *> pMixType)
+  ty <- optional (arrow *> pMixType)
   case ty of
     Just r -> return $ GArr l r
     Nothing -> return l
@@ -163,7 +182,7 @@ pMixArrStart = do
 pMixStart :: ParserT PureMode Error GType
 pMixStart = do
   l <- pMixArrStart
-  ty <- optional ($(symbol "x") *> pMixType)
+  ty <- optional (prod *> pMixType)
   case ty of
     Just r -> return $ GProd l r
     Nothing -> return l
@@ -264,7 +283,7 @@ pListVal =
 pValue :: ParserT PureMode Error Value
 pValue = do
   first <- pValStart
-  rest <- optional ($(symbol "::") *> pBaseType)
+  rest <- optional (dColon *> pBaseType)
   case rest of
     Just ty -> return $ ValAnn first ty
     Nothing -> return first
@@ -371,7 +390,7 @@ pPattern = pPtMultiVar <|> pPtSingleVar
 -}
 pIsoClause = do
   lhs <- pValue
-  $(symbol' "<->")
+  dArrow
   rhs <- pExp
   return (lhs, rhs)
 
@@ -383,13 +402,13 @@ pIsoVar = IsoVar <$> ident''
 pIsoLam = do
   $(symbol "\\")
   var <- ident''
-  $(symbol' "::")
+  dColon'
   $(symbol' "(")
   l <- pBaseType
-  $(symbol "<->")
+  dArrow
   r <- pBaseType
   $(symbol' ")")
-  $(symbol' "->")
+  arrow
   body <- pIso
   return $ IsoLam var l r body
 
@@ -398,13 +417,13 @@ pIsoApp = brackets (IsoApp <$> pIso <*> pIso)
 pIsoFix = do
   $(keyword "fix")
   var <- ident''
-  $(symbol' "::")
+  dColon'
   $(symbol' "(")
   l <- pBaseType
-  $(symbol "<->")
+  dArrow
   r <- pBaseType
   $(symbol' ")")
-  $(symbol' "->")
+  arrow
   iso <- pIso
   return $ IsoFix var l r iso
 
@@ -476,7 +495,7 @@ pListTm =
 pTerm :: ParserT PureMode Error Term
 pTerm = do
   first <- pTmStart
-  rest <- optional ($(symbol "::") *> pBaseType)
+  rest <- optional (dColon *> pBaseType)
   case rest of
     Just ty -> return $ TmAnn first ty
     Nothing -> return first
@@ -486,7 +505,7 @@ pTerm = do
 -}
 pDefType :: ParserT PureMode Error (Either IsoType Iso)
 pDefType = do
-  $(symbol "::")
+  dColon
   ty <- pMixType
   case g2Iso ty of
     Right ity -> return $ Left ity

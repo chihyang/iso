@@ -125,7 +125,7 @@ instance Show Iso where
     "\\" ++
     var ++ " :: (" ++ show lhs ++ " <-> " ++ show rhs ++ ")" ++
     " ->" ++ show body
-  show (IsoApp rator rand) = "(" ++ show rator ++ " " ++ show rand ++ ")"
+  show (IsoApp rator rand) = "[" ++ show rator ++ " " ++ show rand ++ "]"
   show (IsoFix var lhs rhs iso) =
     "fix " ++
     var ++ " :: (" ++ show lhs ++ " <-> " ++ show rhs ++ ")" ++
