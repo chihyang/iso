@@ -1,0 +1,12 @@
+-- This one tests pattern matching compilation.
+flip :: ((Unit + Unit) x ((Unit + Unit) + Unit)) <-> (((Unit + Unit) + Unit) x (Unit + Unit))
+
+-- The following example has duplicate patterns.
+flip =
+{
+  <right unit, left x> <-> <left x, right unit>;
+  <right unit, x> <-> <x, right unit>;
+  <left unit, z> <-> <z, left unit>
+}
+
+flip
