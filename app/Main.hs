@@ -6,10 +6,10 @@ import qualified Repl (repl)
 import System.Console.CmdArgs
 
 data IsoMode = Repl
-  | Eval {efile :: FilePath, output :: FilePath}
-  | Matrix {mfile :: FilePath, output :: FilePath}
-  | Type {tfile :: FilePath, output :: FilePath}
-  | Perpl {pfile :: FilePath, output :: FilePath}
+  | Eval {input :: FilePath, output :: FilePath}
+  | Matrix {input :: FilePath, output :: FilePath}
+  | Type {input :: FilePath, output :: FilePath}
+  | Perpl {input :: FilePath, output :: FilePath}
   deriving (Data,Typeable,Show,Eq)
 
 repl :: IsoMode
@@ -18,29 +18,29 @@ repl = Repl &=
 
 evalFile :: IsoMode
 evalFile = Eval {
-  efile = def &= typ "PPL" &= argPos 0,
-  output = def &= help "Write the value to the specified file" &= typFile
+  input = def &= typ "<ISO to eval>" &= argPos 0,
+  output = def &= help "Write the value to the specified file" &= typ "TEXT"
   } &=
   help "Evaluate a file"
 
 evalToMatFile :: IsoMode
 evalToMatFile = Matrix {
-  mfile = def &= typ "PPL" &= argPos 0,
-  output = def &= help "Write the matrix to the specified file" &= typFile
+  input = def &= typ "<ISO to convert>" &= argPos 0,
+  output = def &= help "Write the matrix to the specified file" &= typ "TEXT"
   } &=
   help "Evaluate a file to a matrix"
 
 typeOf :: IsoMode
 typeOf = Type {
-  tfile = def &= typ "PPL" &= argPos 0,
+  input = def &= typ "<ISO to type infer>" &= argPos 0,
   output = def &= help "Write the type to the specified file" &= typ "TEXT"
   } &=
   help "Get the type of the given program in the file"
 
 toPerpl :: IsoMode
 toPerpl = Perpl {
-  pfile = def &= typ "PPL" &= argPos 0,
-  output = def &= help "Write the FGG to the specified JSON file" &= typ "JSON"
+  input = def &= typ "<ISO to translate>" &= argPos 0,
+  output = def &= help "Write the FGG to the specified file" &= typ "TEXT"
   } &=
   help "Convert the given file to FGG"
 
@@ -60,7 +60,7 @@ optionHandler opts = exec opts
 
 exec :: IsoMode -> IO ()
 exec Repl = Repl.repl
-exec Eval{..} = Cmd.evalFile efile
-exec Matrix{..} = Cmd.evalToMatrixFile mfile
-exec Type{..} = Cmd.typeOfFile tfile
-exec Perpl{..} = Cmd.toPerplFile pfile
+exec Eval{..} = Cmd.evalFile input
+exec Matrix{..} = Cmd.evalToMatrixFile input
+exec Type{..} = Cmd.typeOfFile input
+exec Perpl{..} = Cmd.toPerplFile input
