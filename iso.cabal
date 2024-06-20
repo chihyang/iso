@@ -32,10 +32,16 @@ library
       Interp
       LinearCheck
       OrthoCheck
+      Perpl.Struct.Exprs
+      Perpl.Struct.Helpers
+      Perpl.Struct.Lib
+      Perpl.Struct.Show
+      Perpl.Util.Helpers
       Reduce
       Repl
       Run
       Syntax
+      Translate
       TypeCheck
   other-modules:
       Paths_iso
