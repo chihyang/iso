@@ -1,4 +1,4 @@
-module Run (check, typeOf, run, runTypedMat) where
+module Run (check, typeOf, run, runTypedMat, toPerplPg) where
 
 import Convert
 import Debug.Trace as T (trace)
@@ -10,6 +10,7 @@ import Interp
 import LinearCheck
 import Reduce
 import Syntax as S
+import Translate
 import TypeCheck
 
 moduleName :: String
@@ -25,6 +26,9 @@ check str =
 
 run :: String -> S.Result ProgramValue
 run str = Right str >>= check >>= interpDefsPg
+
+toPerplPg :: String -> S.Result PProg
+toPerplPg str = Right str >>= check >>= transToPerplPg
 
 typeOf :: String -> S.Result ProgramType
 typeOf str = do

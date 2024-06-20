@@ -29,6 +29,7 @@ optionsList =
   , ("matrix", toTypedMatrix), ("m", toTypedMatrix)
   , ("lm", loadMatrix)
   , ("lt", typeOfF), ("type", typeOfPg)
+  , ("lp", toPerplF), ("perpl", toPerpl)
   , ("quit", quit), ("q", quit)
   ]
 
@@ -43,6 +44,8 @@ help _ = liftIO $ putStrLn $
   "                       its type if exp evaluates to an iso or a base value.\n" ++
   ":lt file               Show the type of the program in the file.\n" ++
   ":type exp, :t exp      Show the type of the given expression.\n" ++
+  ":perpl exp             Convert the exp to an equivalent perpl program.\n" ++
+  ":lp file               Convert the file to an equivalent perpl program.\n" ++
   ":paste                 Enter multi-line input mode.\n" ++
   ":quit, :q              Quit the program.\n"
 
@@ -64,6 +67,12 @@ loadMatrix = liftIO . Cmd.evalToMatrixFile
 toTypedMatrix :: String -> Repl ()
 toTypedMatrix = liftIO . Cmd.evalToMatrix
 
+toPerpl :: String -> Repl ()
+toPerpl = liftIO . Cmd.toPerpl
+
+toPerplF :: String -> Repl ()
+toPerplF = liftIO . Cmd.toPerplFile
+
 quit :: String -> Repl ()
 quit = const $ do
   liftIO $ do
@@ -72,14 +81,15 @@ quit = const $ do
 
 completer :: WordCompleter IO
 completer n = do
-  let names = [":help", ":load", ":lm", ":matrix", ":m", ":lt", ":type", ":paste", ":quit"]
+  let names = [":help", ":load", ":lm", ":lp", ":lt", ":matrix", ":m", ":type", ":paste", ":perpl", ":quit"]
   pure $ filter (List.isPrefixOf n) names
 
 prefixCompleter :: CompleterStyle IO
 prefixCompleter = Repline.Prefix (wordCompleter completer)
   [(":l" , fileCompleter), (":load" , fileCompleter),
    (":lm" , fileCompleter), (":lt" , fileCompleter),
-   (":m" , fileCompleter), (":matrix" , fileCompleter)]
+   (":lp" , fileCompleter)
+  ]
 
 repl :: IO ()
 repl = evalRepl

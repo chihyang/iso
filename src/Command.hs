@@ -5,7 +5,9 @@ module Command
     evalToMatrix,
     evalToMatrixFile,
     typeOf,
-    typeOfFile
+    typeOfFile,
+    toPerpl,
+    toPerplFile
   ) where
 
 import Control.Exception
@@ -22,7 +24,7 @@ evalToMatrixFile = loadF evalToMatrix
 
 -- Read a string and convert it to matrix.
 evalToMatrix :: String -> IO ()
-evalToMatrix input = case Run.runTypedMat input of
+evalToMatrix input = case Run.runTypedMat $ trim input of
   Right val -> print val
   Left err -> putStrLn err
 
@@ -44,6 +46,14 @@ typeOf parseThis = case Run.typeOf $ trim parseThis of
   Right (Left ty) -> print ty
   Right (Right ty) -> print ty
   Left err -> putStrLn err
+
+toPerpl :: String -> IO ()
+toPerpl parseThis = case Run.toPerplPg $ trim parseThis of
+  Right r -> print r
+  Left err -> putStrLn err
+
+toPerplFile :: String -> IO ()
+toPerplFile = loadF toPerpl
 
 -- Helper functions
 trim :: String -> String
