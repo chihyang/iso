@@ -246,3 +246,6 @@ type EntangledValue = [(Scale, ProgramBaseValue)]
 type Declaration = Either IsoType Iso
 type Declarations = [(String, Either IsoType Iso)]
 type Definitions = [(String, Iso)]
+
+reportErr :: String -> String -> Result a
+reportErr tag msg = Left $ tag ++ msg

@@ -1,6 +1,7 @@
 module LinearCheck (linearCheck, linearCheckEnv, linearCheckDefsPg) where
 
 import Syntax
+import qualified Data.Set as Set
 import Debug.Trace (trace)
 
 moduleName :: String
@@ -105,6 +106,7 @@ lcVal env (ValAnn v _) = lcVal env v
 
 {---------- Linear type checking for Exps -----------}
 lcExp :: LinearEnv -> Exp -> Result LinearEnv
+-- lcExp env e | trace ("lcExp " ++ show env ++ " " ++ show e) False = undefined
 lcExp env (ExpVal val) = lcValNoPat env val
 lcExp env (ExpLet pat iso pat' body) = do
   env' <- lcIso env iso
@@ -156,7 +158,10 @@ increEnv ((var',n):tl) var = do
 
 extendPat :: LinearEnv -> Pattern -> Result LinearEnv
 extendPat env (PtSingleVar var) = return $ (var, 0):env
-extendPat env (PtMultiVar vars) = return $ (map (\x -> (x , 0)) vars) ++ env
+extendPat env (PtMultiVar vars)
+  | (Set.size $ Set.fromList vars) == length vars =
+    return $ (map (\x -> (x , 0)) vars) ++ env
+  | otherwise = Left $ "patterns have duplicate variables: " ++ show vars
 
 dropPat :: LinearEnv -> Pattern -> Result LinearEnv
 dropPat (_:tl) (PtSingleVar _) = return tl
