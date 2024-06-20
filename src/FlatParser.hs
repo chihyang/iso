@@ -96,25 +96,44 @@ dColon' = $(symbol' "::") <|> $(symbol' "∷")
 mu :: ParserT PureMode Error ()
 mu = $(keyword "mu") <|> $(keyword "μ")
 
--- use TH to write this so it's feasible to do `C <$> parens p` with nary constructors?
+-- use TH to write this so it's feasible to do `C <$> parens p` with nary
+-- constructors?
+parens :: ParserT PureMode Error a -> ParserT PureMode Error a
 parens p = $(symbol "(") *> p <* $(symbol' ")")
+
+brackets :: ParserT PureMode Error a -> ParserT PureMode Error a
 brackets p = $(symbol "[") *> p <* $(symbol' "]")
+
+braces :: ParserT PureMode Error a -> ParserT PureMode Error a
 braces p = $(symbol "{") *> p <* $(symbol' "}")
+
+angle :: ParserT PureMode Error a -> ParserT PureMode Error a
 angle p = $(symbol "<") *> p <* $(symbol' ">")
 
 {-
 -- BaseType
 -}
+pBTyUnit :: ParserT PureMode Error BaseType
 pBTyUnit = BTyUnit <$ $(keyword "Unit")
+
+pBTyInt :: ParserT PureMode Error BaseType
 pBTyInt = BTyInt <$ $(keyword "Int")
+
+pBTyList :: ParserT PureMode Error BaseType
 pBTyList = BTyList <$> (brackets pBaseType)
+
+pBTyVar :: ParserT PureMode Error BaseType
 pBTyVar = BTyVar <$> ident''
+
+pBTyMu :: ParserT PureMode Error BaseType
 pBTyMu = do
   mu
   var <- ident''
   $(symbol' ".")
   body <- pBaseType
   return $ BTyMu var body
+
+pBTyParen :: ParserT PureMode Error BaseType
 pBTyParen = parens pBaseType
 
 pBaseProdStart :: ParserT PureMode Error BaseType
@@ -142,16 +161,27 @@ pBaseType = do
     Just r -> return $ BTySum l r
     Nothing -> return l
 
+pMixTyUnit :: ParserT PureMode Error GType
 pMixTyUnit = GUnit <$ $(keyword "Unit")
+
+pMixTyInt :: ParserT PureMode Error GType
 pMixTyInt = GInt <$ $(keyword "Int")
+
+pMixTyList :: ParserT PureMode Error GType
 pMixTyList = GList <$> (brackets pMixType)
+
+pMixTyVar :: ParserT PureMode Error GType
 pMixTyVar = GVar <$> ident''
+
+pMixTyMu :: ParserT PureMode Error GType
 pMixTyMu = do
   mu
   var <- ident''
   $(symbol' ".")
   body <- pMixType
   return $ GMu var body
+
+pMixTyParen :: ParserT PureMode Error GType
 pMixTyParen = parens pMixType
 
 pMixProdStart :: ParserT PureMode Error GType
@@ -233,13 +263,28 @@ g2Iso ty = Left $ moduleName ++ "Invalid iso type, expect a `<->` or an `->` typ
 {-
 -- Value
 -}
+pValUnit :: ParserT PureMode Error Value
 pValUnit = ValUnit <$ $(keyword "unit")
+
+pValInt :: ParserT PureMode Error Value
 pValInt  = ValInt <$> int
+
+pValEmpty :: ParserT PureMode Error Value
 pValEmpty = ValEmpty <$ $(symbol "[") <* $(symbol "]")
+
+pValVar :: ParserT PureMode Error Value
 pValVar  = ValVar <$> ident''
+
+pValLInj :: ParserT PureMode Error Value
 pValLInj = ValLInj <$> ($(keyword "left") *> pValStart)
+
+pValRInj :: ParserT PureMode Error Value
 pValRInj = ValRInj <$> ($(keyword "right") *> pValStart)
+
+pValPair :: ParserT PureMode Error Value
 pValPair = angle (ValPair <$> pValue <* $(symbol ",") <*> pValue)
+
+pValParen :: ParserT PureMode Error Value
 pValParen = parens pValue
 
 pValStart :: ParserT PureMode Error Value
@@ -373,21 +418,26 @@ pExp = pExpLet <|> pExpPlus <|> pExpScale <|> pExpVal
 {-
 -- Pattern
 -}
+pPtSingleVar :: ParserT PureMode Error Pattern
 pPtSingleVar = PtSingleVar <$> ident''
 
 -- Assume input syntax has at least 1 variable, otherwise fail
+pListOfVars :: ParserT PureMode Error [String]
 pListOfVars  = brackets $ do
   x1 <- ident''
   xs <- many ($(symbol' ",") *> ident'')
   return $ x1 : xs
 
+pPtMultiVar :: ParserT PureMode Error Pattern
 pPtMultiVar  = PtMultiVar <$> pListOfVars
 
+pPattern :: ParserT PureMode Error Pattern
 pPattern = pPtMultiVar <|> pPtSingleVar
 
 {-
 -- Iso
 -}
+pIsoClause :: ParserT PureMode Error (Value, Exp)
 pIsoClause = do
   lhs <- pValue
   dArrow
@@ -395,10 +445,13 @@ pIsoClause = do
   return (lhs, rhs)
 
 -- !! `some` would not work here even for positive cases
+pIsoValue :: ParserT PureMode Error Iso
 pIsoValue = braces $ IsoValue <$> ((:) <$> pIsoClause <*> many ($(symbol ";") *> pIsoClause))
 
+pIsoVar :: ParserT PureMode Error Iso
 pIsoVar = IsoVar <$> ident''
 
+pIsoLam :: ParserT PureMode Error Iso
 pIsoLam = do
   $(symbol "\\")
   var <- ident''
@@ -412,8 +465,10 @@ pIsoLam = do
   body <- pIso
   return $ IsoLam var l r body
 
+pIsoApp :: ParserT PureMode Error Iso
 pIsoApp = brackets (IsoApp <$> pIso <*> pIso)
 
+pIsoFix :: ParserT PureMode Error Iso
 pIsoFix = do
   $(keyword "fix")
   var <- ident''
@@ -427,20 +482,38 @@ pIsoFix = do
   iso <- pIso
   return $ IsoFix var l r iso
 
+pIso :: ParserT PureMode Error Iso
 pIso = pIsoValue <|> pIsoLam <|> pIsoApp <|> pIsoFix <|> pIsoVar
 
 {-
 -- Term
 -}
+pTmUnit :: ParserT PureMode Error Term
 pTmUnit = TmUnit <$ $(keyword "unit")
+
+pTmInt :: ParserT PureMode Error Term
 pTmInt  = TmInt <$> int
+
+pTmEmpty :: ParserT PureMode Error Term
 pTmEmpty = TmEmpty <$ $(symbol "[") <* $(symbol "]")
+
+pTmVar :: ParserT PureMode Error Term
 pTmVar  = TmVar <$> ident''
+
+pTmLInj :: ParserT PureMode Error Term
 pTmLInj = TmLInj <$> ($(keyword "left") *> pTmStart)
+
+pTmRInj :: ParserT PureMode Error Term
 pTmRInj = TmRInj <$> ($(keyword "right") *> pTmStart)
+
+pTmPair :: ParserT PureMode Error Term
 pTmPair = angle (TmPair <$> pTerm <* $(symbol ",") <*> pTerm)
+
 -- ^ above are alomost identical with pValue
+pTmIsoApp :: ParserT PureMode Error Term
 pTmIsoApp = TmIsoApp <$> pIso <*> pTerm
+
+pTmLet :: ParserT PureMode Error Term
 pTmLet    = do
   $(keyword "let")
   pat <- pPattern
@@ -449,6 +522,8 @@ pTmLet    = do
   $(keyword' "in")
   body <- pTerm
   return $ TmLet pat rhs body
+
+pTmParen :: ParserT PureMode Error Term
 pTmParen = parens pTerm
 
 -- left recursive case
@@ -538,10 +613,10 @@ pProg :: Parser Program
 pProg = pPgIs <|> pPgTm
 
 pDefsPg :: Parser (Declarations, Program)
-pDefsPg = do
+pDefsPg = ws *> (do
   decs <- many pDef
   pg <- pProg
-  return (decs, pg)
+  return (decs, pg)) <* eof
 
 flatParse :: String -> F.Result Error Program
 flatParse str = runParser pProg (strToUtf8 str)
