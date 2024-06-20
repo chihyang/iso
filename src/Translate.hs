@@ -162,9 +162,9 @@ transIsoWithTyp table names (ITyBase vTy eTy) (IsoValue pairs) = do
   let pvar = (var, vTy')
   let e = toMatch pvar pairs'
   case compileMatch env names' e of
-    Left Redundancy -> Left $ "Redundant patterns in " ++ show (IsoValue pairs)
-    Left Missing -> Left $ "Non-exhaustive patterns in " ++ show (IsoValue pairs)
-    Left er -> Left $ "Impossible case: " ++ show er
+    Left Redundancy -> err $ "Redundant patterns in " ++ show (IsoValue pairs)
+    Left Missing -> err $ "Non-exhaustive patterns in " ++ show (IsoValue pairs)
+    Left er -> err $ "Impossible case: " ++ show er
     Right body -> return $ Perpl.UsLam (fromString var) (simplifyType vTy') body
 transIsoWithTyp _ _ _ (IsoVar var) = return $ makeUsVar var
 transIsoWithTyp table names _ (IsoLam var lTy rTy body) = do

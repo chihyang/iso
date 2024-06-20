@@ -106,7 +106,7 @@ translateFix res var lTy rTy body ty =
     body' = makeIsoApp (IsoApp rator rand) vars
 
 genBinds :: String -> IsoType -> [String]
-genBinds base (ITyBase _ _) = []
+genBinds _ (ITyBase _ _) = []
 genBinds base (ITyFun _ _ b) = newId : genBinds newId b where
   newId = newName base
 
@@ -242,7 +242,7 @@ patternMatchEnt _ _ [] = Left $ moduleName ++ "At least one value should be in t
 patternMatch :: ValEnv -> [(ProgramBaseValue , Exp)] -> ProgramBaseValue -> Result EntangledValue
 -- patternMatch env pair val | trace ("patternMatch " ++ show env ++ " " ++ show pair ++ " " ++ show val) False = undefined
 patternMatch _ [] val = Left $ moduleName ++ "Invalid pattern: no match for the value " ++ show val
-patternMatch env ((lhs , rhs) : tl) v = do
+patternMatch env ((lhs , rhs) : tl) v =
   case unify [] lhs v of
     Just pairs -> let env' = foldl (\acc (var, val) ->
                                       extendBaseEnv var [(1, val)] acc)
@@ -326,8 +326,8 @@ lookupIso (ExtendIsoVEnv var iso env) var'
 lookupIso (ExtendIsoRecEnv var (IsoLam bVar lTy rTy bBody) env) var'
   | var == var' = return $ PIValLam bVar bBody (ExtendIsoRecEnv var (IsoLam bVar lTy rTy bBody) env)
   | otherwise = lookupIso env var'
-lookupIso (ExtendIsoRecEnv var (IsoValue [(ValVar v, exp)]) env) var'
-  | var == var' = return $ PIValBase [(PBValVar v, exp)] (ExtendIsoRecEnv var (IsoValue [(ValVar v, exp)]) env)
+lookupIso (ExtendIsoRecEnv var (IsoValue [(ValVar v, e)]) env) var'
+  | var == var' = return $ PIValBase [(PBValVar v, e)] (ExtendIsoRecEnv var (IsoValue [(ValVar v, e)]) env)
   | otherwise = lookupIso env var'
 lookupIso (ExtendIsoRecEnv var body env) var'
   | var == var' = Left $ "Invalid recursive environment binding: " ++ show var ++ " = " ++ show body
