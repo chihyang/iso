@@ -35,18 +35,18 @@ optionsList =
 
 help :: String -> Repl ()
 help _ = liftIO $ putStrLn $
-  ":help, :h              Show this information.\n" ++
-  ":load file, :l file    Load a file.\n" ++
-  ":matrix exp, :m exp\n" ++
-  "                       Convert the exp into a matrix according to\n" ++
-  "                       its type if exp evaluates to an iso.\n" ++
+  ":l file, :load file    Load a file.\n" ++
   ":lm file               Convert the file into a matrix according to\n" ++
   "                       its type if exp evaluates to an iso or a base value.\n" ++
   ":lt file               Show the type of the program in the file.\n" ++
-  ":type exp, :t exp      Show the type of the given expression.\n" ++
-  ":perpl exp             Convert the exp to an equivalent perpl program.\n" ++
   ":lp file               Convert the file to an equivalent perpl program.\n" ++
+  ":m exp, :matrix exp\n" ++
+  "                       Convert the exp into a matrix according to\n" ++
+  "                       its type if exp evaluates to an iso.\n" ++
+  ":t exp, :type exp      Show the type of the given expression.\n" ++
+  ":perpl exp             Convert the exp to an equivalent perpl program.\n" ++
   ":paste                 Enter multi-line input mode.\n" ++
+  ":h, :help              Show this information.\n" ++
   ":quit, :q              Quit the program.\n"
 
 eval :: String -> Repl ()
