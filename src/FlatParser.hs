@@ -418,21 +418,17 @@ pExp = pExpLet <|> pExpPlus <|> pExpScale <|> pExpVal
 {-
 -- Pattern
 -}
-pPtSingleVar :: ParserT PureMode Error Pattern
-pPtSingleVar = PtSingleVar <$> ident''
-
 -- Assume input syntax has at least 1 variable, otherwise fail
-pListOfVars :: ParserT PureMode Error [String]
-pListOfVars  = brackets $ do
+pListOfVars :: ParserT PureMode Error Pattern
+pListOfVars  = do
   x1 <- ident''
-  xs <- many ($(symbol' ",") *> ident'')
-  return $ x1 : xs
-
-pPtMultiVar :: ParserT PureMode Error Pattern
-pPtMultiVar  = PtMultiVar <$> pListOfVars
+  xs <- many ident''
+  case xs of
+    [] -> return $ PtSingleVar x1
+    _ -> return $ PtMultiVar $ x1:xs
 
 pPattern :: ParserT PureMode Error Pattern
-pPattern = pPtMultiVar <|> pPtSingleVar
+pPattern = pListOfVars
 
 {-
 -- Iso

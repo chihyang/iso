@@ -107,7 +107,7 @@ data Pattern =
   deriving (Eq, Ord)
 instance Show Pattern where
   show (PtSingleVar var) = var
-  show (PtMultiVar vars) = "<" ++ show (L.intercalate ", " vars) ++ ">"
+  show (PtMultiVar vars) = (L.intercalate " " vars)
 
 data Iso =
   IsoValue [(Value, Exp)]
@@ -197,8 +197,8 @@ data ProgramIsoValue =
   | PIValLam String Iso ValEnv
   deriving (Eq)
 instance Show ProgramIsoValue where
-  show (PIValBase pairs _) =
-    "{" ++ (L.intercalate "; " (map (\(f,s) -> (show f) ++ " <-> " ++ (show s)) pairs)) ++ "}"
+  show (PIValBase pairs env) =
+    "{:{" ++ show env ++ "}:, " ++ (L.intercalate "; " (map (\(f,s) -> (show f) ++ " <-> " ++ (show s)) pairs)) ++ "}"
   show (PIValLam var iso _) = "\\" ++ var ++ " -> " ++ show iso
 
 data ProgramValue =
@@ -236,7 +236,7 @@ data ValEnv =
   EmptyVEnv
   | ExtendIsoVEnv String ProgramIsoValue ValEnv
   | ExtendBaseVEnv String EntangledValue ValEnv
-  | ExtendIsoRecEnv String Iso ValEnv
+  | ExtendIsoRecEnv [String] [Iso] ValEnv
   deriving (Eq, Show)
 
 type TypEnv = [(String , ProgramType)]
