@@ -421,13 +421,13 @@ tcRhsPat env ty (PtMultiVar (var : [])) = do
   if typeEqual env ty ty'
     then return ty
     else Left $ moduleName ++ "Invalid pattern type " ++ show ty' ++ ", expect " ++ show ty
-tcRhsPat env ty (PtMultiVar (var : vars)) = do
-  hd <- applyBaseEnv env var
-  tl <- tcRhsPat env ty (PtMultiVar vars)
-  let ty' = (BTyProd hd tl)
-  if typeEqual env ty ty'
+tcRhsPat env (BTyProd hd tl) (PtMultiVar (var : vars)) = do
+  hd' <- applyBaseEnv env var
+  tl' <- tcRhsPat env tl (PtMultiVar vars)
+  let ty' = (BTyProd hd' tl')
+  if typeEqual env (BTyProd hd tl) ty'
     then return (BTyProd hd tl)
-    else Left $ moduleName ++ "Invalid pattern type " ++ show ty' ++ ", expect " ++ show ty
+    else Left $ moduleName ++ "Invalid pattern type " ++ show ty' ++ ", expect " ++ show (BTyProd hd tl)
 tcRhsPat _ _ pat = Left $ moduleName ++ "Invalid pattern " ++ show pat
 
 {-------------- Helper functions --------------}

@@ -1,7 +1,7 @@
 module Interp (interp, interpDefsPg, interpEnv, applyIso) where
 
 import Syntax
-import Data.List (sortBy)
+import Data.List (sortBy, elemIndex)
 import Debug.Trace (trace)
 import OrthoCheck (unify, orthoList)
 
@@ -10,27 +10,10 @@ moduleName = "Interpreter: "
 
 interpDefsPg :: (Definitions, Program) -> Result ProgramValue
 interpDefsPg (defs, pg) = do
-  env <- interpDefs defs
-  let env' = replaceVal env env
-  interpEnv env' pg
-  where
-    replaceVal _ EmptyVEnv = EmptyVEnv
-    replaceVal env (ExtendIsoVEnv var iso env') =
-      extendIsoEnv var (replaceIsoEnv env iso) (replaceVal env env')
-    replaceVal env (ExtendBaseVEnv var val env') =
-      extendBaseEnv var val (replaceVal env env')
-    replaceVal env (ExtendIsoRecEnv var body env') =
-      extendIsoRecEnv var body (replaceVal env env')
-
-    replaceIsoEnv env (PIValBase pairs _) = PIValBase pairs env
-    replaceIsoEnv env (PIValLam var iso _) = PIValLam var iso env
-
-interpDefs :: Definitions -> Result ValEnv
-interpDefs [] = return emptyEnv
-interpDefs ((var,def):defs) = do
-  isos <- interpDefs defs
-  iso <- interpIso emptyEnv def
-  return $ extendIsoEnv var iso isos
+  let vars = map fst defs
+  let bodies = map snd defs
+  let env = extendIsoRecEnv vars bodies emptyEnv
+  interpEnv env pg
 
 interp :: Program -> Result ProgramValue
 interp pg = interpEnv emptyEnv pg
@@ -93,7 +76,7 @@ interpIso env (IsoAnn (IsoFix var lTy rTy body) otype) =
   interpIso newEnv (IsoVar res) where
     res = uniqueName env
     body' = translateFix res var lTy rTy body otype
-    newEnv = extendIsoRecEnv res body' env
+    newEnv = extendIsoRecEnv [res] [body'] env
 interpIso env (IsoAnn iso _) = interpIso env iso
 
 translateFix :: String -> String -> BaseType -> BaseType -> Iso -> IsoType -> Iso
@@ -290,8 +273,8 @@ extendBaseEnv var val env = ExtendBaseVEnv var val env
 extendIsoEnv :: String -> ProgramIsoValue -> ValEnv -> ValEnv
 extendIsoEnv var val env = ExtendIsoVEnv var val env
 
-extendIsoRecEnv :: String -> Iso -> ValEnv -> ValEnv
-extendIsoRecEnv var body env = ExtendIsoRecEnv var body env
+extendIsoRecEnv :: [String] -> [Iso] -> ValEnv -> ValEnv
+extendIsoRecEnv vars bodies env = ExtendIsoRecEnv vars bodies env
 
 uniqueName :: ValEnv -> String
 uniqueName env = "id_" ++ (show $ envLength env) where
@@ -299,7 +282,7 @@ uniqueName env = "id_" ++ (show $ envLength env) where
   envLength EmptyVEnv = 0
   envLength (ExtendIsoVEnv var _ env') = max (length var) (envLength env')
   envLength (ExtendBaseVEnv var _ env') = max (length var) (envLength env')
-  envLength (ExtendIsoRecEnv var _ env') = max (length var) (envLength env')
+  envLength (ExtendIsoRecEnv vars _ env') = max (length $ foldr (++) "" vars) (envLength env')
 
 newName :: String -> String
 newName var = "_" ++ var
@@ -310,8 +293,8 @@ lookupBase EmptyVEnv var = Left $ moduleName ++ "Cannot find the value " ++ var
 lookupBase (ExtendIsoVEnv var _ env) var'
   | var == var' = Left $ moduleName ++ var ++ " is not a base value!"
   | otherwise = lookupBase env var'
-lookupBase (ExtendIsoRecEnv var _ env) var'
-  | var == var' = Left $ moduleName ++ var ++ " is not a base value!"
+lookupBase (ExtendIsoRecEnv vars _ env) var'
+  | elem var' vars = Left $ moduleName ++ var' ++ " is not a base value!"
   | otherwise = lookupBase env var'
 lookupBase (ExtendBaseVEnv var val env) var'
   | var == var' = return val
@@ -319,19 +302,14 @@ lookupBase (ExtendBaseVEnv var val env) var'
 
 lookupIso :: ValEnv -> String -> Result ProgramIsoValue
 -- lookupIso env var | trace ("lookupIso " ++ show env ++ " " ++ show var) False = undefined
-lookupIso EmptyVEnv var = Left $ moduleName ++ "Cannot find the value " ++ var
+lookupIso EmptyVEnv var = Left $ moduleName ++ "Cannot find the iso " ++ var
 lookupIso (ExtendIsoVEnv var iso env) var'
   | var == var' = return iso
   | otherwise = lookupIso env var'
-lookupIso (ExtendIsoRecEnv var (IsoLam bVar lTy rTy bBody) env) var'
-  | var == var' = return $ PIValLam bVar bBody (ExtendIsoRecEnv var (IsoLam bVar lTy rTy bBody) env)
-  | otherwise = lookupIso env var'
-lookupIso (ExtendIsoRecEnv var (IsoValue [(ValVar v, e)]) env) var'
-  | var == var' = return $ PIValBase [(PBValVar v, e)] (ExtendIsoRecEnv var (IsoValue [(ValVar v, e)]) env)
-  | otherwise = lookupIso env var'
-lookupIso (ExtendIsoRecEnv var body env) var'
-  | var == var' = Left $ "Invalid recursive environment binding: " ++ show var ++ " = " ++ show body
-  | otherwise = lookupIso env var'
+lookupIso (ExtendIsoRecEnv vars bodies env) var' =
+  case elemIndex var' vars of
+    Just n -> interpIso (ExtendIsoRecEnv vars bodies env) (bodies !! n)
+    Nothing -> lookupIso env var'
 lookupIso (ExtendBaseVEnv var _ env) var'
   | var == var' = Left $ moduleName ++ var ++ " is not an iso value!"
   | otherwise = lookupIso env var'

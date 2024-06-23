@@ -197,8 +197,8 @@ data ProgramIsoValue =
   | PIValLam String Iso ValEnv
   deriving (Eq)
 instance Show ProgramIsoValue where
-  show (PIValBase pairs env) =
-    "{:{" ++ show env ++ "}:, " ++ (L.intercalate "; " (map (\(f,s) -> (show f) ++ " <-> " ++ (show s)) pairs)) ++ "}"
+  show (PIValBase pairs _) =
+    "{" ++ (L.intercalate "; " (map (\(f,s) -> (show f) ++ " <-> " ++ (show s)) pairs)) ++ "}"
   show (PIValLam var iso _) = "\\" ++ var ++ " -> " ++ show iso
 
 data ProgramValue =
