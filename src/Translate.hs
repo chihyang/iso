@@ -111,7 +111,7 @@ transTmWithTyp table names _ (TmIsoApp rator rand) = do
 transTmWithTyp table names ty (TmLet pat (TmAnn rhs ty') body) = do
   rhs' <- transTmWithTyp table names ty' rhs
   body' <- transTmWithTyp table names ty body
-  makePatApp table ty' pat rhs' body'
+  makePatApp table names ty' pat rhs' body'
 transTmWithTyp _ _ _ (TmLet _ rhs _) = err $ "Cannot translate an untype-checked term: " ++ show rhs
 transTmWithTyp table names _ (TmAnn tm ty) = transTmWithTyp table names ty tm
 transTmWithTyp _ _ (BTyMu v b) tm = err $ "Unsupported term: " ++ show tm ++ " : " ++ show (BTyMu v b)
@@ -132,18 +132,26 @@ makeDataApp rator rand _ = return $ Perpl.UsApp rator rand
 
 -- Given a pattern, a rhs, and a body, translate it into some kind of
 -- application.
-makePatApp :: TypeTable -> BaseType -> Pattern -> Perpl.UsTm -> Perpl.UsTm -> Result Perpl.UsTm
+makePatApp :: TypeTable -> Names -> BaseType -> Pattern -> Perpl.UsTm -> Perpl.UsTm -> Result Perpl.UsTm
 -- this translates to: let var = rhs in body
-makePatApp table _ (PtSingleVar var) rhs body = do
+makePatApp _ _ _ (PtSingleVar var) rhs body = do
   return $ Perpl.UsLet (fromString var) rhs body
-makePatApp table _ (PtMultiVar [var]) rhs body = do
+makePatApp _ _ _ (PtMultiVar []) _ body = return body
+makePatApp _ _ _ (PtMultiVar [var]) rhs body =
   return $ Perpl.UsLet (fromString var) rhs body
 -- this translates to: case rhs of c v1 ... in body
-makePatApp table rhsTy (PtMultiVar vars) rhs body = do
-  pTy <- lookupBase rhsTy table
+makePatApp table names (BTyProd lt rT) (PtMultiVar (var:vars)) rhs body = do
+  pTy <- lookupBase (BTyProd lt rT) table
   ctor <- extractCtor pTy 0
-  let cas = Perpl.CaseUs (fromString ctor) (map fromString vars) body
-  return $ Perpl.UsCase rhs [cas]
+  body' <- makePatApp table names' rT (PtMultiVar vars) rhs' body
+  let cas = Perpl.CaseUs (fromString ctor) (map fromString [var, newVar]) body'
+  return $ Perpl.UsCase rhs [cas] where
+    newVar = freshVar names (Set.size names)
+    names' = Set.insert newVar names
+    rhs' = makeUsVar newVar
+makePatApp _ _ ty (PtMultiVar vars) _ _ =
+  Left $ "makePatApp: the number of variables <" ++ show vars ++
+  "> doesn't match the type " ++ show ty
 
 {-
 Translate an iso.
@@ -566,18 +574,18 @@ transExpWithTyp table names ty (ExpPlus es) = do
   return $ Perpl.UsAmb es'
 transExpWithTyp table names ty (ExpLet pat (IsoAnn iso (ITyBase lTy rTy)) pat' body) = do
   isoTm <- transIsoWithTyp table names (ITyBase lTy rTy) iso
-  rhs <- mkRhs lTy isoTm pat'
+  rhs <- Perpl.UsApp isoTm <$> mkRhs lTy pat'
   body' <- transExpWithTyp table names ty body
-  makePatApp table rTy pat rhs body' where
-    mkRhs _ tm (PtSingleVar v) = mkApp tm v
-    mkRhs _ tm (PtMultiVar [v]) = mkApp tm v
-    mkRhs t tm (PtMultiVar vs) = do
-      pLTy <- lookupBase t table
+  makePatApp table names rTy pat rhs body' where
+    mkRhs _ (PtSingleVar v) = return $ makeUsVar v
+    mkRhs _ (PtMultiVar [v]) = return $ makeUsVar v
+    mkRhs (BTyProd t t') (PtMultiVar (v:vs)) = do
+      pLTy <- lookupBase (BTyProd t t') table
       ctorL <- extractCtor pLTy 0
-      lVal <- foldlM mkApp (makeUsVar ctorL) vs
-      return $ Perpl.UsApp tm lVal
-
-    mkApp tm v = return $ Perpl.UsApp tm (makeUsVar v)
+      rVal <- mkRhs t' (PtMultiVar vs)
+      return $ Perpl.UsApp (Perpl.UsApp (makeUsVar ctorL) (makeUsVar v)) rVal
+    mkRhs t (PtMultiVar vs) = Left $ "Invalid pattern " ++ show (PtMultiVar vs) ++
+      " of type " ++ show t
 transExpWithTyp _ _ _ (ExpLet _ (IsoAnn iso _) _ _) =
   Left $ "Not a base iso: " ++ show iso
 transExpWithTyp _ _ _ (ExpLet _ iso _ _) =

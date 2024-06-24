@@ -109,7 +109,7 @@ data Pattern =
   deriving (Eq, Ord)
 instance Show Pattern where
   show (PtSingleVar var) = var
-  show (PtMultiVar vars) = (L.intercalate " " vars)
+  show (PtMultiVar vars) = show "<" ++ (L.intercalate ", " vars) ++ show ">"
 
 data Iso =
   IsoValue [(Value, Exp)]
