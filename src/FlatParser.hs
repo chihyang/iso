@@ -282,7 +282,13 @@ pValRInj :: ParserT PureMode Error Value
 pValRInj = ValRInj <$> ($(keyword "right") *> pValStart)
 
 pValPair :: ParserT PureMode Error Value
-pValPair = angle (ValPair <$> pValue <* $(symbol ",") <*> pValue)
+pValPair = angle (do
+  v1 <- pValue
+  vs <- some ($(symbol ", ") *> pValue)
+  return $ f (v1:vs)) where
+  f [v] = v
+  f (v':vs') = ValPair v' $ f vs'
+  f [] = error "pValPair: Impossible case."
 
 pValParen :: ParserT PureMode Error Value
 pValParen = parens pValue
@@ -419,16 +425,17 @@ pExp = pExpLet <|> pExpPlus <|> pExpScale <|> pExpVal
 -- Pattern
 -}
 -- Assume input syntax has at least 1 variable, otherwise fail
-pListOfVars :: ParserT PureMode Error Pattern
-pListOfVars  = do
+pSingleVar :: ParserT PureMode Error Pattern
+pSingleVar = PtSingleVar <$> ident''
+
+pMultiVars :: ParserT PureMode Error Pattern
+pMultiVars = angle (do
   x1 <- ident''
-  xs <- many ident''
-  case xs of
-    [] -> return $ PtSingleVar x1
-    _ -> return $ PtMultiVar $ x1:xs
+  xs <- some ($(symbol ", ") *> ident'')
+  return $ PtMultiVar (x1:xs))
 
 pPattern :: ParserT PureMode Error Pattern
-pPattern = pListOfVars
+pPattern = pSingleVar <|> pMultiVars
 
 {-
 -- Iso
@@ -503,7 +510,13 @@ pTmRInj :: ParserT PureMode Error Term
 pTmRInj = TmRInj <$> ($(keyword "right") *> pTmStart)
 
 pTmPair :: ParserT PureMode Error Term
-pTmPair = angle (TmPair <$> pTerm <* $(symbol ",") <*> pTerm)
+pTmPair = angle (do
+  v1 <- pTerm
+  vs <- some ($(symbol ", ") *> pTerm)
+  return $ f (v1:vs)) where
+  f [v] = v
+  f (v':vs') = TmPair v' $ f vs'
+  f [] = error "pTmPair: Impossible case."
 
 -- ^ above are alomost identical with pValue
 pTmIsoApp :: ParserT PureMode Error Term
