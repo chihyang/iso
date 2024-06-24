@@ -111,7 +111,7 @@ transTmWithTyp table names _ (TmIsoApp rator rand) = do
 transTmWithTyp table names ty (TmLet pat (TmAnn rhs ty') body) = do
   rhs' <- transTmWithTyp table names ty' rhs
   body' <- transTmWithTyp table names ty body
-  makePatApp table ty' ty pat rhs' body'
+  makePatApp table ty' pat rhs' body'
 transTmWithTyp _ _ _ (TmLet _ rhs _) = err $ "Cannot translate an untype-checked term: " ++ show rhs
 transTmWithTyp table names _ (TmAnn tm ty) = transTmWithTyp table names ty tm
 transTmWithTyp _ _ (BTyMu v b) tm = err $ "Unsupported term: " ++ show tm ++ " : " ++ show (BTyMu v b)
@@ -132,15 +132,15 @@ makeDataApp rator rand _ = return $ Perpl.UsApp rator rand
 
 -- Given a pattern, a rhs, and a body, translate it into some kind of
 -- application.
-makePatApp :: TypeTable -> BaseType -> BaseType -> Pattern -> Perpl.UsTm -> Perpl.UsTm -> Result Perpl.UsTm
--- this translates to: (\var : varTy -> body) rhs
-makePatApp table varTy _ (PtSingleVar var) rhs body = do
-  vTy' <- lookupBase varTy table
-  let func = Perpl.UsLam (fromString var) vTy' body
-  return $ Perpl.UsApp func rhs
+makePatApp :: TypeTable -> BaseType -> Pattern -> Perpl.UsTm -> Perpl.UsTm -> Result Perpl.UsTm
+-- this translates to: let var = rhs in body
+makePatApp table _ (PtSingleVar var) rhs body = do
+  return $ Perpl.UsLet (fromString var) rhs body
+makePatApp table _ (PtMultiVar [var]) rhs body = do
+  return $ Perpl.UsLet (fromString var) rhs body
 -- this translates to: case rhs of c v1 ... in body
-makePatApp table _ bodyTy (PtMultiVar vars) rhs body = do
-  pTy <- lookupBase bodyTy table
+makePatApp table rhsTy (PtMultiVar vars) rhs body = do
+  pTy <- lookupBase rhsTy table
   ctor <- extractCtor pTy 0
   let cas = Perpl.CaseUs (fromString ctor) (map fromString vars) body
   return $ Perpl.UsCase rhs [cas]
@@ -564,18 +564,24 @@ transExpWithTyp table names ty (ExpScale scale e) = do
 transExpWithTyp table names ty (ExpPlus es) = do
   es' <- mapM (transExpWithTyp table names ty) es
   return $ Perpl.UsAmb es'
-transExpWithTyp table names ty (ExpLet pat iso pat' body) = do
-  isoTm <- transIso table names iso
-  rhs <- mkRhs isoTm pat'
+transExpWithTyp table names ty (ExpLet pat (IsoAnn iso (ITyBase lTy rTy)) pat' body) = do
+  isoTm <- transIsoWithTyp table names (ITyBase lTy rTy) iso
+  rhs <- mkRhs lTy isoTm pat'
   body' <- transExpWithTyp table names ty body
-  mkLet pat rhs body' where
-    mkRhs tm (PtSingleVar v) = mkApp tm v
-    mkRhs tm (PtMultiVar vs) = foldlM mkApp tm vs
+  makePatApp table rTy pat rhs body' where
+    mkRhs _ tm (PtSingleVar v) = mkApp tm v
+    mkRhs _ tm (PtMultiVar [v]) = mkApp tm v
+    mkRhs t tm (PtMultiVar vs) = do
+      pLTy <- lookupBase t table
+      ctorL <- extractCtor pLTy 0
+      lVal <- foldlM mkApp (makeUsVar ctorL) vs
+      return $ Perpl.UsApp tm lVal
 
     mkApp tm v = return $ Perpl.UsApp tm (makeUsVar v)
-
-    mkLet (PtSingleVar v) rhs b = return $ Perpl.UsLet (fromString v) rhs b
-    mkLet (PtMultiVar vs) rhs b = return $ Perpl.UsElimMultiplicative rhs (map fromString vs) b
+transExpWithTyp _ _ _ (ExpLet _ (IsoAnn iso _) _ _) =
+  Left $ "Not a base iso: " ++ show iso
+transExpWithTyp _ _ _ (ExpLet _ iso _ _) =
+  Left $ "Cannot translate an untype-checked iso: " ++ show iso
 
 {-
 Translate an algebraic data definition.
