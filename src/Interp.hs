@@ -52,8 +52,7 @@ interpTm env (TmIsoApp iso tm) = do
   applyIso fun arg
 interpTm env (TmLet pat rhs body) = do
   vRhs <- interpTm env rhs
-  newEnv <- extScalePat env pat vRhs
-  interpTm newEnv body
+  patternMatchEnt env [(patToVal pat, flip interpTm $ body)] vRhs
 interpTm env (TmAnn tm _) = interpTm env tm
 
 {---------- Interpretation of Isos ----------}
@@ -114,7 +113,7 @@ makeIsoLam _ _ vars ty =
 {---------- Applying An Iso To A Term ----------}
 applyIso :: ProgramIsoValue -> EntangledValue -> Result EntangledValue
 -- applyIso l r | trace ("applyIso " ++ show l ++ " " ++ show r) False = undefined
-applyIso (PIValBase pairs env) rhs = patternMatchEnt env pairs rhs
+applyIso (PIValBase pairs env) rhs = patternMatchEnt env (map (\(v,e) -> (v, flip interpExp $ e)) pairs) rhs
 applyIso iso base = Left $ moduleName ++ "Cannot apply iso " ++ show iso ++ " to " ++ show base
 
 {---------- Applying An Iso To An Iso ----------}
@@ -186,8 +185,7 @@ interpExp env (ExpLet pat iso pat' body) = do
   rhsIso <- interpIso env iso
   rhsVal <- interpRhsPat env pat'
   vRhs <- applyIso rhsIso rhsVal
-  newEnv <- extScalePat env pat vRhs
-  interpExp newEnv body
+  patternMatchEnt env [(patToVal pat, (flip interpExp $ body))] vRhs
 interpExp env (ExpScale s e) = do
   es <- interpExp env e
   return $ sortBy (\(_,a) (_,b) -> compare a b) $ scaleEnt s es
@@ -209,7 +207,7 @@ interpRhsPat env (PtMultiVar (var : vars)) = do
 interpRhsPat _ pat = Left $ moduleName ++ "Invalid pattern: " ++ show pat
 
 {---------- Given a pattern value and an entangled value, try to evaluate it. ----------}
-patternMatchEnt :: ValEnv -> [(ProgramBaseValue , Exp)] -> EntangledValue -> Result EntangledValue
+patternMatchEnt :: ValEnv -> [(ProgramBaseValue , (ValEnv -> Result EntangledValue))] -> EntangledValue -> Result EntangledValue
 -- patternMatchEnt env pair val | trace ("patternMatchEnt " ++ show env ++ " " ++ show pair ++ " " ++ show val) False = undefined
 patternMatchEnt env pairs [(s,v)] = do
   vs <- patternMatch env pairs v
@@ -222,46 +220,23 @@ patternMatchEnt env pairs ((s,v):vs) = do
 patternMatchEnt _ _ [] = Left $ moduleName ++ "At least one value should be in the entangled value!"
 
 {---------- Pattern Matching in iso RHS ----------}
-patternMatch :: ValEnv -> [(ProgramBaseValue , Exp)] -> ProgramBaseValue -> Result EntangledValue
+patternMatch :: ValEnv -> [(ProgramBaseValue , (ValEnv -> Result EntangledValue))] -> ProgramBaseValue -> Result EntangledValue
 -- patternMatch env pair val | trace ("patternMatch " ++ show env ++ " " ++ show pair ++ " " ++ show val) False = undefined
 patternMatch _ [] val = Left $ moduleName ++ "Invalid pattern: no match for the value " ++ show val
 patternMatch env ((lhs , rhs) : tl) v =
   case unify [] lhs v of
-    Just pairs -> let env' = foldl (\acc (var, val) ->
+    Just pairs -> let env' = foldr (\(var, val) acc ->
                                       extendBaseEnv var [(1, val)] acc)
                              env pairs
-                  in interpExp env' rhs
+                  in rhs env'
     Nothing -> patternMatch env tl v
 
 {---------- Extending Environments With Patterns For A List of Values ----------}
-extScalePat :: ValEnv -> Pattern -> EntangledValue -> Result ValEnv
--- extScalePat env pat val | trace ("extScalePat " ++ show env ++ " " ++ show pat ++ " " ++ show val) False = undefined
-extScalePat env (PtSingleVar var) val  = return $ extendBaseEnv var val env
-extScalePat env (PtMultiVar (var : [])) val  = return $ extendBaseEnv var val env
-extScalePat env (PtMultiVar (var : vars)) val =
-  if allPair val
-  then do
-    let hds = map (\v -> (fst v, getHead $ snd v)) val
-    let tls = map (\v -> (fst v, getTail $ snd v)) val
-    newTl <- extScalePat env (PtMultiVar vars) tls
-    return $ extendBaseEnv var hds newTl
-  else
-    Left $ moduleName ++ "Mismatched pattern and value: " ++ show (var:vars) ++ ", " ++ show val
-  where
-    allPair vals = everyPair $ map snd vals
-
-    everyPair [] = True
-    everyPair (v:vs) = if isPair v then everyPair vs else False
-
-    isPair (PBValPair _ _) = True
-    isPair _ = False
-
-    getHead (PBValPair hd _) = hd
-    getHead _ = error "getHead shouldn't be used here!"
-
-    getTail (PBValPair _ tl) = tl
-    getTail _ = error "getTail shouldn't be used here!"
-extScalePat _ pat val = Left $ moduleName ++ "Mismatched pattern and value: " ++ show pat ++ ", " ++ show val
+patToVal :: Pattern -> ProgramBaseValue
+patToVal (PtSingleVar var) = PBValVar var
+patToVal (PtMultiVar [var]) = PBValVar var
+patToVal (PtMultiVar (var:vars)) = PBValPair (PBValVar var) (patToVal (PtMultiVar vars))
+patToVal (PtMultiVar []) = error "Impossible case: empty pattern variables"
 
 {---------- Environment Lookup ----------}
 emptyEnv :: ValEnv

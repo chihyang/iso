@@ -2,6 +2,8 @@ module Syntax (module Syntax, module C) where
 
 import Data.Complex as C
 import qualified Data.List as L
+import qualified Data.Map.Strict as Map
+import Data.Tuple (swap)
 
 type Scale = Complex Double
 
@@ -220,13 +222,12 @@ distrib1 f vs = [(fst v, f $ snd v) | v <- vs]
 distrib2 :: (ProgramBaseValue -> ProgramBaseValue -> ProgramBaseValue) -> EntangledValue -> EntangledValue -> EntangledValue
 distrib2 f vs1 vs2 = [(fst v1 * fst v2, f (snd v1) (snd v2)) | v1 <- vs1, v2 <- vs2]
 
+toTable :: EntangledValue -> Map.Map ProgramBaseValue Scale
+toTable vs = foldr f Map.empty vs where
+  f (s, v) acc = if Map.member v acc then Map.adjust (+ s) v acc else Map.insert v s acc
+
 mergeEnt :: EntangledValue -> EntangledValue -> EntangledValue
-mergeEnt [] vs2 = vs2
-mergeEnt vs1 [] = vs1
-mergeEnt ((s1,v1):vs1) ((s2,v2):vs2)
-  | v1 == v2 = (s1+s2,v1):mergeEnt vs1 vs2
-  | v1 < v2 = (s1,v1):(s2,v2):mergeEnt vs1 vs2
-  | otherwise = (s2,v2):(s1,v1):mergeEnt vs1 vs2
+mergeEnt vs1 vs2 = L.map swap $ Map.toList $ toTable (vs1 ++ vs2)
 
 scaleEnt :: Scale -> EntangledValue -> EntangledValue
 scaleEnt s vs = map (\v -> (s * fst v, snd v)) vs
