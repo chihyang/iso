@@ -1,0 +1,31 @@
+had :: (Unit + Unit) <-> (Unit + Unit)
+had =
+{
+  left unit <-> [0.707106781188 * left unit + 0.707106781188 * right unit];
+  right unit <-> [0.707106781188 * left unit - 0.707106781188 * right unit]
+}
+
+identity :: (Unit + Unit) <-> (Unit + Unit)
+identity = { x <-> x }
+
+neg :: (Unit + Unit) <-> (Unit + Unit)
+neg = { left x <-> right x; right x <-> left x }
+
+uf :: ((Unit + Unit) x (Unit + Unit)) <-> ((Unit + Unit) x (Unit + Unit))
+uf =
+{
+  <left unit, y> <-> <left unit, y>;
+  <right unit, y> <-> let a = neg y in <right unit, a>
+}
+
+gate :: ((Unit + Unit) × (Unit + Unit)) <-> ((Unit + Unit) × (Unit + Unit))
+gate =
+{
+  <x, y> <-> let a = had x in
+               let b = had y in
+                 let <c, d> = uf <a, b> in
+                   let e = had c in
+                     <e, d>
+}
+
+(gate <left unit, right unit>)
