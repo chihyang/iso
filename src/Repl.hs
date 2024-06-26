@@ -7,6 +7,7 @@ import Control.Monad.IO.Class
 import qualified Data.List as List
 import System.Console.Repline as Repline hiding (banner)
 import System.Exit
+import System.IO
 
 type Repl a = HaskelineT IO a
 
@@ -50,28 +51,28 @@ help _ = liftIO $ putStrLn $
   ":quit, :q              Quit the program.\n"
 
 eval :: String -> Repl ()
-eval = liftIO . Cmd.eval
+eval = liftIO . Cmd.eval stdout
 
 load :: String -> Repl ()
-load = liftIO . Cmd.evalFile
+load = liftIO . Cmd.evalFile stdout
 
 typeOfF :: String -> Repl ()
-typeOfF = liftIO . Cmd.typeOfFile
+typeOfF = liftIO . Cmd.typeOfFile stdout
 
 typeOfPg :: String -> Repl ()
-typeOfPg = liftIO . Cmd.typeOf
+typeOfPg = liftIO . Cmd.typeOf stdout
 
 loadMatrix :: String -> Repl ()
-loadMatrix = liftIO . Cmd.evalToMatrixFile
+loadMatrix = liftIO . Cmd.evalToMatrixFile stdout
 
 toTypedMatrix :: String -> Repl ()
-toTypedMatrix = liftIO . Cmd.evalToMatrix
+toTypedMatrix = liftIO . Cmd.evalToMatrix stdout
 
 toPerpl :: String -> Repl ()
-toPerpl = liftIO . Cmd.toPerpl
+toPerpl = liftIO . Cmd.toPerpl stdout
 
 toPerplF :: String -> Repl ()
-toPerplF = liftIO . Cmd.toPerplFile
+toPerplF = liftIO . Cmd.toPerplFile stdout
 
 quit :: String -> Repl ()
 quit = const $ do

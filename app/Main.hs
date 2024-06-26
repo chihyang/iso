@@ -4,6 +4,7 @@ module Main (main) where
 import qualified Command as Cmd
 import qualified Repl (repl)
 import System.Console.CmdArgs
+import System.IO
 
 data IsoMode = Repl
   | Eval {input :: FilePath, output :: FilePath}
@@ -60,7 +61,14 @@ optionHandler opts = exec opts
 
 exec :: IsoMode -> IO ()
 exec Repl = Repl.repl
-exec Eval{..} = Cmd.evalFile input
-exec Matrix{..} = Cmd.evalToMatrixFile input
-exec Type{..} = Cmd.typeOfFile input
-exec Perpl{..} = Cmd.toPerplFile input
+exec Eval{..} = doIO output Cmd.evalFile input
+exec Matrix{..} = doIO output Cmd.evalToMatrixFile input
+exec Type{..} = doIO output Cmd.typeOfFile input
+exec Perpl{..} = doIO output Cmd.toPerplFile input
+
+doIO :: FilePath -> (Handle -> String -> IO ()) -> String -> IO ()
+doIO "" f input = f stdout input
+doIO output f input = do
+  handle <- openFile output WriteMode
+  f handle input
+  hClose handle
