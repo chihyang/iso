@@ -254,7 +254,7 @@ toMatch v pats = map f pats where
 compileMatch :: TypeEnv -> Names -> MatchExp -> Either MatchKind Perpl.UsTm
 compileMatch env names e =
   let se = simplifyMatch e in
-    case matchKind env $ se of
+    case matchKind env se of
       Valid var -> return $ matchToUsTm var se
       Reducible -> reduceMatch env names se
       er -> Left er
