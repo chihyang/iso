@@ -11,7 +11,7 @@ stack build
 
 ## Command
 
-There are two modes: REPL mode or command mode.  The former is the default
+There are two modes: REPL mode or subcommand mode.  The former is the default
 command.  When `iso-exe` is started without any argument, a REPL will start.
 This can also be started by `iso-exe repl`.  All the other subcommands read from
 an ISO program file and generate the corresponding output.  The REPL also
@@ -21,8 +21,8 @@ also be performed by using the prefix command `:lt <file>`.
 
 In the REPL, you can use `:help` to see all the supported commands.
 
-Outside the REPL, you check all the available subcommands by using the following
-command:
+Outside the REPL, you can check all the available subcommands by using the
+following command:
 
 ``` shell
 /path/to/iso-exe --help
@@ -30,6 +30,6 @@ command:
 
 ## Related Projects
 
-Theseus: https://github.com/chessai/theseus
-PERPL: https://github.com/diprism/perpl
-FGGS: https://github.com/diprism/fggs
+* Theseus: https://github.com/chessai/theseus
+* PERPL: https://github.com/diprism/perpl
+* FGGS: https://github.com/diprism/fggs
