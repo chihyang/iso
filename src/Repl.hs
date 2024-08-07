@@ -48,7 +48,7 @@ help _ = liftIO $ putStrLn $
   ":perpl exp             Convert the exp to an equivalent perpl program.\n" ++
   ":paste                 Enter multi-line input mode.\n" ++
   ":h, :help              Show this information.\n" ++
-  ":quit, :q              Quit the program.\n"
+  ":q, :quit              Quit the program.\n"
 
 eval :: String -> Repl ()
 eval = liftIO . Cmd.eval stdout
