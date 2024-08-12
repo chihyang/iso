@@ -217,7 +217,7 @@ tcIsoPairs env (hd:tl) lhsTy rhsTy = do
 
 tiIsoPair :: TypEnv -> (Value, Exp) -> Result ((BaseType, BaseType), (Value, Exp))
 tiIsoPair env (lhs, rhs) = do
-  ((lTy,lhs'),lBinds) <- tiValue env lhs
+  ((lTy,lhs'),lBinds) <- tiVal env lhs
   let newEnv = extMultiBaseEnv env lBinds
   (rTy,rhs') <- tiExp newEnv rhs
   return ((lTy,rTy),(lhs',rhs'))
@@ -232,24 +232,27 @@ tcIsoPair env (lhs,rhs) lTy rTy = do
 {---------- Bidirectional type checking for Values -----------}
 -- Return the type of the given value, the type annotated value, and all pattern
 -- variables and the corresponding type in this value.
-tiValue :: TypEnv -> Value -> Result ((BaseType, Value), [(String, BaseType)])
-tiValue _ ValUnit = return ((BTyUnit, ValAnn ValUnit BTyUnit) , [])
-tiValue _ (ValInt n) = return ((BTyInt, ValAnn (ValInt n) BTyInt) , [])
-tiValue _ ValEmpty = Left $ moduleName ++ "Type annotation is required for empty list!"
-tiValue env (ValCons v vs) = do
-  ((ty, v'), vars) <- tiValue env v
+tiVal :: TypEnv -> Value -> Result ((BaseType, Value), [(String, BaseType)])
+tiVal _ ValUnit = return ((BTyUnit, ValAnn ValUnit BTyUnit) , [])
+tiVal _ (ValInt n) = return ((BTyInt, ValAnn (ValInt n) BTyInt) , [])
+tiVal env (ValSuc n) = do
+  ((_, n'), vars) <- tcVal env n BTyInt
+  return ((BTyInt, ValAnn (ValSuc n') BTyInt) , vars)
+tiVal _ ValEmpty = Left $ moduleName ++ "Type annotation is required for empty list!"
+tiVal env (ValCons v vs) = do
+  ((ty, v'), vars) <- tiVal env v
   ((_, vs'), vars') <- tcVal env vs (BTyList ty)
   return ((BTyList ty, ValAnn (ValCons v' vs') (BTyList ty)), vars ++ vars')
-tiValue _ (ValVar var) = Left $ moduleName ++ "Type annotation is required for a single pattern var " ++ var ++ "!"
-tiValue _ (ValLInj v) = Left $ moduleName ++ "Type annotation is required for a Left value " ++ show v ++ "!"
-tiValue _ (ValRInj v) = Left $ moduleName ++ "Type annotation is required for a Right value " ++ show v ++ "!"
-tiValue env (ValPair l r) = do
-  ((lTy,l'),lBinds) <- tiValue env l
-  ((rTy,r'),rBinds) <- tiValue env r
+tiVal _ (ValVar var) = Left $ moduleName ++ "Type annotation is required for a single pattern var " ++ var ++ "!"
+tiVal _ (ValLInj v) = Left $ moduleName ++ "Type annotation is required for a Left value " ++ show v ++ "!"
+tiVal _ (ValRInj v) = Left $ moduleName ++ "Type annotation is required for a Right value " ++ show v ++ "!"
+tiVal env (ValPair l r) = do
+  ((lTy,l'),lBinds) <- tiVal env l
+  ((rTy,r'),rBinds) <- tiVal env r
   let otype = BTyProd lTy rTy
   let ov = ValAnn (ValPair l' r') otype
   return ((otype , ov), lBinds ++ rBinds)
-tiValue env (ValAnn v ty) = tcVal env v ty
+tiVal env (ValAnn v ty) = tcVal env v ty
 
 tcVal :: TypEnv -> Value -> BaseType -> Result ((BaseType, Value), [(String, BaseType)])
 tcVal env ValUnit ty =
@@ -260,6 +263,11 @@ tcVal env (ValInt n) ty =
   if typeEqual env BTyInt ty
   then return ((BTyInt , ValAnn (ValInt n) BTyInt) , [])
   else Left $ moduleName ++ "Expect " ++ show ty ++ ", got " ++ show BTyInt ++ " in " ++ show (TmInt n)
+tcVal env (ValSuc n) ty = do
+  ((ty', n') , vars) <- tcVal env n ty
+  if typeEqual env BTyInt ty'
+  then return ((ty, ValAnn (ValSuc n') BTyInt) , vars)
+  else Left $ moduleName ++ "Expect " ++ show ty ++ ", got " ++ show BTyInt ++ " in " ++ show (ValSuc n)
 tcVal _ ValEmpty (BTyList ty) = return (((BTyList ty), ValAnn ValEmpty (BTyList ty)) , [])
 tcVal env (ValCons v vs) (BTyList ty) = do
   ((_, v') , vars) <- tcVal env v ty
@@ -294,6 +302,9 @@ tcVal _ tm ty = Left $ moduleName ++ "Expect " ++ show tm ++ " to have type " ++
 tiValNoPat :: TypEnv -> Value -> Result (BaseType , Value)
 tiValNoPat _ ValUnit = return (BTyUnit , ValAnn ValUnit BTyUnit)
 tiValNoPat _ (ValInt n) = return (BTyInt , ValAnn (ValInt n) BTyInt)
+tiValNoPat env (ValSuc n) = do
+  (_, n') <- tcValNoPat env n BTyInt
+  return (BTyInt , ValAnn (ValSuc n') BTyInt)
 tiValNoPat _ ValEmpty = Left $ moduleName ++ "Type annotation is required for empty list!"
 tiValNoPat env (ValCons v vs) = do
   (ty, v') <- tiValNoPat env v
@@ -323,6 +334,11 @@ tcValNoPat env (ValInt n) ty =
   if typeEqual env BTyInt ty
   then return (BTyInt , ValAnn (ValInt n) BTyInt)
   else Left $ moduleName ++ "Expect " ++ show ty ++ ", got " ++ show BTyInt ++ " in " ++ show (TmInt n)
+tcValNoPat env (ValSuc n) ty = do
+  (ty', n') <- tcValNoPat env n BTyInt
+  if typeEqual env BTyInt ty
+    then return (BTyInt , ValAnn (ValSuc n') BTyInt)
+    else Left $ moduleName ++ "Expect " ++ show ty ++ ", got " ++ show ty' ++ " in " ++ show (ValSuc n)
 tcValNoPat _ ValEmpty (BTyList ty) = return (BTyList ty , ValAnn ValEmpty (BTyList ty))
 tcValNoPat env (ValCons v vs) (BTyList ty) = do
   (_, v') <- tcValNoPat env v ty

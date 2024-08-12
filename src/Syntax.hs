@@ -40,6 +40,7 @@ type ProgramType = Either BaseType IsoType
 data Value =
   ValUnit
   | ValInt Int
+  | ValSuc Value
   | ValEmpty
   | ValCons Value Value
   | ValVar String
@@ -52,6 +53,7 @@ data Value =
 instance Show Value where
   show ValUnit = "unit"
   show (ValInt n) = show n
+  show (ValSuc n) = "suc " ++ show n
   show ValEmpty = "[]"
   show (ValCons v1 ValEmpty) = "[" ++ show v1 ++ "]"
   show (ValCons v1 v2) = show v1 ++ ":" ++ show v2
@@ -175,6 +177,7 @@ instance Show Program where
 data ProgramBaseValue =
   PBValUnit
   | PBValInt Int
+  | PBValSuc ProgramBaseValue
   | PBValEmpty
   | PBValCons ProgramBaseValue ProgramBaseValue
   | PBValVar String
@@ -186,6 +189,7 @@ data ProgramBaseValue =
 instance Show ProgramBaseValue where
   show PBValUnit = "unit"
   show (PBValInt n) = show n
+  show (PBValSuc n) = "suc " ++ show n
   show PBValEmpty = "[]"
   show (PBValCons v PBValEmpty) = "[" ++ show v ++"]"
   show (PBValCons v vs) = "(" ++ show v ++ ":" ++ show vs ++ ")"

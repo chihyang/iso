@@ -126,6 +126,9 @@ applyIsoLam (PIValBase pairs env) _ =
 interpValue :: ValEnv -> Value -> Result EntangledValue
 interpValue _ ValUnit = return [(1, PBValUnit)]
 interpValue _ (ValInt n) = return [(1, PBValInt n)]
+interpValue env (ValSuc n) = do
+  v <- interpValue env n
+  return $ distrib1 (\(PBValInt x) -> PBValInt (x + 1)) v
 interpValue _ ValEmpty = return [(1, PBValEmpty)]
 interpValue env (ValCons v vs) = do
   v' <- interpValue env v
@@ -157,6 +160,9 @@ interpPats env (v:vs) = do
 interpPat :: ValEnv -> Value -> Result ProgramBaseValue
 interpPat _ ValUnit = return PBValUnit
 interpPat _ (ValInt n) = return $ PBValInt n
+interpPat env (ValSuc n) = do
+  v <- interpPat env n
+  return $ PBValSuc v
 interpPat _ ValEmpty = return $ PBValEmpty
 interpPat env (ValCons v vs) = do
   v' <- interpPat env v

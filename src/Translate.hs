@@ -510,6 +510,9 @@ compileValWithTyp _ _ _ ValUnit = return $ UUnit
 compileValWithTyp _ _ _ (ValInt n) = return $ makeNat n where
   makeNat 0 = UCtor ctorZero []
   makeNat n' = UCtor ctorSuc [(makeNat (n' - 1))]
+compileValWithTyp table names BTyInt (ValSuc n) = do
+  n' <- compileValWithTyp table names BTyInt n
+  return $ UCtor ctorSuc [n']
 -- NOTE: even though this can be "correctly" translated into a perpl program,
 -- perpl cannot process a value of this type yet!
 compileValWithTyp table _ (BTyList ty) ValEmpty = do
@@ -674,6 +677,7 @@ clTypIso (IsoAnn iso ty) = do
 clTypValue :: Value -> Result Types
 clTypValue ValUnit = return Set.empty
 clTypValue (ValInt _) = return Set.empty
+clTypValue (ValSuc v) = clTypValue v
 clTypValue (ValVar _) = return Set.empty
 clTypValue ValEmpty = return Set.empty
 clTypValue (ValCons l r) = do
@@ -770,6 +774,7 @@ clNmIso (IsoAnn iso _) = clNmIso iso
 clNmValue :: Value -> Result Names
 clNmValue ValUnit = return Set.empty
 clNmValue (ValInt _) = return Set.empty
+clNmValue (ValSuc v) = clNmValue v
 clNmValue (ValVar v) = return $ Set.singleton v
 clNmValue ValEmpty = return Set.empty
 clNmValue (ValCons l r) = do

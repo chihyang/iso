@@ -92,6 +92,7 @@ lcIsoPair env (v, e) = do
 lcVal :: LinearEnv -> Value -> [String]
 lcVal _ ValUnit = []
 lcVal _ (ValInt _) = []
+lcVal env (ValSuc v) = lcVal env v
 lcVal _ ValEmpty = []
 lcVal env (ValCons v vs) = vars ++ vars' where
   vars = lcVal env v
@@ -132,6 +133,7 @@ lcRhsPat env (PtMultiVar (var:vars)) = do
 lcValNoPat :: LinearEnv -> Value -> Result LinearEnv
 lcValNoPat env ValUnit = return env
 lcValNoPat env (ValInt _) = return env
+lcValNoPat env (ValSuc v) = lcValNoPat env v
 lcValNoPat env ValEmpty = return env
 lcValNoPat env (ValCons v vs) = do
   env' <- lcValNoPat env v

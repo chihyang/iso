@@ -269,6 +269,9 @@ pValUnit = ValUnit <$ $(keyword "unit")
 pValInt :: ParserT PureMode Error Value
 pValInt  = ValInt <$> int
 
+pValSuc :: ParserT PureMode Error Value
+pValSuc  = ValSuc <$> ($(keyword "suc") *> pValStart)
+
 pValEmpty :: ParserT PureMode Error Value
 pValEmpty = ValEmpty <$ $(symbol "[") <* $(symbol "]")
 
@@ -324,6 +327,7 @@ pListVal =
   pValUnit <|>
   pValEmpty <|>
   pValInt <|>
+  pValSuc <|>
   pValLInj <|>
   pValRInj <|>
   pValPair <|>
