@@ -1,4 +1,4 @@
-module Convert (matrixize, matrixizeScale, matrixizeEntangled) where
+module Convert (matrixize, matrixizeScale, matrixizeEntangled, isUnitary) where
 
 import Syntax
 import Data.Matrix
@@ -50,3 +50,15 @@ matrixizeEntangled scaled keys = matrix (length keys) 1 fill where
     case L.find (\v -> key == snd v) scaled of
       Just (s, _) -> s
       Nothing -> (0 :+ 0)
+
+isClose :: Double -> Matrix Double -> Matrix Double -> Bool
+isClose eps m1 m2 = foldl (\e a -> a && e) True $
+                    elementwise (\e1 e2 -> e1 - e2 <= eps) m1 m2
+
+isUnitary :: Matrix Scale -> Bool
+isUnitary mat =
+  if nrows mat == ncols mat
+  then isClose 1e-5 (magnitude <$> (mat * matT)) (identity $ nrows mat)
+  else False
+  where
+    matT = conjugate <$> transpose mat
