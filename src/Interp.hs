@@ -3,7 +3,7 @@ module Interp (interp, interpDefsPg, interpEnv, applyIso) where
 import Syntax
 import Data.List (sortBy, elemIndex)
 import Debug.Trace (trace)
-import OrthoCheck (unify, orthoList)
+import OrthoCheck (unify)
 
 moduleName :: String
 moduleName = "Interpreter: "
@@ -61,8 +61,7 @@ interpIso env (IsoValue ps) = do
   let pats = map fst ps
   let exps = map snd ps
   pats' <- interpPats env pats
-  pats'' <- orthoList pats'
-  return (PIValBase (zip pats'' exps) env)
+  return (PIValBase (zip pats' exps) env)
 interpIso env (IsoVar var) = lookupIso env var
 interpIso env (IsoLam var _ _ body) = return (PIValLam var body env)
 interpIso env (IsoApp lhs rhs) = do

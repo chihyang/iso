@@ -1,4 +1,4 @@
-module OrthoCheck (unify, ortho, orthoList, orthoPairs) where
+module OrthoCheck (unify) where
 
 import Debug.Trace as T (trace)
 import Syntax hiding (ValEnv)
@@ -29,37 +29,3 @@ unify env (PBValPair l1 r1) (PBValPair l2 r2) = do
   unify env' r1 r2
 unify env v1 (PBValVar var) = unify env (PBValVar var) v1
 unify _ _ _ = Nothing
-
-orthoEnv :: ValEnv -> ProgramBaseValue -> ProgramBaseValue -> Result ProgramBaseValue
-orthoEnv env v1 v2 =
-  let v1' = find env v1
-      v2' = find env v2
-  in case unify env v1' v2' of
-       Just _ -> Left $ moduleName ++ "Value " ++ show v1 ++ " and " ++ show v2 ++ " overlap!"
-       Nothing -> return v1
-
-ortho :: ProgramBaseValue -> ProgramBaseValue -> Result ProgramBaseValue
-ortho v1 v2 = orthoEnv [] v1 v2
-
-orthoLst1 :: ProgramBaseValue -> [ProgramBaseValue] -> Result ProgramBaseValue
-orthoLst1 v [] = return v
-orthoLst1 v (v1:v1s) = do
-  v' <- ortho v v1
-  orthoLst1 v' v1s
-
-orthoList :: [ProgramBaseValue] -> Result [ProgramBaseValue]
--- orthoList v | T.trace ("orthoList " ++ show v) False = undefined
-orthoList [] = return []
-orthoList (v:vs) = do
-  v' <- orthoLst1 v vs
-  vs' <- orthoList vs
-  return (v':vs')
-
-orthoPairs :: [(ProgramBaseValue, ProgramBaseValue)] -> Result [(ProgramBaseValue, ProgramBaseValue)]
--- orthoPairs pairs | T.trace ("orthoPairs " ++ show pairs) False = undefined
-orthoPairs pairs = do
-  let lhs = map fst pairs
-  let rhs = map snd pairs
-  lhs' <- orthoList lhs
-  rhs' <- orthoList rhs
-  return $ zip lhs' rhs'
