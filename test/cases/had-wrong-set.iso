@@ -1,0 +1,8 @@
+had :: (Unit + Unit) <-> (Unit + Unit)
+had =
+{
+  left unit <-> left unit;
+  right unit <-> [0.707106781188 * left unit - 0.707106781188 * right unit]
+}
+
+had
