@@ -8,6 +8,7 @@ import Data.Matrix as M
 import qualified Data.List as List
 import Interp
 import LinearCheck
+import OrthoCheck
 import Reduce
 import Syntax as S
 import Translate
@@ -22,7 +23,8 @@ check str =
   parseDefsPg >>=
   foldDefsPg >>=
   typeInferDefsPg >>=
-  linearCheckDefsPg
+  linearCheckDefsPg >>=
+  odCheck
 
 run :: String -> S.Result ProgramValue
 run str = Right str >>= check >>= interpDefsPg
