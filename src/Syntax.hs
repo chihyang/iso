@@ -250,7 +250,8 @@ type Result a = Either String a
 type EntangledValue = [(Scale, ProgramBaseValue)]
 type Declaration = Either IsoType Iso
 type Declarations = [(String, Either IsoType Iso)]
-type Definitions = [(String, Iso)]
+type Definition = (String, Iso)
+type Definitions = [Definition]
 
 reportErr :: String -> String -> Result a
 reportErr tag msg = Left $ tag ++ msg

@@ -14,26 +14,32 @@ typeInferDefsPg (defs, pgm) = do
   pgm' <- typeInferEnv env pgm
   return (defs', pgm')
 
+-- Remove base type variables from current environment.
+removeBaseVar :: TypEnv -> TypEnv
+removeBaseVar = filter f where
+  f (_, Left _) = False
+  f (_, Right _) = True
+
 -- Given a sorted list of declarations, return a list of possibly type
 -- annotated isos.
 collectTypes :: Definitions -> Result TypEnv
 collectTypes [] = return emptyTypEnv
-collectTypes ((var, (IsoAnn _ ty)):ds) = do
+collectTypes ((var, IsoAnn _ ty):ds) = do
   env <- collectTypes ds
   return $ extIsoEnv env var ty
 collectTypes ((var, d):_) = Left $ "Invalid definition: " ++ var ++ " = " ++ show d
 
 checkDefs :: TypEnv -> Definitions -> Result Definitions
 checkDefs _ [] = return []
-checkDefs env ((var,(IsoAnn d ty)):ds) = do
+checkDefs env ((var,IsoAnn d ty):ds) = do
   defs <- checkDefs env ds
   (ty', d') <- tcIso env d ty
-  return $ (var,(IsoAnn d' ty')):defs
+  return $ (var,IsoAnn d' ty'):defs
 checkDefs _ ((var,_):_) = Left $ moduleName ++ var ++ " doesn't have a type declaration!"
 
 {---------- Type infer program ----------}
 typeInfer :: Program -> Result Program
-typeInfer pg = typeInferEnv emptyTypEnv pg
+typeInfer = typeInferEnv emptyTypEnv
 
 typeInferEnv :: TypEnv -> Program -> Result Program
 typeInferEnv env (PgTm tm) = do
@@ -61,15 +67,16 @@ tiTm _ (TmRInj tm) = Left $ moduleName ++ "Type annotation is required for the t
 tiTm env (TmPair l r) = do
   (lTy, lTm) <- tiTm env l
   (rTy, rTm) <- tiTm env r
-  let oType = (BTyProd lTy rTy)
+  let oType = BTyProd lTy rTy
   return (oType , TmAnn (TmPair lTm rTm) oType)
 tiTm env (TmIsoApp iso tm) = do
   (isoTy, iso') <- tiIso env iso
   (randTy, bodyTy) <- tcRator iso' isoTy
   (_, tm') <- tcTm env tm randTy
-  return (bodyTy , (TmAnn (TmIsoApp iso' tm') bodyTy))
+  return (bodyTy , TmAnn (TmIsoApp iso' tm') bodyTy)
 tiTm env (TmLet pat rhs body) = do
-  (rhsTy, rhs') <- tiTm env rhs
+  -- remove all preceding base variables from the environment
+  (rhsTy, rhs') <- tiTm (removeBaseVar env) rhs
   newEnv <- extPatEnv env pat rhsTy
   (bodyTy, body') <- tiTm newEnv body
   return (bodyTy , TmAnn (TmLet pat rhs' body') bodyTy)
@@ -105,18 +112,19 @@ tcTm env (TmRInj tm) (BTySum lTy rTy) = do
 tcTm env (TmPair lhs rhs) (BTyProd lTy rTy) = do
   (_, lhs') <- tcTm env lhs lTy
   (_, rhs') <- tcTm env rhs rTy
-  let oType = (BTyProd lTy rTy)
-  return (oType , (TmAnn (TmPair lhs' rhs') oType))
+  let oType = BTyProd lTy rTy
+  return (oType , TmAnn (TmPair lhs' rhs') oType)
 tcTm env (TmIsoApp iso tm) ty = do
   (isoTy, iso') <- tiIso env iso
   (randTy, bodyTy) <- tcRator iso' isoTy
   (argType, tm') <- tcTm env tm randTy
   if typeEqual env bodyTy ty
-    then return (bodyTy , (TmAnn (TmIsoApp iso' tm') bodyTy))
+    then return (bodyTy , TmAnn (TmIsoApp iso' tm') bodyTy)
     else Left $ moduleName ++ "The operand " ++ show tm ++ " has the type " ++ show argType ++
          " , expect " ++ show randTy
 tcTm env (TmLet pat rhs body) ty = do
-  (rhsTy, rhs') <- tiTm env rhs
+  -- remove all preceding base variables from the environment
+  (rhsTy, rhs') <- tiTm (removeBaseVar env) rhs
   newEnv <- extPatEnv env pat rhsTy
   (_, body') <- tcTm newEnv body ty
   return (ty , TmAnn (TmLet pat rhs' body') ty)
@@ -186,7 +194,7 @@ tcIso env (IsoApp rator rand) ty = do
       | isoTypeEqual env bodyTy ty ->
         do
           (_, rand') <- tcIso env rand (ITyBase lhsTy rhsTy)
-          return $ (ty, (IsoAnn (IsoApp rator' rand') ty))
+          return (ty, IsoAnn (IsoApp rator' rand') ty)
     _ -> Left $ moduleName ++ "Expect " ++ show rator ++ " to have the type (Iso -> Iso)!"
 -- TODO: structural recursion check
 tcIso env (IsoFix var lhs rhs body) ty = do
@@ -209,11 +217,11 @@ tiIsoPairs env (hd:tl) = do
   return (ty,(v,e):tl')
 
 tcIsoPairs :: TypEnv -> [(Value, Exp)] -> BaseType -> BaseType -> Result (IsoType, [(Value, Exp)])
-tcIsoPairs _ [] lhsTy rhsTy = return $ (ITyBase lhsTy rhsTy,[])
+tcIsoPairs _ [] lhsTy rhsTy = return (ITyBase lhsTy rhsTy,[])
 tcIsoPairs env (hd:tl) lhsTy rhsTy = do
   ((lhsTy',rhsTy'),(v,e)) <- tcIsoPair env hd lhsTy rhsTy
   (ty,tl') <- tcIsoPairs env tl lhsTy' rhsTy'
-  return $ (ty,(v,e):tl')
+  return (ty,(v,e):tl')
 
 tiIsoPair :: TypEnv -> (Value, Exp) -> Result ((BaseType, BaseType), (Value, Exp))
 tiIsoPair env (lhs, rhs) = do
@@ -268,11 +276,11 @@ tcVal env (ValSuc n) ty = do
   if typeEqual env BTyInt ty'
   then return ((ty, ValAnn (ValSuc n') BTyInt) , vars)
   else Left $ moduleName ++ "Expect " ++ show ty ++ ", got " ++ show BTyInt ++ " in " ++ show (ValSuc n)
-tcVal _ ValEmpty (BTyList ty) = return (((BTyList ty), ValAnn ValEmpty (BTyList ty)) , [])
+tcVal _ ValEmpty (BTyList ty) = return ((BTyList ty, ValAnn ValEmpty (BTyList ty)) , [])
 tcVal env (ValCons v vs) (BTyList ty) = do
   ((_, v') , vars) <- tcVal env v ty
   ((_, vs') , vars') <- tcVal env vs (BTyList ty)
-  return (((BTyList ty), ValAnn (ValCons v' vs') (BTyList ty)) , vars ++ vars')
+  return ((BTyList ty, ValAnn (ValCons v' vs') (BTyList ty)) , vars ++ vars')
 -- special case, Var is a pattern
 tcVal _ (ValVar var) ty = return ((ty, ValAnn (ValVar var) ty), [(var , ty)])
 tcVal env (ValLInj tm) (BTySum lTy rTy) = do
@@ -377,14 +385,15 @@ tiExp :: TypEnv -> Exp -> Result (BaseType, Exp)
 -- tiExp env e | trace ("tiExp " ++ show env ++ " " ++ show e) False = undefined
 tiExp env (ExpVal val) = do
   (ty,val') <- tiValNoPat env val
-  return $ (ty,ExpVal val')
+  return (ty,ExpVal val')
 tiExp env (ExpLet pat iso pat' body) = do
-  (isoTy, iso') <- tiIso env iso
+  -- remove all preceding base variables from the environment
+  (isoTy, iso') <- tiIso (removeBaseVar env) iso
   (randTy, rstTy) <- tcRator iso' isoTy
   _ <- tcRhsPat env randTy pat'
   newEnv <- extPatEnv env pat rstTy
   (bodyTy',body') <- tiExp newEnv body
-  return (bodyTy', (ExpLet pat iso' pat' body'))
+  return (bodyTy', ExpLet pat iso' pat' body')
 tiExp env (ExpScale s e) = do
   (ty, e') <- tiExp env e
   return (ty, ExpScale s e')
@@ -405,9 +414,10 @@ tcExp :: TypEnv -> Exp -> BaseType -> Result (BaseType, Exp)
 -- tcExp env e ty | trace ("tcExp " ++ show env ++ " " ++ show e ++ " " ++ show ty) False = undefined
 tcExp env (ExpVal val) ty = do
   (_,val') <- tcValNoPat env val ty
-  return $ (ty,ExpVal val')
+  return (ty,ExpVal val')
 tcExp env (ExpLet pat iso pat' body) ty = do
-  (isoTy, iso') <- tiIso env iso
+  -- remove all preceding base variables from the environment
+  (isoTy, iso') <- tiIso (removeBaseVar env) iso
   (randTy, rstTy) <- tcRator iso' isoTy
   _ <- tcRhsPat env randTy pat'
   newEnv <- extPatEnv env pat rstTy
@@ -432,7 +442,7 @@ tcRhsPat env ty (PtSingleVar var) = do
   if typeEqual env ty ty'
     then return ty
     else Left $ moduleName ++ "Invalid pattern type " ++ show ty' ++ ", expect " ++ show ty
-tcRhsPat env ty (PtMultiVar (var : [])) = do
+tcRhsPat env ty (PtMultiVar [var]) = do
   ty' <- applyBaseEnv env var
   if typeEqual env ty ty'
     then return ty
@@ -440,7 +450,7 @@ tcRhsPat env ty (PtMultiVar (var : [])) = do
 tcRhsPat env (BTyProd hd tl) (PtMultiVar (var : vars)) = do
   hd' <- applyBaseEnv env var
   tl' <- tcRhsPat env tl (PtMultiVar vars)
-  let ty' = (BTyProd hd' tl')
+  let ty' = BTyProd hd' tl'
   if typeEqual env (BTyProd hd tl) ty'
     then return (BTyProd hd tl)
     else Left $ moduleName ++ "Invalid pattern type " ++ show ty' ++ ", expect " ++ show (BTyProd hd tl)
@@ -448,22 +458,22 @@ tcRhsPat _ _ pat = Left $ moduleName ++ "Invalid pattern " ++ show pat
 
 {-------------- Helper functions --------------}
 isoTypeEqual :: TypEnv -> IsoType -> IsoType -> Bool
-isoTypeEqual _ ty ty' = (ty == ty')
+isoTypeEqual _ ty ty' = ty == ty'
 
 typeEqual :: TypEnv -> BaseType -> BaseType -> Bool
-typeEqual _ ty ty' = (ty == ty')
+typeEqual _ ty ty' = ty == ty'
 
 emptyTypEnv :: TypEnv
 emptyTypEnv = []
 
 applyBaseEnv :: TypEnv -> String -> Result BaseType
 -- applyBaseEnv env var | trace ("applyBaseEnv " ++ show env ++ " " ++ show var) False = undefined
-applyBaseEnv env var = case (lookup var env) of
+applyBaseEnv env var = case lookup var env of
   Just (Left bTy) -> return bTy
   _ -> Left $ moduleName ++ "Cannot find the base type variable " ++ show var
 
 applyIsoEnv :: TypEnv -> String -> Result IsoType
-applyIsoEnv env var = case (lookup var env) of
+applyIsoEnv env var = case lookup var env of
   Just (Right iTy) -> return iTy
   _ -> Left $ moduleName ++ "Cannot find the iso variable " ++ show var
 
@@ -475,13 +485,13 @@ extBaseEnv env var ty = (var , Left ty) : env
 
 extMultiBaseEnv :: TypEnv -> [(String , BaseType)] -> TypEnv
 extMultiBaseEnv env binds = map f binds ++ env where
-  f = \x -> (fst x, Left $ snd x)
+  f (x,y) = (x, Left y)
 
 extPatEnv :: TypEnv -> Pattern -> BaseType -> Result TypEnv
 -- extPatEnv env pat ty | trace ("extPatEnv " ++ show env ++ " " ++ show pat ++ " " ++ show ty) False = undefined
 extPatEnv env (PtSingleVar var) ty = return $ extBaseEnv env var ty
 extPatEnv env (PtMultiVar vars) ty = extend env vars ty where
-  extend env' (var : []) ty' = return $ extBaseEnv env' var ty'
+  extend env' [var] ty' = return $ extBaseEnv env' var ty'
   extend env' (var : vars') (BTyProd lhsTy rhsTy) =
     extend (extBaseEnv env' var lhsTy) vars' rhsTy
   extend _ _ _ = Left $ moduleName ++ "The number of pattern variables " ++ show vars ++ " don't match the type " ++ show ty

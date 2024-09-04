@@ -1,5 +1,7 @@
+{-# LANGUAGE TupleSections #-}
 module LinearCheck (linearCheck, linearCheckEnv, linearCheckDefsPg) where
 
+import Data.Foldable
 import Syntax
 import qualified Data.Set as Set
 import Debug.Trace (trace)
@@ -22,7 +24,7 @@ lcDefs ((var,iso):defs) = do
   return ((var,iso):defs')
 
 linearCheck :: Program -> Result Program
-linearCheck pg = linearCheckEnv [] pg
+linearCheck = linearCheckEnv []
 
 linearCheckEnv :: LinearEnv -> Program -> Result Program
 linearCheckEnv env (PgTm tm) = do
@@ -76,10 +78,7 @@ lcIso env (IsoFix _ _ _ body) = lcIso env body
 lcIso env (IsoAnn iso _) = lcIso env iso
 
 lcIsoPairs :: LinearEnv -> [(Value, Exp)] -> Result LinearEnv
-lcIsoPairs env [] = return env
-lcIsoPairs env (hd:tl) = do
-  env' <- lcIsoPair env hd
-  lcIsoPairs env' tl
+lcIsoPairs = foldlM lcIsoPair
 
 lcIsoPair :: LinearEnv -> (Value, Exp) -> Result LinearEnv
 lcIsoPair env (v, e) = do
@@ -153,7 +152,7 @@ increEnv ((var',n):tl) var
   | var' == var =
       if n > 0
       then Left $ moduleName ++ "Variable " ++ show var ++ " is used more than once!"
-      else return ((var', (n + 1)):tl)
+      else return ((var', n + 1):tl)
 increEnv ((var',n):tl) var = do
   env' <- increEnv tl var
   return $ (var',n):env'
@@ -161,8 +160,8 @@ increEnv ((var',n):tl) var = do
 extendPat :: LinearEnv -> Pattern -> Result LinearEnv
 extendPat env (PtSingleVar var) = return $ (var, 0):env
 extendPat env (PtMultiVar vars)
-  | (Set.size $ Set.fromList vars) == length vars =
-    return $ (map (\x -> (x , 0)) vars) ++ env
+  | Set.size (Set.fromList vars) == length vars =
+    return $ map (,0) vars ++ env
   | otherwise = Left $ "patterns have duplicate variables: " ++ show vars
 
 dropPat :: LinearEnv -> Pattern -> Result LinearEnv
