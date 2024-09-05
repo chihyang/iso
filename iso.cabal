@@ -43,6 +43,7 @@ library
       Syntax
       Translate
       TypeCheck
+      Uniquify
   other-modules:
       Paths_iso
   autogen-modules:
