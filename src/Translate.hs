@@ -39,7 +39,7 @@ dataList :: String
 dataList = "List"
 
 unitUsTm :: Perpl.UsTm
-unitUsTm = (Perpl.UsProd Perpl.Multiplicative [])
+unitUsTm = Perpl.UsProd Perpl.Multiplicative []
 {-
 Given a TYPE ANNOTATED ISO program, translate it into a user level PERPL
 program.
@@ -66,7 +66,7 @@ transTerm table names (TmAnn tm ty) = transTmWithTyp table names ty tm
 transTerm _ _ tm = err $ "Cannot translate an untype-checked term: " ++ show tm
 
 transTmWithTyp :: TypeTable -> Names -> BaseType -> Term -> Result Perpl.UsTm
-transTmWithTyp _ _ _ TmUnit = return $ unitUsTm
+transTmWithTyp _ _ _ TmUnit = return unitUsTm
 transTmWithTyp _ _ _ (TmInt n) = return $ makeNat n where
   makeNat 0 = makeUsVar ctorZero
   makeNat n' = Perpl.UsApp (makeUsVar ctorSuc) (makeNat (n' - 1))
@@ -245,7 +245,7 @@ toUsTm (UCtor tag pats) = foldl Perpl.UsApp (makeUsVar tag) (map toUsTm pats)
 toUsTm (UVar var) = makeUsVar var
 
 toMatch :: PatVar -> [(UsPattern, Perpl.UsTm)] -> MatchExp
-toMatch v pats = map f pats where
+toMatch v = map f where
   f (pat, tm) = (Map.fromList [(v , pat)], tm)
 
 -- | Compile a list of (pattern, exp) into a list of conditions.
@@ -272,15 +272,15 @@ reduceMatch env names e = do
 reduceMatches :: TypeEnv -> Names -> [([PatVar], MatchExp)] -> Either MatchKind [Perpl.UsTm]
 -- reduceMatches env names es
 --   | trace ("reduceMatches " ++ show env ++ " " ++ show names ++ " " ++ show es) False = undefined
-reduceMatches env names es = mapM f es where
+reduceMatches env names = mapM f where
   f :: ([PatVar], MatchExp) -> Either MatchKind Perpl.UsTm
   f (binds, e) = compileMatch env (g binds) e
 
   g :: [PatVar] -> Names
-  g pats = foldr h names pats
+  g = foldr h names
 
   h :: PatVar -> Names -> Names
-  h (v, _) r = Set.insert v r
+  h (v, _) = Set.insert v
 
 -- | Given a pattern variable, generate all of its constructor patterns, a list
 -- of constructors, and a list of bound pattern variables.
@@ -290,10 +290,9 @@ genPats env names (_, ty) = zip upats pbinds where
   ctors = clCtors env ty
   tags = map fst ctors
   tyss = map snd ctors
-  varss = map ((freshVars names) . length) tyss
-  upats = map (\(tag, args) -> UCtor tag $ map UVar args) $ zip tags varss
-  pbinds = map f $ zip varss tyss
-  f (vars, tys) = zip vars tys
+  varss = map (freshVars names . length) tyss
+  upats = zipWith (\tag args -> UCtor tag $ map UVar args) tags varss
+  pbinds = zipWith zip varss tyss
 
 -- | Given a pattern variable being matched, a match expression, a constructor
 -- pattern corresponding to the given variable, return a bound match expression.
@@ -302,7 +301,7 @@ genPats env names (_, ty) = zip upats pbinds where
 dispatchMatch :: PatVar -> MatchExp -> [(UsPattern, [PatVar])] -> [MatchExp]
 -- dispatchMatch var cls pats
 --   | trace ("dispatchMatch " ++ show (fst var) ++ " " ++ show cls ++ " " ++ show pats) False = undefined
-dispatchMatch var cls pats = map (dispatchMatches var cls) pats
+dispatchMatch var cls = map (dispatchMatches var cls)
 
 dispatchMatches :: PatVar -> MatchExp -> (UsPattern, [PatVar]) -> MatchExp
 dispatchMatches var cls (pat, binds) = foldr dispatchClause [] cls where
@@ -330,13 +329,13 @@ dispatchMatches var cls (pat, binds) = foldr dispatchClause [] cls where
   unifyPat (UCtor tag _, bs) (UCtor tag' args')
     | tag == tag' = Just $ Map.fromList $ zip bs args'
     | otherwise = Nothing
-  unifyPat (UVar _, [b]) (UVar v') = Just $ Map.fromList $ [(b, UVar v')]
-  unifyPat (UVar _, [b]) UUnit = Just $ Map.fromList $ [(b, UUnit)]
+  unifyPat (UVar _, [b]) (UVar v') = Just $ Map.fromList [(b, UVar v')]
+  unifyPat (UVar _, [b]) UUnit = Just $ Map.fromList [(b, UUnit)]
   unifyPat (UVar _, [_]) _ = Nothing
-  unifyPat _ _ = error $ "Impossible case!"
+  unifyPat _ _ = error "Impossible case!"
 
 toTypeEnv :: TypeTable -> TypeEnv
-toTypeEnv table = Map.foldr' h Map.empty table where
+toTypeEnv = Map.foldr' h Map.empty where
   h (Perpl.TpData (Perpl.TpN dat) ctors typs) r =
     Map.insert dat (Perpl.TpData (Perpl.TpN dat) ctors typs) r
   h _ r = r
@@ -363,26 +362,24 @@ data MatchKind =
 matchKind :: TypeEnv -> MatchExp -> MatchKind
 matchKind _ [] = Missing
 matchKind _ [pat] | isWildcard pat = Valid ("", freshProd [])
-matchKind _ pats | (List.length $ List.filter isWildcard pats) > 1 = Redundancy
-matchKind env pats = case isValidMatch env pats of
-  Just var -> Valid var
-  Nothing -> Reducible
+matchKind _ pats | List.length (List.filter isWildcard pats) > 1 = Redundancy
+matchKind env pats = maybe Reducible Valid (isValidMatch env pats)
 
 -- | Check if a match expression is valid.
 isValidMatch :: TypeEnv -> MatchExp -> Maybe PatVar
 isValidMatch env clauses =
   if isValid clauses && a == b
   then return var else Nothing where
-  keys = Map.keys $ fst $ clauses !! 0
-  var = keys !! 0
+  keys = Map.keys $ fst $ head clauses
+  var = head keys
 
   a = Set.fromList $ fromPatVar var
   b = Set.fromList $ matchArity var clauses
 
   -- Check if a match expression is valid.
   isValid :: MatchExp -> Bool
-  isValid [] = error $ "Impossible case: match expression has 0 clause!"
-  isValid (cl:cls) = (Map.size $ fst cl) == 1 && all (isValidClause var) (cl:cls)
+  isValid [] = error "Impossible case: match expression has 0 clause!"
+  isValid (cl:cls) = Map.size (fst cl) == 1 && all (isValidClause var) (cl:cls)
 
   -- Check if a clause is valid.
   isValidClause :: PatVar -> Clause -> Bool
@@ -390,9 +387,8 @@ isValidMatch env clauses =
 
   -- Check if an extended pattern is valid.
   isValidExtPat :: PatVar -> ExtPattern -> Bool
-  isValidExtPat v pats = (Map.size pats) == 1 &&
-    Map.member v pats &&
-    (isUsCtor $ pats Map.! v)
+  isValidExtPat v pats = Map.size pats == 1 &&
+    Map.member v pats && isUsCtor (pats Map.! v)
 
   -- Check if a user pattern is a constructor pattern with all its arguments
   -- variables.
@@ -407,7 +403,7 @@ isValidMatch env clauses =
 
   -- Collect all constructors and their arities from a match expression.
   matchArity :: PatVar -> MatchExp -> [(String, Int)]
-  matchArity v cs = map (\clause -> clauseArity $ (fst clause) Map.! v) cs
+  matchArity v = map (\clause -> clauseArity $ fst clause Map.! v)
 
   -- Collect the constructor and its arity from a pattern.  Invoke this only
   -- when you are sure that the pattern of UCtor!
@@ -429,7 +425,7 @@ pickVar e = fst $ maxVar $ Map.toList $ foldr g Map.empty e where
   h k _ r = if Map.member k r then Map.adjust (+1) k r else Map.insert k 0 r
 
   maxVar :: [(PatVar, Int)] -> (PatVar, Int)
-  maxVar ints = maximumBy (\(_, n1) (_, n2) -> compare n1 n2) ints
+  maxVar = maximumBy (\(_, n1) (_, n2) -> compare n1 n2)
 
 {-- Convert match expressions to terms. --}
 -- | Convert a valid match expression into a UsTm.
@@ -447,7 +443,7 @@ clauseToCase pvar (pats, tm) = Perpl.CaseUs ctor args tm where
 
   -- | Convert a user pattern to a case component.
   toUsCase :: UsPattern -> (Perpl.TmName, [Perpl.TmVar])
-  toUsCase (UCtor tag pats') = ((fromString tag), (map fromString vars)) where
+  toUsCase (UCtor tag pats') = (fromString tag, map fromString vars) where
     vars = map toString pats'
   toUsCase pat = error $ "Impossible case: not a valid constructor pattern: " ++ show pat
 
@@ -459,7 +455,7 @@ clauseToCase pvar (pats, tm) = Perpl.CaseUs ctor args tm where
 {-- Simplify a match expression. --}
 simplifyMatch :: MatchExp -> MatchExp
 -- simplifyMatch es | trace ("simplifyMatch " ++ show es) False = undefined
-simplifyMatch es = map simplifyClause es
+simplifyMatch = map simplifyClause
 
 simplifyClause :: Clause -> Clause
 simplifyClause (pats, tm) = Map.foldrWithKey' f (Map.empty, tm) pats where
@@ -472,8 +468,8 @@ simplifyClause (pats, tm) = Map.foldrWithKey' f (Map.empty, tm) pats where
 -- arguments corresponding to each constructor.
 clCtors :: TypeEnv -> Perpl.Type -> [(String, [Perpl.Type])]
 -- clCtors env ty | trace ("clCtors " ++ show env ++ " " ++ show ty) False = undefined
-clCtors _ (Perpl.TpData _ ctors tys) = map f $ zip ctors tys where
-  f (Perpl.Tag ctor, ty) = (ctor, typSize ty)
+clCtors _ (Perpl.TpData _ ctors tys) = zipWith f ctors tys where
+  f (Perpl.Tag ctor) ty = (ctor, typSize ty)
 
   typSize (Perpl.TpProd _ tys') = tys'
   typSize ty = [ty]
@@ -482,7 +478,7 @@ clCtors _ ty = error $ "Impossible case: " ++ show ty
 
 freshVars :: Names -> Int -> [String]
 freshVars _ 0 = []
-freshVars names n = (freshVar names n):(freshVars names (n-1))
+freshVars names n = freshVar names n:freshVars names (n-1)
 
 freshVar :: Names -> Int -> String
 freshVar names n = if Set.member name names then Set.findMax names ++ name else name where
@@ -493,23 +489,23 @@ Translate a pair
 -}
 transPairsWithTyp :: TypeTable -> Names -> (BaseType, BaseType) -> [(Value, Exp)] ->
   Result [(UsPattern, Perpl.UsTm)]
-transPairsWithTyp table names ty pairs = mapM (transPairWithTyp table names ty) pairs
+transPairsWithTyp table names ty = mapM (transPairWithTyp table names ty)
 
 transPairWithTyp :: TypeTable -> Names -> (BaseType, BaseType) -> (Value, Exp) ->
   Result (UsPattern, Perpl.UsTm)
 transPairWithTyp table names (vTy, eTy) (v, e) = do
   v' <- compileValWithTyp table names vTy v
   e' <- transExpWithTyp table names eTy e
-  return $ (v', e')
+  return (v', e')
 
 {-
 Translate a value
 -}
 compileValWithTyp :: TypeTable -> Names -> BaseType -> Value -> Result UsPattern
-compileValWithTyp _ _ _ ValUnit = return $ UUnit
+compileValWithTyp _ _ _ ValUnit = return UUnit
 compileValWithTyp _ _ _ (ValInt n) = return $ makeNat n where
   makeNat 0 = UCtor ctorZero []
-  makeNat n' = UCtor ctorSuc [(makeNat (n' - 1))]
+  makeNat n' = UCtor ctorSuc [makeNat (n' - 1)]
 compileValWithTyp table names BTyInt (ValSuc n) = do
   n' <- compileValWithTyp table names BTyInt n
   return $ UCtor ctorSuc [n']
@@ -529,7 +525,7 @@ compileValWithTyp table names (BTyList ty) (ValCons l r) = do
   r' <- compileValWithTyp table names (BTyList ty) r
   l' <- compileValWithTyp table names ty l
   return $ UCtor ctor [l', r']
-compileValWithTyp _ _ BTyUnit (ValVar _) = return $ UUnit
+compileValWithTyp _ _ BTyUnit (ValVar _) = return UUnit
 compileValWithTyp _ _ _ (ValVar var) = return $ UVar var
 compileValWithTyp table names (BTySum l r) (ValLInj val) = do
   pTy <- lookupBase (BTySum l r) table
@@ -571,7 +567,7 @@ transExpWithTyp table names ty (ExpScale scale e) = do
   e' <- transExpWithTyp table names ty e
   if imagPart scale == 0
     then return $ Perpl.UsFactor (realPart scale) e'
-    else err $ "TODO: complex scale is not supported yet!"
+    else err "TODO: complex scale is not supported yet!"
 transExpWithTyp table names ty (ExpPlus es) = do
   es' <- mapM (transExpWithTyp table names ty) es
   return $ Perpl.UsAmb es'
@@ -598,7 +594,7 @@ transExpWithTyp _ _ _ (ExpLet _ iso _ _) =
 Translate an algebraic data definition.
 -}
 translateData :: TypeTable -> Result [Perpl.UsProg]
-translateData table = foldrM f [] table where
+translateData = foldrM f [] where
   f (Perpl.TpData name tags tys) r = do
     ctors <- makeCtors tags tys
     usdata <- makeUsData name ctors
@@ -627,12 +623,12 @@ translateData table = foldrM f [] table where
   purgeType ty = ty
 
 translateDefs :: TypeTable -> Names -> Definitions -> Result [Perpl.UsProg]
-translateDefs table names defs = foldrM f [] defs where
+translateDefs table names = foldrM f [] where
   f (str, iso) r = do
     isoTm <- transIso table names iso
     isoTy <- transIsoTyp table names iso
     let isoNm = fromString str
-    return $ (Perpl.UsProgDefine isoNm isoTm $ simplifyType isoTy):r
+    return $ Perpl.UsProgDefine isoNm isoTm (simplifyType isoTy):r
 
 {-
 Collect all types into a set (type variables are not considered yet)
@@ -644,7 +640,7 @@ collectTypes (defs, prgm) = do
   return $ Set.union dfTys pgTys
 
 clTypDefs :: Definitions -> Result Types
-clTypDefs defs = foldlM clTypDef Set.empty defs where
+clTypDefs = foldlM clTypDef Set.empty where
   clTypDef rst (_, iso) = do
     isoTys <- clTypIso iso
     return $ Set.union rst isoTys
@@ -743,7 +739,7 @@ collectNames (defs, prgm) = do
   return $ Set.union dfNms pgNms
 
 clNmDefs :: Definitions -> Result Names
-clNmDefs defs = foldlM clNmDef Set.empty defs where
+clNmDefs = foldlM clNmDef Set.empty where
   clNmDef rst (nm, iso) = do
     isoTys <- clNmIso iso
     return $ Set.insert nm $ Set.union rst isoTys
@@ -758,7 +754,7 @@ clNmIso (IsoValue pairs) = foldlM clIsoPair Set.empty pairs where
     vNm <- clNmValue v
     eNm <- clNmExp e
     return $ Set.union vNm $ Set.union eNm rst
-clNmIso (IsoVar _) = return $ Set.empty
+clNmIso (IsoVar _) = return Set.empty
 clNmIso (IsoLam v _ _ iso) = do
   nms <- clNmIso iso
   return $ Set.insert v nms
@@ -866,7 +862,7 @@ transBaseType' table names (BTyList ty) = do
   let nilTyp = freshProd []
   let consTyp = freshProd [ty', Perpl.TpVar $ fromString d]
   return $ insertBase (BTyList ty) (freshData d ctors [nilTyp, consTyp]) table
-transBaseType' _ _ (BTyVar var) = err $ moduleName ++ "Unsupported type: " ++ (show (BTyVar var))
+transBaseType' _ _ (BTyVar var) = err $ moduleName ++ "Unsupported type: " ++ show (BTyVar var)
 transBaseType' table names (BTySum l r) = do
   table' <- transBaseType table names l
   table'' <- transBaseType table' names r
@@ -887,7 +883,7 @@ transBaseType' table names (BTyProd l r) = do
   let prod = freshProd [tl, tr]
   let dat = freshData datName [ctr1Name] [prod]
   return $ insertBase (BTyProd l r) dat table''
-transBaseType' _ _ (BTyMu v b) = err $ moduleName ++ "Unsupported type: " ++ (show (BTyMu v b))
+transBaseType' _ _ (BTyMu v b) = err $ moduleName ++ "Unsupported type: " ++ show (BTyMu v b)
 
 transIsoType :: TypeTable -> Names -> IsoType -> Result TypeTable
 transIsoType table names ty =  case Map.lookup (Right ty) table of
@@ -912,7 +908,7 @@ transIsoType' table names (ITyFun l r body) = do
 
 freshDataName :: TypeTable -> Names -> String
 freshDataName table names = if Set.member n names then n ++ Set.findMax names else n where
-  n = "DTy" ++ (show $ Map.size table)
+  n = "DTy" ++ show (Map.size table)
 
 freshCtorName :: Names -> String -> Int -> String
 freshCtorName names name i = if Set.member n names then n ++ Set.findMax names else n where
