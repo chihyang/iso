@@ -25,6 +25,7 @@ source-repository head
 
 library
   exposed-modules:
+      ClosureConvert
       Command
       Convert
       Expand
@@ -40,6 +41,7 @@ library
       Perpl.Util.Helpers
       Reduce
       Repl
+      RevealFix
       Run
       Syntax
       Translate
