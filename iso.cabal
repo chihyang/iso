@@ -32,6 +32,7 @@ library
       Interp
       LinearCheck
       OrthoCheck
+      PatternMatch
       Perpl.Struct.Exprs
       Perpl.Struct.Helpers
       Perpl.Struct.Lib

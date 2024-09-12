@@ -3,8 +3,8 @@ module Translate (transToPerplPg, PProg) where
 import Data.Foldable
 import Data.String
 import qualified Perpl.Struct.Lib as Perpl
+import PatternMatch
 import Syntax
-import Data.List as List
 import qualified Data.Map.Strict as Map
 import qualified Data.Set as Set
 import Debug.Trace (trace)
@@ -13,6 +13,34 @@ type TypeTable = Map.Map ProgramType Perpl.Type
 type Types = Set.Set ProgramType
 type Names = Set.Set String
 type PProg = Perpl.UsProgs
+type Info = (TypeTable, Names)
+
+lookupBaseInfo :: BaseType -> Info -> Result Perpl.Type
+lookupBaseInfo ty (table,_) = lookupBase ty table
+
+lookupIsoInfo :: IsoType -> Info -> Result Perpl.Type
+lookupIsoInfo ty (table,_) = lookupIso ty table
+
+getNames :: Info -> Names
+getNames (_,names) = names
+
+freshVar :: Info -> String
+freshVar (_,names) = f names (Set.size names) where
+  f names' n = if Set.member name names' then Set.findMax names' ++ name else name where
+    name = "_var" ++ show n
+
+insertNameInfo :: String -> Info -> Info
+insertNameInfo name (table,names) = (table,names') where
+  names' = Set.insert name names
+
+getTypeEnv :: Info -> TypeEnv
+getTypeEnv (table,_) = toTypeEnv table
+
+toTypeEnv :: TypeTable -> TypeEnv
+toTypeEnv = Map.foldr' h Map.empty where
+  h (Perpl.TpData (Perpl.TpN dat) ctors typs) r =
+    Map.insert dat (Perpl.TpData (Perpl.TpN dat) ctors typs) r
+  h _ r = r
 
 moduleName :: String
 moduleName = "Translate To PERPL: "
@@ -50,72 +78,73 @@ transToPerplPg (defs, prgm) = do
   names <- collectNames (defs, prgm)
   table <- translateTypes types names
   usdata <- translateData table
-  usdefs <- translateDefs table names defs
-  usprgm <- translatePg table names prgm
+  let info = (table, names)
+  usdefs <- translateDefs info defs
+  usprgm <- translatePg info prgm
   return $ Perpl.UsProgs (usdata ++ usdefs) usprgm
 
-translatePg :: TypeTable -> Names -> Program -> Result Perpl.UsTm
-translatePg table names (PgTm tm) = transTerm table names tm
-translatePg table names (PgIs iso) = transIso table names iso
+translatePg :: Info -> Program -> Result Perpl.UsTm
+translatePg info (PgTm tm) = transTerm info tm
+translatePg info (PgIs iso) = transIso info iso
 
 {-
 Translate a term.
 -}
-transTerm :: TypeTable -> Names -> Term -> Result Perpl.UsTm
-transTerm table names (TmAnn tm ty) = transTmWithTyp table names ty tm
-transTerm _ _ tm = err $ "Cannot translate an untype-checked term: " ++ show tm
+transTerm :: Info -> Term -> Result Perpl.UsTm
+transTerm info (TmAnn tm ty) = transTmWithTyp info ty tm
+transTerm _ tm = err $ "Cannot translate an untype-checked term: " ++ show tm
 
-transTmWithTyp :: TypeTable -> Names -> BaseType -> Term -> Result Perpl.UsTm
-transTmWithTyp _ _ _ TmUnit = return unitUsTm
-transTmWithTyp _ _ _ (TmInt n) = return $ makeNat n where
+transTmWithTyp :: Info -> BaseType -> Term -> Result Perpl.UsTm
+transTmWithTyp _ _ TmUnit = return unitUsTm
+transTmWithTyp _ _ (TmInt n) = return $ makeNat n where
   makeNat 0 = makeUsVar ctorZero
   makeNat n' = Perpl.UsApp (makeUsVar ctorSuc) (makeNat (n' - 1))
 -- NOTE: even though this can be "correctly" translated into a perpl program,
 -- perpl cannot process a value of this type yet!
-transTmWithTyp table _ (BTyList ty) TmEmpty = do
-  lTy <- lookupBase (BTyList ty) table
+transTmWithTyp info ty@(BTyList _) TmEmpty = do
+  lTy <- lookupBaseInfo ty info
   -- "nil" is always the first constructor from an instantiated list type
   ctor <- extractCtor lTy 0
   return $ makeUsVar ctor
 -- NOTE: even though this can be "correctly" translated into a perpl program,
 -- perpl cannot process a value of this type yet!
-transTmWithTyp table names (BTyList ty) (TmCons l r) = do
-  lTy <- lookupBase (BTyList ty) table
+transTmWithTyp info ty@(BTyList ety) (TmCons l r) = do
+  lTy <- lookupBaseInfo ty info
   -- "cons" is always the first constructor from an instantiated list type
   ctor <- extractCtor lTy 1
-  r' <- transTmWithTyp table names (BTyList ty) r
-  l' <- transTmWithTyp table names ty l
+  r' <- transTmWithTyp info (BTyList ty) r
+  l' <- transTmWithTyp info ety l
   return $ Perpl.UsApp (Perpl.UsApp (makeUsVar ctor) l') r'
-transTmWithTyp _ _ _ (TmVar var) = return $ makeUsVar var
-transTmWithTyp table names (BTySum l r) (TmLInj tm) = do
-  pTy <- lookupBase (BTySum l r) table
+transTmWithTyp _ _ (TmVar var) = return $ makeUsVar var
+transTmWithTyp info ty@(BTySum l _) (TmLInj tm) = do
+  pTy <- lookupBaseInfo ty info
   ctor <- extractCtor pTy 0
-  ustm <- transTmWithTyp table names l tm
+  ustm <- transTmWithTyp info l tm
   makeDataApp (makeUsVar ctor) ustm l
-transTmWithTyp table names (BTySum l r) (TmRInj tm) = do
-  pTy <- lookupBase (BTySum l r) table
+transTmWithTyp info ty@(BTySum _ r) (TmRInj tm) = do
+  pTy <- lookupBaseInfo ty info
   ctor <- extractCtor pTy 1
-  ustm <- transTmWithTyp table names l tm
+  ustm <- transTmWithTyp info r tm
   makeDataApp (makeUsVar ctor) ustm r
-transTmWithTyp table names (BTyProd lT rT) (TmPair l r) = do
-  pTy <- lookupBase (BTyProd lT rT) table
+transTmWithTyp info ty@(BTyProd lT rT) (TmPair l r) = do
+  pTy <- lookupBaseInfo ty info
   ctor <- extractCtor pTy 0
-  ustmL <- transTmWithTyp table names lT l
-  ustmR <- transTmWithTyp table names rT r
+  ustmL <- transTmWithTyp info lT l
+  ustmR <- transTmWithTyp info rT r
   let app = Perpl.UsApp (makeUsVar ctor) ustmL
   return $ Perpl.UsApp app ustmR
-transTmWithTyp table names _ (TmIsoApp rator rand) = do
-  usRator <- transIso table names rator
-  usRand <- transTerm table names rand
+transTmWithTyp info _ (TmIsoApp rator rand) = do
+  usRator <- transIso info rator
+  usRand <- transTerm info rand
   return $ Perpl.UsApp usRator usRand
-transTmWithTyp table names ty (TmLet pat (TmAnn rhs ty') body) = do
-  rhs' <- transTmWithTyp table names ty' rhs
-  body' <- transTmWithTyp table names ty body
-  makePatApp table names ty' pat rhs' body'
-transTmWithTyp _ _ _ (TmLet _ rhs _) = err $ "Cannot translate an untype-checked term: " ++ show rhs
-transTmWithTyp table names _ (TmAnn tm ty) = transTmWithTyp table names ty tm
-transTmWithTyp _ _ (BTyMu v b) tm = err $ "Unsupported term: " ++ show tm ++ " : " ++ show (BTyMu v b)
-transTmWithTyp _ _ ty tm = err $ "Term and type mismatched: " ++ show tm ++ " :: " ++ show ty
+transTmWithTyp info ty (TmLet pat (TmAnn rhs ty') body) = do
+  rhs' <- transTmWithTyp info ty' rhs
+  body' <- transTmWithTyp info ty body
+  makePatApp info ty' pat rhs' body'
+transTmWithTyp _ _ (TmLet _ rhs _) = err $ "Cannot translate an untype-checked term: " ++ show rhs
+transTmWithTyp info _ (TmAnn tm ty) = transTmWithTyp info ty tm
+transTmWithTyp _ (BTyMu v b) tm = err $ "Unsupported term: " ++ show tm ++ " : " ++ show (BTyMu v b)
+transTmWithTyp _ ty tm = err $ "Term and type mismatched: " ++ show tm ++ " :: " ++ show ty
 
 makeUsVar :: String -> Perpl.UsTm
 makeUsVar var = Perpl.UsVar $ fromString var
@@ -132,67 +161,66 @@ makeDataApp rator rand _ = return $ Perpl.UsApp rator rand
 
 -- Given a pattern, a rhs, and a body, translate it into some kind of
 -- application.
-makePatApp :: TypeTable -> Names -> BaseType -> Pattern -> Perpl.UsTm -> Perpl.UsTm -> Result Perpl.UsTm
+makePatApp :: Info -> BaseType -> Pattern -> Perpl.UsTm -> Perpl.UsTm -> Result Perpl.UsTm
 -- this translates to: let var = rhs in body
-makePatApp _ _ _ (PtSingleVar var) rhs body = do
+makePatApp _ _ (PtSingleVar var) rhs body = do
   return $ Perpl.UsLet (fromString var) rhs body
-makePatApp _ _ _ (PtMultiVar []) _ body = return body
-makePatApp _ _ _ (PtMultiVar [var]) rhs body =
+makePatApp _ _ (PtMultiVar []) _ body = return body
+makePatApp _ _ (PtMultiVar [var]) rhs body =
   return $ Perpl.UsLet (fromString var) rhs body
 -- this translates to: case rhs of c v1 ... in body
-makePatApp table names (BTyProd lt rT) (PtMultiVar (var:vars)) rhs body = do
-  pTy <- lookupBase (BTyProd lt rT) table
+makePatApp info ty@(BTyProd _ rT) (PtMultiVar (var:vars)) rhs body = do
+  pTy <- lookupBaseInfo ty info
   ctor <- extractCtor pTy 0
-  body' <- makePatApp table names' rT (PtMultiVar vars) rhs' body
+  body' <- makePatApp (insertNameInfo newVar info) rT (PtMultiVar vars) rhs' body
   let cas = Perpl.CaseUs (fromString ctor) (map fromString [var, newVar]) body'
   return $ Perpl.UsCase rhs [cas] where
-    newVar = freshVar names (Set.size names)
-    names' = Set.insert newVar names
+    newVar = freshVar info
     rhs' = makeUsVar newVar
-makePatApp _ _ ty (PtMultiVar vars) _ _ =
+makePatApp _ ty (PtMultiVar vars) _ _ =
   Left $ "makePatApp: the number of variables <" ++ show vars ++
   "> doesn't match the type " ++ show ty
 
 {-
 Translate an iso.
 -}
-transIso :: TypeTable -> Names -> Iso -> Result Perpl.UsTm
-transIso table names (IsoAnn iso ty) = transIsoWithTyp table names ty iso
-transIso _ _ iso = err $ "Cannot translate an untype-checked iso: " ++ show iso
+transIso :: Info -> Iso -> Result Perpl.UsTm
+transIso info (IsoAnn iso ty) = transIsoWithTyp info ty iso
+transIso _ iso = err $ "Cannot translate an untype-checked iso: " ++ show iso
 
-transIsoWithTyp :: TypeTable -> Names -> IsoType -> Iso -> Result Perpl.UsTm
-transIsoWithTyp table names (ITyBase vTy eTy) (IsoValue pairs) = do
-  let var = freshVar names (Set.size names)
-  let names' = Set.insert var names
-  vTy' <- lookupBase vTy table
-  pairs' <- transPairsWithTyp table names' (vTy, eTy) pairs
-  let env = toTypeEnv table
+transIsoWithTyp :: Info -> IsoType -> Iso -> Result Perpl.UsTm
+transIsoWithTyp info (ITyBase vTy eTy) (IsoValue pairs) = do
+  let var = freshVar info
+  let info' = insertNameInfo var info
+  vTy' <- lookupBaseInfo vTy info
+  pairs' <- transPairsWithTyp info' (vTy, eTy) pairs
+  let env = getTypeEnv info
   let pvar = (var, vTy')
   let e = toMatch pvar pairs'
-  case compileMatch env names' e of
+  case compileMatch env (getNames info') e of
     Left Redundancy -> err $ "Redundant patterns in " ++ show (IsoValue pairs)
     Left Missing -> err $ "Non-exhaustive patterns in " ++ show (IsoValue pairs)
     Left er -> err $ "Impossible case: " ++ show er
     Right body -> return $ Perpl.UsLam (fromString var) (simplifyType vTy') body
-transIsoWithTyp _ _ _ (IsoVar var) = return $ makeUsVar var
-transIsoWithTyp table names _ (IsoLam var lTy rTy body) = do
-  lTy' <- lookupBase lTy table
-  rTy' <- lookupBase rTy table
+transIsoWithTyp _ _ (IsoVar var) = return $ makeUsVar var
+transIsoWithTyp info _ (IsoLam var lTy rTy body) = do
+  lTy' <- lookupBaseInfo lTy info
+  rTy' <- lookupBaseInfo rTy info
   let newTy = Perpl.TpArr lTy' rTy'
-  body' <- transIso table names body
+  body' <- transIso info body
   return $ Perpl.UsLam (fromString var) (simplifyType newTy) body'
-transIsoWithTyp table names _ (IsoFix var lTy rTy body) =
+transIsoWithTyp info _ (IsoFix var lTy rTy body) =
   err $ "TODO: Unimplemented yet: " ++ show (IsoFix var lTy rTy body)
-transIsoWithTyp table names _ (IsoApp rator rand) = do
-  usRator <- transIso table names rator
-  usRand <- transIso table names rand
+transIsoWithTyp info _ (IsoApp rator rand) = do
+  usRator <- transIso info rator
+  usRand <- transIso info rand
   return $ Perpl.UsApp usRator usRand
-transIsoWithTyp table names _ (IsoAnn iso ty) = transIsoWithTyp table names ty iso
-transIsoWithTyp _ _ ty iso = err $ "Iso and type mismatched: " ++ show iso ++ " :: " ++ show ty
+transIsoWithTyp info _ (IsoAnn iso ty) = transIsoWithTyp info ty iso
+transIsoWithTyp _ ty iso = err $ "Iso and type mismatched: " ++ show iso ++ " :: " ++ show ty
 
-transIsoTyp :: TypeTable -> Names -> Iso -> Result Perpl.Type
-transIsoTyp table _ (IsoAnn _ ty) = lookupIso ty table
-transIsoTyp _ _ iso = err $ "Unable to find the type of a untype-checked global iso: " ++ show iso
+transIsoTyp :: Info -> Iso -> Result Perpl.Type
+transIsoTyp info (IsoAnn _ ty) = lookupIsoInfo ty info
+transIsoTyp _ iso = err $ "Unable to find the type of a untype-checked global iso: " ++ show iso
 
 simplifyType :: Perpl.Type -> Perpl.Type
 simplifyType (Perpl.TpArr t1 t2) = Perpl.TpArr (simplifyType t1) (simplifyType t2)
@@ -203,20 +231,10 @@ simplifyType t = t
 {-
 Compile pattern matching
 -}
-type TypeEnv = Map.Map String Perpl.Type
 -- | Pattern is one of the following three forms:
 --   upattern ::= c upattern ...
 --     |   x
 --     |   ()
-data UsPattern =
-  UUnit
-  | UCtor String [UsPattern]
-  | UVar String
-  deriving (Eq, Ord)
-instance Show UsPattern where
-  show UUnit = "()"
-  show (UCtor tag args) = "(" ++ tag ++ " " ++ show args ++ ")"
-  show (UVar v) = v
 
 -- | One pattern variable: a string together with its type:
 type PatVar = (String, Perpl.Type)
@@ -248,303 +266,67 @@ toMatch :: PatVar -> [(UsPattern, Perpl.UsTm)] -> MatchExp
 toMatch v = map f where
   f (pat, tm) = (Map.fromList [(v , pat)], tm)
 
--- | Compile a list of (pattern, exp) into a list of conditions.
--- The algorithm here is based on the following paper:
---   How to compile pattern matching by Jules Jacobs
-compileMatch :: TypeEnv -> Names -> MatchExp -> Either MatchKind Perpl.UsTm
-compileMatch env names e =
-  let se = simplifyMatch e in
-    case matchKind env se of
-      Valid var -> return $ matchToUsTm var se
-      Reducible -> reduceMatch env names se
-      er -> Left er
-
-reduceMatch :: TypeEnv -> Names -> MatchExp -> Either MatchKind Perpl.UsTm
-reduceMatch env names e = do
-  let var = pickVar e
-  let pats = genPats env names var  -- [(UsPattern, [PatVar])]
-  let es = dispatchMatch var e pats -- [MatchExp]
-  let newPats = map (\(p,_) -> Map.fromList [(var,p)]) pats
-  let binds = map snd pats
-  tms <- reduceMatches env names $ zip binds es
-  return $ matchToUsTm var (zip newPats tms)
-
-reduceMatches :: TypeEnv -> Names -> [([PatVar], MatchExp)] -> Either MatchKind [Perpl.UsTm]
--- reduceMatches env names es
---   | trace ("reduceMatches " ++ show env ++ " " ++ show names ++ " " ++ show es) False = undefined
-reduceMatches env names = mapM f where
-  f :: ([PatVar], MatchExp) -> Either MatchKind Perpl.UsTm
-  f (binds, e) = compileMatch env (g binds) e
-
-  g :: [PatVar] -> Names
-  g = foldr h names
-
-  h :: PatVar -> Names -> Names
-  h (v, _) = Set.insert v
-
--- | Given a pattern variable, generate all of its constructor patterns, a list
--- of constructors, and a list of bound pattern variables.
-genPats :: TypeEnv -> Names -> PatVar -> [(UsPattern, [PatVar])]
-genPats _ _ (var, ty) | ty == freshProd [] = [(UVar var, [(var, ty)])]
-genPats env names (_, ty) = zip upats pbinds where
-  ctors = clCtors env ty
-  tags = map fst ctors
-  tyss = map snd ctors
-  varss = map (freshVars names . length) tyss
-  upats = zipWith (\tag args -> UCtor tag $ map UVar args) tags varss
-  pbinds = zipWith zip varss tyss
-
--- | Given a pattern variable being matched, a match expression, a constructor
--- pattern corresponding to the given variable, return a bound match expression.
--- In the returned bound match expression, every clause matches the given
--- constructor pattern.
-dispatchMatch :: PatVar -> MatchExp -> [(UsPattern, [PatVar])] -> [MatchExp]
--- dispatchMatch var cls pats
---   | trace ("dispatchMatch " ++ show (fst var) ++ " " ++ show cls ++ " " ++ show pats) False = undefined
-dispatchMatch var cls = map (dispatchMatches var cls)
-
-dispatchMatches :: PatVar -> MatchExp -> (UsPattern, [PatVar]) -> MatchExp
-dispatchMatches var cls (pat, binds) = foldr dispatchClause [] cls where
-  -- Dispatch a clause. If the given clause doesn't use the variable being
-  -- matched, then it should match. If the given clause uses the given variable
-  -- but its constructor doesn't match the constructor of the given pattern,
-  -- then it doesn't match. Otherwise it should match.
-  dispatchClause :: Clause -> MatchExp -> MatchExp
-  dispatchClause (test, rhs) r =
-    if Map.member var test
-    then compareClause (test, rhs) r
-    else (test, rhs):r
-
-  -- Compare a clause with the variable being matched. This only processes the
-  -- case where the variable being matched shows up in the given clause.
-  compareClause :: Clause -> MatchExp -> MatchExp
-  compareClause (test, rhs) r =
-    let pat' = test Map.! var
-        urst = unifyPat (pat, binds) pat'
-    in case urst of
-         Just v -> (Map.union v $ Map.delete var test, rhs):r
-         Nothing -> r
-
-  unifyPat :: (UsPattern, [PatVar]) -> UsPattern -> Maybe ExtPattern
-  unifyPat (UCtor tag _, bs) (UCtor tag' args')
-    | tag == tag' = Just $ Map.fromList $ zip bs args'
-    | otherwise = Nothing
-  unifyPat (UVar _, [b]) (UVar v') = Just $ Map.fromList [(b, UVar v')]
-  unifyPat (UVar _, [b]) UUnit = Just $ Map.fromList [(b, UUnit)]
-  unifyPat (UVar _, [_]) _ = Nothing
-  unifyPat _ _ = error "Impossible case!"
-
-toTypeEnv :: TypeTable -> TypeEnv
-toTypeEnv = Map.foldr' h Map.empty where
-  h (Perpl.TpData (Perpl.TpN dat) ctors typs) r =
-    Map.insert dat (Perpl.TpData (Perpl.TpN dat) ctors typs) r
-  h _ r = r
-
-data MatchKind =
-  Valid PatVar
-  | Reducible
-  | Redundancy
-  | Missing
-  deriving (Eq, Ord, Show)
-
-{-- Check the kind of a match expression. --}
--- | A match expression can be in three states:
---   1. Valid, which can be converted to a UsTm directly, this includes:
---      (1). a match has only one clause and its test is wildcard
---      (2). a match in the following form:
---           {match#
---             var is ctor1 var1 ... -> e1
---             var is ctor2 var1 ... -> e2
---             ...}
---   2. Reducible, which requires more processing.
---   3. Redundancy, more than one pattern has the wildcard test
---   4. Missing, no clause in the expression
-matchKind :: TypeEnv -> MatchExp -> MatchKind
-matchKind _ [] = Missing
-matchKind _ [pat] | isWildcard pat = Valid ("", freshProd [])
-matchKind _ pats | List.length (List.filter isWildcard pats) > 1 = Redundancy
-matchKind env pats = maybe Reducible Valid (isValidMatch env pats)
-
--- | Check if a match expression is valid.
-isValidMatch :: TypeEnv -> MatchExp -> Maybe PatVar
-isValidMatch env clauses =
-  if isValid clauses && a == b
-  then return var else Nothing where
-  keys = Map.keys $ fst $ head clauses
-  var = head keys
-
-  a = Set.fromList $ fromPatVar var
-  b = Set.fromList $ matchArity var clauses
-
-  -- Check if a match expression is valid.
-  isValid :: MatchExp -> Bool
-  isValid [] = error "Impossible case: match expression has 0 clause!"
-  isValid (cl:cls) = Map.size (fst cl) == 1 && all (isValidClause var) (cl:cls)
-
-  -- Check if a clause is valid.
-  isValidClause :: PatVar -> Clause -> Bool
-  isValidClause v (pats,_) = isValidExtPat v pats
-
-  -- Check if an extended pattern is valid.
-  isValidExtPat :: PatVar -> ExtPattern -> Bool
-  isValidExtPat v pats = Map.size pats == 1 &&
-    Map.member v pats && isUsCtor (pats Map.! v)
-
-  -- Check if a user pattern is a constructor pattern with all its arguments
-  -- variables.
-  isUsCtor :: UsPattern -> Bool
-  isUsCtor (UCtor _ args) = all isUsVar args
-  isUsCtor _ = False
-
-  -- Check if a user pattern is a variable pattern.
-  isUsVar :: UsPattern -> Bool
-  isUsVar (UVar _) = True
-  isUsVar _ = False
-
-  -- Collect all constructors and their arities from a match expression.
-  matchArity :: PatVar -> MatchExp -> [(String, Int)]
-  matchArity v = map (\clause -> clauseArity $ fst clause Map.! v)
-
-  -- Collect the constructor and its arity from a pattern.  Invoke this only
-  -- when you are sure that the pattern of UCtor!
-  clauseArity :: UsPattern -> (String, Int)
-  clauseArity (UCtor ctor args) = (ctor, length args)
-  clauseArity _ = error "Impossible case!"
-
-  fromPatVar :: PatVar -> [(String, Int)]
-  fromPatVar (_, ty) = map (\(v, tys) -> (v, length tys)) $ clCtors env ty
-
-{-- Variable picker. --}
--- | Pick the variable that is most used as the next target pattern variable.
-pickVar :: MatchExp -> PatVar
-pickVar e = fst $ maxVar $ Map.toList $ foldr g Map.empty e where
-  g :: Clause -> Map.Map PatVar Int -> Map.Map PatVar Int
-  g (pat, _) freq = Map.foldrWithKey' h freq pat
-
-  h :: PatVar -> UsPattern -> Map.Map PatVar Int -> Map.Map PatVar Int
-  h k _ r = if Map.member k r then Map.adjust (+1) k r else Map.insert k 0 r
-
-  maxVar :: [(PatVar, Int)] -> (PatVar, Int)
-  maxVar = maximumBy (\(_, n1) (_, n2) -> compare n1 n2)
-
-{-- Convert match expressions to terms. --}
--- | Convert a valid match expression into a UsTm.
--- Two valid cases for a match is described in matchKind.
-matchToUsTm :: PatVar -> MatchExp -> Perpl.UsTm
--- matchToUsTm pvar cl | trace ("matchToUsTm " ++ show pvar ++ " " ++ show cl) False = undefined
-matchToUsTm _ [(pats, tm)] | Map.empty == pats = tm
-matchToUsTm (var, ty) cls = Perpl.UsCase (makeUsVar var) cases where
-  cases = map (clauseToCase (var, ty)) cls
-
-clauseToCase :: PatVar -> Clause -> Perpl.CaseUs
--- clauseToCase pvar cl | trace ("clauseToCase " ++ show pvar ++ " " ++ show cl) False = undefined
-clauseToCase pvar (pats, tm) = Perpl.CaseUs ctor args tm where
-  (ctor, args) = toUsCase $ pats Map.! pvar
-
-  -- | Convert a user pattern to a case component.
-  toUsCase :: UsPattern -> (Perpl.TmName, [Perpl.TmVar])
-  toUsCase (UCtor tag pats') = (fromString tag, map fromString vars) where
-    vars = map toString pats'
-  toUsCase pat = error $ "Impossible case: not a valid constructor pattern: " ++ show pat
-
-  -- | Convert a variable user pattern to a string.
-  toString :: UsPattern -> String
-  toString (UVar v) = v
-  toString pat = error $ "Impossible case, not a valid variable pattern: " ++ show pat
-
-{-- Simplify a match expression. --}
-simplifyMatch :: MatchExp -> MatchExp
--- simplifyMatch es | trace ("simplifyMatch " ++ show es) False = undefined
-simplifyMatch = map simplifyClause
-
-simplifyClause :: Clause -> Clause
-simplifyClause (pats, tm) = Map.foldrWithKey' f (Map.empty, tm) pats where
-  f (v,_) (UVar v') (pats', tm') = (pats', Perpl.UsLet (fromString v') (makeUsVar v) tm')
-  f (v,_) UUnit (pats', tm') = (pats', Perpl.UsLet (fromString v) unitUsTm tm')
-  f (v,t) pat (pats', tm') = (Map.insert (v,t) pat pats', tm')
-
-{-- Helper functions. --}
--- | Given a data Type, return a list of constructors and the expected number of
--- arguments corresponding to each constructor.
-clCtors :: TypeEnv -> Perpl.Type -> [(String, [Perpl.Type])]
--- clCtors env ty | trace ("clCtors " ++ show env ++ " " ++ show ty) False = undefined
-clCtors _ (Perpl.TpData _ ctors tys) = zipWith f ctors tys where
-  f (Perpl.Tag ctor) ty = (ctor, typSize ty)
-
-  typSize (Perpl.TpProd _ tys') = tys'
-  typSize ty = [ty]
-clCtors env (Perpl.TpVar (Perpl.TpV v)) = clCtors env (env Map.! v)
-clCtors _ ty = error $ "Impossible case: " ++ show ty
-
-freshVars :: Names -> Int -> [String]
-freshVars _ 0 = []
-freshVars names n = freshVar names n:freshVars names (n-1)
-
-freshVar :: Names -> Int -> String
-freshVar names n = if Set.member name names then Set.findMax names ++ name else name where
-  name = "_var" ++ show n
-
 {-
 Translate a pair
 -}
-transPairsWithTyp :: TypeTable -> Names -> (BaseType, BaseType) -> [(Value, Exp)] ->
+transPairsWithTyp :: Info -> (BaseType, BaseType) -> [(Value, Exp)] ->
   Result [(UsPattern, Perpl.UsTm)]
-transPairsWithTyp table names ty = mapM (transPairWithTyp table names ty)
+transPairsWithTyp info ty = mapM (transPairWithTyp info ty)
 
-transPairWithTyp :: TypeTable -> Names -> (BaseType, BaseType) -> (Value, Exp) ->
+transPairWithTyp :: Info -> (BaseType, BaseType) -> (Value, Exp) ->
   Result (UsPattern, Perpl.UsTm)
-transPairWithTyp table names (vTy, eTy) (v, e) = do
-  v' <- compileValWithTyp table names vTy v
-  e' <- transExpWithTyp table names eTy e
+transPairWithTyp info (vTy, eTy) (v, e) = do
+  v' <- compileValWithTyp info vTy v
+  e' <- transExpWithTyp info eTy e
   return (v', e')
 
 {-
 Translate a value
 -}
-compileValWithTyp :: TypeTable -> Names -> BaseType -> Value -> Result UsPattern
-compileValWithTyp _ _ _ ValUnit = return UUnit
-compileValWithTyp _ _ _ (ValInt n) = return $ makeNat n where
+compileValWithTyp :: Info -> BaseType -> Value -> Result UsPattern
+compileValWithTyp _ _ ValUnit = return UUnit
+compileValWithTyp _ _ (ValInt n) = return $ makeNat n where
   makeNat 0 = UCtor ctorZero []
   makeNat n' = UCtor ctorSuc [makeNat (n' - 1)]
-compileValWithTyp table names BTyInt (ValSuc n) = do
-  n' <- compileValWithTyp table names BTyInt n
+compileValWithTyp info BTyInt (ValSuc n) = do
+  n' <- compileValWithTyp info BTyInt n
   return $ UCtor ctorSuc [n']
 -- NOTE: even though this can be "correctly" translated into a perpl program,
 -- perpl cannot process a value of this type yet!
-compileValWithTyp table _ (BTyList ty) ValEmpty = do
-  lTy <- lookupBase (BTyList ty) table
+compileValWithTyp info ty@(BTyList _) ValEmpty = do
+  lTy <- lookupBaseInfo ty info
   -- "nil" is always the first constructor from an instantiated list type
   ctor <- extractCtor lTy 0
   return $ UCtor ctor []
 -- NOTE: even though this can be "correctly" translated into a perpl program,
 -- perpl cannot process a value of this type yet!
-compileValWithTyp table names (BTyList ty) (ValCons l r) = do
-  lTy <- lookupBase (BTyList ty) table
-  -- "cons" is always the first constructor from an instantiated list type
+compileValWithTyp info ty@(BTyList ety) (ValCons l r) = do
+  lTy <- lookupBaseInfo ty info
+  -- "cons" is always the second constructor from an instantiated list type
   ctor <- extractCtor lTy 1
-  r' <- compileValWithTyp table names (BTyList ty) r
-  l' <- compileValWithTyp table names ty l
+  r' <- compileValWithTyp info ty r
+  l' <- compileValWithTyp info ety l
   return $ UCtor ctor [l', r']
-compileValWithTyp _ _ BTyUnit (ValVar _) = return UUnit
-compileValWithTyp _ _ _ (ValVar var) = return $ UVar var
-compileValWithTyp table names (BTySum l r) (ValLInj val) = do
-  pTy <- lookupBase (BTySum l r) table
+compileValWithTyp _ BTyUnit (ValVar _) = return UUnit
+compileValWithTyp _ _ (ValVar var) = return $ UVar var
+compileValWithTyp info ty@(BTySum l r) (ValLInj val) = do
+  pTy <- lookupBaseInfo ty info
   ctor <- extractCtor pTy 0
-  ustm <- compileValWithTyp table names l val
+  ustm <- compileValWithTyp info l val
   return $ makeDataApp' ctor ustm l
-compileValWithTyp table names (BTySum l r) (ValRInj val) = do
-  pTy <- lookupBase (BTySum l r) table
+compileValWithTyp info ty@(BTySum l r) (ValRInj val) = do
+  pTy <- lookupBaseInfo ty info
   ctor <- extractCtor pTy 1
-  ustm <- compileValWithTyp table names r val
+  ustm <- compileValWithTyp info r val
   return $ makeDataApp' ctor ustm r
-compileValWithTyp table names (BTyProd lT rT) (ValPair l r) = do
-  pTy <- lookupBase (BTyProd lT rT) table
+compileValWithTyp info ty@(BTyProd lT rT) (ValPair l r) = do
+  pTy <- lookupBaseInfo ty info
   ctor <- extractCtor pTy 0
-  ustmL <- compileValWithTyp table names lT l
-  ustmR <- compileValWithTyp table names rT r
+  ustmL <- compileValWithTyp info lT l
+  ustmR <- compileValWithTyp info rT r
   return $ UCtor ctor [ustmL, ustmR]
-compileValWithTyp table names _ (ValAnn val ty) = compileValWithTyp table names ty val
-compileValWithTyp _ _ ty val = err $ "Value and type mismatch: " ++ show val ++ " :: " ++ show ty
+compileValWithTyp info _ (ValAnn val ty) = compileValWithTyp info ty val
+compileValWithTyp _ ty val = err $ "Value and type mismatch: " ++ show val ++ " :: " ++ show ty
 
 makeDataApp' :: String -> UsPattern -> BaseType -> UsPattern
 -- makeDataApp' rator pat ty
@@ -555,40 +337,42 @@ makeDataApp' rator rand _ = UCtor rator [rand]
 {-
 Translate a value.
 -}
-transValWithTyp :: TypeTable -> Names -> BaseType -> Value -> Result Perpl.UsTm
-transValWithTyp table names ty val = toUsTm <$> compileValWithTyp table names ty val
+transValWithTyp :: Info -> BaseType -> Value -> Result Perpl.UsTm
+transValWithTyp info ty val = toUsTm <$> compileValWithTyp info ty val
 
 {-
 Translate an expression.
 -}
-transExpWithTyp :: TypeTable -> Names -> BaseType -> Exp -> Result Perpl.UsTm
-transExpWithTyp table names ty (ExpVal val) = transValWithTyp table names ty val
-transExpWithTyp table names ty (ExpScale scale e) = do
-  e' <- transExpWithTyp table names ty e
+transExpWithTyp :: Info -> BaseType -> Exp -> Result Perpl.UsTm
+transExpWithTyp info ty (ExpVal val) = transValWithTyp info ty val
+transExpWithTyp info ty (ExpScale scale e) = do
+  e' <- transExpWithTyp info ty e
   if imagPart scale == 0
     then return $ Perpl.UsFactor (realPart scale) e'
     else err "TODO: complex scale is not supported yet!"
-transExpWithTyp table names ty (ExpPlus es) = do
-  es' <- mapM (transExpWithTyp table names ty) es
+transExpWithTyp info ty (ExpPlus es) = do
+  es' <- mapM (transExpWithTyp info ty) es
   return $ Perpl.UsAmb es'
-transExpWithTyp table names ty (ExpLet pat (IsoAnn iso (ITyBase lTy rTy)) pat' body) = do
-  isoTm <- transIsoWithTyp table names (ITyBase lTy rTy) iso
+transExpWithTyp info ty (ExpLet pat (IsoAnn iso (ITyBase lTy rTy)) pat' body) = do
+  isoTm <- transIsoWithTyp info (ITyBase lTy rTy) iso
   rhs <- Perpl.UsApp isoTm <$> mkRhs lTy pat'
-  body' <- transExpWithTyp table names ty body
-  makePatApp table names rTy pat rhs body' where
+  body' <- transExpWithTyp info ty body
+  makePatApp info rTy pat rhs body' where
+    mkRhs BTyUnit (PtSingleVar _) = return unitUsTm
     mkRhs _ (PtSingleVar v) = return $ makeUsVar v
+    mkRhs BTyUnit (PtMultiVar [_]) = return unitUsTm
     mkRhs _ (PtMultiVar [v]) = return $ makeUsVar v
     mkRhs (BTyProd t t') (PtMultiVar (v:vs)) = do
-      pLTy <- lookupBase (BTyProd t t') table
+      pLTy <- lookupBaseInfo (BTyProd t t') info
       ctorL <- extractCtor pLTy 0
       rVal <- mkRhs t' (PtMultiVar vs)
       return $ Perpl.UsApp (Perpl.UsApp (makeUsVar ctorL) (makeUsVar v)) rVal
-    mkRhs t (PtMultiVar vs) = Left $ "Invalid pattern " ++ show (PtMultiVar vs) ++
+    mkRhs t (PtMultiVar vs) = Left $ moduleName ++ "Invalid pattern " ++ show (PtMultiVar vs) ++
       " of type " ++ show t
-transExpWithTyp _ _ _ (ExpLet _ (IsoAnn iso _) _ _) =
-  Left $ "Not a base iso: " ++ show iso
-transExpWithTyp _ _ _ (ExpLet _ iso _ _) =
-  Left $ "Cannot translate an untype-checked iso: " ++ show iso
+transExpWithTyp _ _ (ExpLet _ (IsoAnn iso ty) _ _) =
+  Left $ moduleName ++ "Not a base iso: " ++ show iso ++ ":" ++ show ty
+transExpWithTyp _ _ (ExpLet _ iso _ _) =
+  Left $ moduleName ++ "Cannot translate an untype-checked iso: " ++ show iso
 
 {-
 Translate an algebraic data definition.
@@ -622,11 +406,11 @@ translateData = foldrM f [] where
   purgeType (Perpl.TpData (Perpl.TpN name) _ _) = Perpl.TpVar $ fromString name
   purgeType ty = ty
 
-translateDefs :: TypeTable -> Names -> Definitions -> Result [Perpl.UsProg]
-translateDefs table names = foldrM f [] where
+translateDefs :: Info -> Definitions -> Result [Perpl.UsProg]
+translateDefs info = foldrM f [] where
   f (str, iso) r = do
-    isoTm <- transIso table names iso
-    isoTy <- transIsoTyp table names iso
+    isoTm <- transIso info iso
+    isoTy <- transIsoTyp info iso
     let isoNm = fromString str
     return $ Perpl.UsProgDefine isoNm isoTm (simplifyType isoTy):r
 
@@ -836,9 +620,9 @@ translateTypes :: Types -> Names -> Result TypeTable
 translateTypes tys names = foldlM f Map.empty tys where
   f table t = translateType table names t
 
-translateType :: TypeTable -> Names -> ProgramType -> Result TypeTable
-translateType table names (Left bTy) = transBaseType table names bTy
-translateType table names (Right iTy) = transIsoType table names iTy
+  translateType :: TypeTable -> Names -> ProgramType -> Result TypeTable
+  translateType table names (Left bTy) = transBaseType table names bTy
+  translateType table names (Right iTy) = transIsoType table names iTy
 
 transBaseType :: TypeTable -> Names -> BaseType -> Result TypeTable
 transBaseType table names ty = case Map.lookup (Left ty) table of
