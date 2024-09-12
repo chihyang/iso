@@ -1,4 +1,4 @@
-module Run (check, typeOf, run, runTypedMat, toPerplPg) where
+module Run (check, typeOf, run, runTypedMat, toPerplPg, compile) where
 
 import Convert
 import Debug.Trace as T (trace)
@@ -10,9 +10,12 @@ import Interp
 import LinearCheck
 import OrthoCheck
 import Reduce
+import RevealFix
+import ClosureConvert
 import Syntax as S
 import Translate
 import TypeCheck
+import Uniquify
 
 moduleName :: String
 moduleName = "Run: "
@@ -29,8 +32,12 @@ check str =
 run :: String -> S.Result ProgramValue
 run str = Right str >>= check >>= interpDefsPg
 
+-- for debugging
+compile :: String -> S.Result (Definitions, Program)
+compile str = Right str >>= check >>= uniquify >>= closureConvert
+
 toPerplPg :: String -> S.Result PProg
-toPerplPg str = Right str >>= check >>= transToPerplPg
+toPerplPg str = compile str >>= transToPerplPg
 
 typeOf :: String -> S.Result ProgramType
 typeOf str = do

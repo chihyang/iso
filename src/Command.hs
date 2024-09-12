@@ -1,5 +1,7 @@
 module Command
   (
+    compile,
+    compileFile,
     eval,
     evalFile,
     evalToMatrix,
@@ -46,6 +48,12 @@ typeOf hdl parseThis = case Run.typeOf $ trim parseThis of
   Right (Left ty) -> hPrint hdl ty
   Right (Right ty) -> hPrint hdl ty
   Left err -> hPutStrLn stderr err
+
+compile :: Handle -> String -> IO ()
+compile = procOneLine Run.compile
+
+compileFile :: Handle -> String -> IO ()
+compileFile = loadF compile
 
 toPerpl :: Handle -> String -> IO ()
 toPerpl = procOneLine Run.toPerplPg

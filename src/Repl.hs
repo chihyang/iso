@@ -31,6 +31,7 @@ optionsList =
   , ("lm", loadMatrix)
   , ("lt", typeOfF), ("type", typeOfPg)
   , ("lp", toPerplF), ("perpl", toPerpl)
+  , ("lc", compileF), ("compile", compile)
   , ("quit", quit), ("q", quit)
   ]
 
@@ -41,6 +42,7 @@ help _ = liftIO $ putStrLn $
   "                       its type if exp evaluates to an iso or a base value.\n" ++
   ":lt file               Show the type of the program in the file.\n" ++
   ":lp file               Convert the file to an equivalent perpl program.\n" ++
+  ":c exp, :lc file        [For debugging] Compile the file or expression.\n" ++
   ":m exp, :matrix exp\n" ++
   "                       Convert the exp into a matrix according to\n" ++
   "                       its type if exp evaluates to an iso.\n" ++
@@ -68,6 +70,12 @@ loadMatrix = liftIO . Cmd.evalToMatrixFile stdout
 toTypedMatrix :: String -> Repl ()
 toTypedMatrix = liftIO . Cmd.evalToMatrix stdout
 
+compile :: String -> Repl ()
+compile = liftIO . Cmd.compile stdout
+
+compileF :: String -> Repl ()
+compileF = liftIO . Cmd.compileFile stdout
+
 toPerpl :: String -> Repl ()
 toPerpl = liftIO . Cmd.toPerpl stdout
 
@@ -82,14 +90,14 @@ quit = const $ do
 
 completer :: WordCompleter IO
 completer n = do
-  let names = [":help", ":load", ":lm", ":lp", ":lt", ":matrix", ":m", ":type", ":paste", ":perpl", ":quit"]
+  let names = [":help", ":load", ":lc", ":lm", ":lp", ":lt", ":compile", ":matrix", ":m", ":type", ":paste", ":perpl", ":quit"]
   pure $ filter (List.isPrefixOf n) names
 
 prefixCompleter :: CompleterStyle IO
 prefixCompleter = Repline.Prefix (wordCompleter completer)
   [(":l" , fileCompleter), (":load" , fileCompleter),
    (":lm" , fileCompleter), (":lt" , fileCompleter),
-   (":lp" , fileCompleter)
+   (":lp" , fileCompleter), (":lc" , fileCompleter)
   ]
 
 repl :: IO ()
