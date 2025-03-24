@@ -33,8 +33,11 @@ newTable = Map.empty
 
 insertTable :: NameRecord -> String -> NameRecord
 insertTable table name = if Map.member name table
-  then Map.adjust (+1) name table
-  else Map.insert name 0 table
+  then f 1
+  else Map.insert name 0 table where
+  f n = if Map.member (name ++ show n) table
+    then f (n+1)
+    else Map.insert name n table
 
 lookupTable :: NameRecord -> String -> Result String
 lookupTable table name = case Map.lookup name table of
