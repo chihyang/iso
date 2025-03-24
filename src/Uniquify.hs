@@ -32,9 +32,10 @@ newTable :: NameRecord
 newTable = Map.empty
 
 insertTable :: NameRecord -> String -> NameRecord
-insertTable table name = if Map.member name table
-  then f 1
-  else Map.insert name 0 table where
+insertTable table name = case Map.lookup name table of
+  Just n -> f (n+1)
+  Nothing -> Map.insert name 0 table
+  where
   f n = if Map.member (name ++ show n) table
     then f (n+1)
     else Map.insert name n table
