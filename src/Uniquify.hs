@@ -34,7 +34,7 @@ newTable = Map.empty
 insertTable :: NameRecord -> String -> NameRecord
 insertTable table name = case Map.lookup name table of
   Just n -> f (n+1)
-  Nothing -> Map.insert name 0 table
+  Nothing -> f 0
   where
   f n = if Map.member (name ++ show n) table
     then f (n+1)
