@@ -36,14 +36,14 @@ insertTable table name = case Map.lookup name table of
   Just n -> f (n+1)
   Nothing -> f 0
   where
-  f n = if Map.member (name ++ show n) table
+  f n = if Map.member (name ++ "_" ++ show n) table
     then f (n+1)
     else Map.insert name n table
 
 lookupTable :: NameRecord -> String -> Result String
 lookupTable table name = case Map.lookup name table of
   (Just 0) -> return $ name
-  (Just n) -> return $ name ++ (show n)
+  (Just n) -> return $ name ++ "_" ++ show n
   _ -> Left $ moduleName ++ "Unbound variable " ++ show name
 
 updateName :: String -> NameEnv -> NameRecord -> Result (String, NameEnv, NameRecord)
