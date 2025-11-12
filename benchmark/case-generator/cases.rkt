@@ -118,7 +118,7 @@
          (range 1 20)))
   (parameterize ((working-directory (build-path (working-directory) (symbol->string tag) "python")))
     (map (λ (in-size)
-           (gen-qiskit-case tag  had-to-last-spec identity in-size in-size))
+           (gen-qiskit-case tag had-to-last-spec identity in-size in-size))
          (range 1 20))))
 
 (define (gen-dj-case tag spec-iso spec-qiskit oracle)
@@ -129,7 +129,7 @@
          (range 1 20)))
   (parameterize ((working-directory (build-path (working-directory) (symbol->string tag) "python")))
     (map (λ (in-size)
-           (gen-iso-case tag spec-qiskit oracle in-size 1))
+           (gen-qiskit-case tag spec-qiskit oracle in-size 1))
          (range 1 20))))
 
 (define (gen-simon-case tag)
@@ -145,8 +145,8 @@
 
 (define (gen-cases)
   (gen-had-case 'had-last-qubit)
-  (gen-dj-case 'deutsch-jozsa-is-even simplified-deutsch-jozsa-is-even simplified-deutsch-jozsa-is-even is-even)
   (gen-dj-case 'deutsch-jozsa-to-zero simplified-deutsch-jozsa-to-zero qiskit-deutsch-jozsa-to-zero to-zero)
+  (gen-dj-case 'deutsch-jozsa-is-even simplified-deutsch-jozsa-is-even qiskit-deutsch-jozsa-is-even is-even)
   (gen-simon-case 'simon))
 
 (command-line
