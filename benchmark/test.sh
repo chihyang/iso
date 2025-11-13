@@ -81,7 +81,7 @@ function run_benchmark {
 check_tools
 
 #### Run benchmarks
-# run_benchmark "had-last-qubit"
-# run_benchmark "deutsch-jozsa-to-zero"
-# run_benchmark "deutsch-jozsa-is-even"
+run_benchmark "had-last-qubit"
+run_benchmark "deutsch-jozsa-to-zero"
+run_benchmark "deutsch-jozsa-is-even"
 run_benchmark "simon"
