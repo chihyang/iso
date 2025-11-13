@@ -59,19 +59,29 @@ function run_benchmark {
         ofile="$(basename ${file} .json)"-iso.txt
         echo "Computing ${file}"
         time python "${FGG_EXE_PATH}/bin/sum_product.py" -d ${file} > "${iso_result_dir}/${ofile}"
+        ret=$?
+        if [ ${ret} -ne 0 ]; then
+            echo "Stop at ${file}, the error code is non-zero (${ret})"
+            break
+        fi
     done
 
     for file in $(find "${qiskit_suite_dir}" -type f -name "*.py" | sort -V); do
         ofile="$(basename ${file} .py)"-qiskit.txt
         echo "Computing ${file}"
         time python ${file} > "${qiskit_result_dir}/${ofile}"
+        ret=$?
+        if [ ${ret} -ne 0 ]; then
+            echo "Stop at ${file}, the error code is non-zero (${ret})"
+            break
+        fi
     done
 }
 
 check_tools
 
 #### Run benchmarks
-run_benchmark "had-last-qubit"
-run_benchmark "deutsch-jozsa-to-zero"
-run_benchmark "deutsch-jozsa-is-even"
+# run_benchmark "had-last-qubit"
+# run_benchmark "deutsch-jozsa-to-zero"
+# run_benchmark "deutsch-jozsa-is-even"
 run_benchmark "simon"
