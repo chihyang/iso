@@ -137,11 +137,11 @@
   (parameterize ((working-directory (build-path (working-directory) (symbol->string tag) "iso")))
     (map (λ (in-size)
            (gen-iso-case 'simon simon-spec (simon-f in-size (sub1 (expt 2 in-size))) in-size in-size))
-         (range 1 8)))
+         (range 1 5)))
   (parameterize ((working-directory (build-path (working-directory) (symbol->string tag) "python")))
     (map (λ (in-size)
            (gen-qiskit-case 'simon simon-spec (simon-f in-size (sub1 (expt 2 in-size))) in-size in-size))
-         (range 1 8))))
+         (range 1 5))))
 
 (define (gen-cases)
   (gen-had-case 'had-last-qubit)
