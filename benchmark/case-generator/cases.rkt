@@ -6,8 +6,8 @@
   (unless (directory-exists? dir)
     (make-directory* dir)))
 (define (create-case-dir tag)
-  (create-if-not-exist (build-path (symbol->string tag) "iso"))
-  (create-if-not-exist (build-path (symbol->string tag) "python")))
+  (create-if-not-exist (build-path (working-directory) (symbol->string tag) "iso"))
+  (create-if-not-exist (build-path (working-directory) (symbol->string tag) "python")))
 
 (define (gen-iso-case tag gen-spec f in-size out-size)
   (to-iso (gen-spec f in-size out-size) (build-path (working-directory) (format "~a-~a-~a.iso" tag in-size out-size))))
