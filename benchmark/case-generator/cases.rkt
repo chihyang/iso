@@ -115,11 +115,11 @@
   (parameterize ((working-directory (build-path (working-directory) (symbol->string tag) "iso")))
     (map (λ (in-size)
            (gen-iso-case tag had-to-last-spec identity in-size in-size))
-         (range 1 20)))
+         (range 1 41)))
   (parameterize ((working-directory (build-path (working-directory) (symbol->string tag) "python")))
     (map (λ (in-size)
            (gen-qiskit-case tag had-to-last-spec identity in-size in-size))
-         (range 1 20))))
+         (range 1 41))))
 
 (define (gen-dj-case tag spec-iso spec-qiskit oracle)
   (create-case-dir tag)
