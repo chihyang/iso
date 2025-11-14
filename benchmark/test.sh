@@ -6,6 +6,7 @@ BENCHMARK_ROOT_DIR="benchmark"
 ISO_EXE_PATH="${BENCHMARK_ROOT_DIR}/.."
 PERPL_EXE_PATH="${BENCHMARK_ROOT_DIR}/../../perpl"
 FGG_EXE_PATH="${BENCHMARK_ROOT_DIR}/../../perpl/fggs"
+
 RUN_QISKIT="false"
 
 function create_dir_if_needed {
@@ -88,7 +89,7 @@ function print_help {
 test.sh [OPTION]...
 
 Options:
-  -q, --qiskit: run qiskit test
+  -q, --qiskit: run qiskit test, default false
 EOF
 }
 
