@@ -1,0 +1,1473 @@
+true
+Compiling benchmark/had-last-qubit/iso/had-last-qubit-1-1.iso to had-last-qubit-1-1.ppl
+
+real	0m0.013s
+user	0m0.004s
+sys	0m0.004s
+Compiling benchmark/had-last-qubit/iso/had-last-qubit-2-2.iso to had-last-qubit-2-2.ppl
+
+real	0m0.013s
+user	0m0.009s
+sys	0m0.000s
+Compiling benchmark/had-last-qubit/iso/had-last-qubit-3-3.iso to had-last-qubit-3-3.ppl
+
+real	0m0.013s
+user	0m0.000s
+sys	0m0.008s
+Compiling benchmark/had-last-qubit/iso/had-last-qubit-4-4.iso to had-last-qubit-4-4.ppl
+
+real	0m0.012s
+user	0m0.003s
+sys	0m0.004s
+Compiling benchmark/had-last-qubit/iso/had-last-qubit-5-5.iso to had-last-qubit-5-5.ppl
+
+real	0m0.012s
+user	0m0.004s
+sys	0m0.004s
+Compiling benchmark/had-last-qubit/iso/had-last-qubit-6-6.iso to had-last-qubit-6-6.ppl
+
+real	0m0.013s
+user	0m0.007s
+sys	0m0.000s
+Compiling benchmark/had-last-qubit/iso/had-last-qubit-7-7.iso to had-last-qubit-7-7.ppl
+
+real	0m0.012s
+user	0m0.004s
+sys	0m0.004s
+Compiling benchmark/had-last-qubit/iso/had-last-qubit-8-8.iso to had-last-qubit-8-8.ppl
+
+real	0m0.013s
+user	0m0.000s
+sys	0m0.007s
+Compiling benchmark/had-last-qubit/iso/had-last-qubit-9-9.iso to had-last-qubit-9-9.ppl
+
+real	0m0.013s
+user	0m0.004s
+sys	0m0.004s
+Compiling benchmark/had-last-qubit/iso/had-last-qubit-10-10.iso to had-last-qubit-10-10.ppl
+
+real	0m0.012s
+user	0m0.008s
+sys	0m0.000s
+Compiling benchmark/had-last-qubit/iso/had-last-qubit-11-11.iso to had-last-qubit-11-11.ppl
+
+real	0m0.012s
+user	0m0.009s
+sys	0m0.000s
+Compiling benchmark/had-last-qubit/iso/had-last-qubit-12-12.iso to had-last-qubit-12-12.ppl
+
+real	0m0.012s
+user	0m0.000s
+sys	0m0.009s
+Compiling benchmark/had-last-qubit/iso/had-last-qubit-13-13.iso to had-last-qubit-13-13.ppl
+
+real	0m0.012s
+user	0m0.004s
+sys	0m0.004s
+Compiling benchmark/had-last-qubit/iso/had-last-qubit-14-14.iso to had-last-qubit-14-14.ppl
+
+real	0m0.013s
+user	0m0.008s
+sys	0m0.000s
+Compiling benchmark/had-last-qubit/iso/had-last-qubit-15-15.iso to had-last-qubit-15-15.ppl
+
+real	0m0.012s
+user	0m0.004s
+sys	0m0.004s
+Compiling benchmark/had-last-qubit/iso/had-last-qubit-16-16.iso to had-last-qubit-16-16.ppl
+
+real	0m0.013s
+user	0m0.004s
+sys	0m0.004s
+Compiling benchmark/had-last-qubit/iso/had-last-qubit-17-17.iso to had-last-qubit-17-17.ppl
+
+real	0m0.013s
+user	0m0.008s
+sys	0m0.000s
+Compiling benchmark/had-last-qubit/iso/had-last-qubit-18-18.iso to had-last-qubit-18-18.ppl
+
+real	0m0.012s
+user	0m0.009s
+sys	0m0.000s
+Compiling benchmark/had-last-qubit/iso/had-last-qubit-19-19.iso to had-last-qubit-19-19.ppl
+
+real	0m0.013s
+user	0m0.010s
+sys	0m0.000s
+Compiling benchmark/had-last-qubit/iso/had-last-qubit-20-20.iso to had-last-qubit-20-20.ppl
+
+real	0m0.012s
+user	0m0.009s
+sys	0m0.000s
+Compiling benchmark/had-last-qubit/iso/had-last-qubit-21-21.iso to had-last-qubit-21-21.ppl
+
+real	0m0.012s
+user	0m0.005s
+sys	0m0.006s
+Compiling benchmark/had-last-qubit/iso/had-last-qubit-22-22.iso to had-last-qubit-22-22.ppl
+
+real	0m0.012s
+user	0m0.000s
+sys	0m0.010s
+Compiling benchmark/had-last-qubit/iso/had-last-qubit-23-23.iso to had-last-qubit-23-23.ppl
+
+real	0m0.013s
+user	0m0.005s
+sys	0m0.005s
+Compiling benchmark/had-last-qubit/iso/had-last-qubit-24-24.iso to had-last-qubit-24-24.ppl
+
+real	0m0.012s
+user	0m0.007s
+sys	0m0.004s
+Compiling benchmark/had-last-qubit/iso/had-last-qubit-25-25.iso to had-last-qubit-25-25.ppl
+
+real	0m0.013s
+user	0m0.005s
+sys	0m0.006s
+Compiling benchmark/had-last-qubit/iso/had-last-qubit-26-26.iso to had-last-qubit-26-26.ppl
+
+real	0m0.013s
+user	0m0.011s
+sys	0m0.000s
+Compiling benchmark/had-last-qubit/iso/had-last-qubit-27-27.iso to had-last-qubit-27-27.ppl
+
+real	0m0.022s
+user	0m0.013s
+sys	0m0.004s
+Compiling benchmark/had-last-qubit/iso/had-last-qubit-28-28.iso to had-last-qubit-28-28.ppl
+
+real	0m0.013s
+user	0m0.004s
+sys	0m0.008s
+Compiling benchmark/had-last-qubit/iso/had-last-qubit-29-29.iso to had-last-qubit-29-29.ppl
+
+real	0m0.013s
+user	0m0.008s
+sys	0m0.004s
+Compiling benchmark/had-last-qubit/iso/had-last-qubit-30-30.iso to had-last-qubit-30-30.ppl
+
+real	0m0.012s
+user	0m0.006s
+sys	0m0.006s
+Compiling benchmark/had-last-qubit/iso/had-last-qubit-31-31.iso to had-last-qubit-31-31.ppl
+
+real	0m0.013s
+user	0m0.004s
+sys	0m0.008s
+Compiling benchmark/had-last-qubit/iso/had-last-qubit-32-32.iso to had-last-qubit-32-32.ppl
+
+real	0m0.013s
+user	0m0.003s
+sys	0m0.009s
+Compiling benchmark/had-last-qubit/iso/had-last-qubit-33-33.iso to had-last-qubit-33-33.ppl
+
+real	0m0.012s
+user	0m0.009s
+sys	0m0.004s
+Compiling benchmark/had-last-qubit/iso/had-last-qubit-34-34.iso to had-last-qubit-34-34.ppl
+
+real	0m0.013s
+user	0m0.006s
+sys	0m0.006s
+Compiling benchmark/had-last-qubit/iso/had-last-qubit-35-35.iso to had-last-qubit-35-35.ppl
+
+real	0m0.013s
+user	0m0.004s
+sys	0m0.008s
+Compiling benchmark/had-last-qubit/iso/had-last-qubit-36-36.iso to had-last-qubit-36-36.ppl
+
+real	0m0.012s
+user	0m0.013s
+sys	0m0.000s
+Compiling benchmark/had-last-qubit/iso/had-last-qubit-37-37.iso to had-last-qubit-37-37.ppl
+
+real	0m0.023s
+user	0m0.015s
+sys	0m0.007s
+Compiling benchmark/had-last-qubit/iso/had-last-qubit-38-38.iso to had-last-qubit-38-38.ppl
+
+real	0m0.023s
+user	0m0.013s
+sys	0m0.009s
+Compiling benchmark/had-last-qubit/iso/had-last-qubit-39-39.iso to had-last-qubit-39-39.ppl
+
+real	0m0.023s
+user	0m0.012s
+sys	0m0.006s
+Compiling benchmark/had-last-qubit/iso/had-last-qubit-40-40.iso to had-last-qubit-40-40.ppl
+
+real	0m0.023s
+user	0m0.016s
+sys	0m0.005s
+Compiling benchmark/had-last-qubit/ppl/had-last-qubit-1-1.ppl to had-last-qubit-1-1.json
+
+real	0m0.013s
+user	0m0.010s
+sys	0m0.000s
+Compiling benchmark/had-last-qubit/ppl/had-last-qubit-2-2.ppl to had-last-qubit-2-2.json
+
+real	0m0.013s
+user	0m0.010s
+sys	0m0.000s
+Compiling benchmark/had-last-qubit/ppl/had-last-qubit-3-3.ppl to had-last-qubit-3-3.json
+
+real	0m0.023s
+user	0m0.006s
+sys	0m0.006s
+Compiling benchmark/had-last-qubit/ppl/had-last-qubit-4-4.ppl to had-last-qubit-4-4.json
+
+real	0m0.023s
+user	0m0.017s
+sys	0m0.000s
+Compiling benchmark/had-last-qubit/ppl/had-last-qubit-5-5.ppl to had-last-qubit-5-5.json
+
+real	0m0.023s
+user	0m0.018s
+sys	0m0.000s
+Compiling benchmark/had-last-qubit/ppl/had-last-qubit-6-6.ppl to had-last-qubit-6-6.json
+
+real	0m0.033s
+user	0m0.020s
+sys	0m0.004s
+Compiling benchmark/had-last-qubit/ppl/had-last-qubit-7-7.ppl to had-last-qubit-7-7.json
+
+real	0m0.032s
+user	0m0.019s
+sys	0m0.004s
+Compiling benchmark/had-last-qubit/ppl/had-last-qubit-8-8.ppl to had-last-qubit-8-8.json
+
+real	0m0.032s
+user	0m0.018s
+sys	0m0.009s
+Compiling benchmark/had-last-qubit/ppl/had-last-qubit-9-9.ppl to had-last-qubit-9-9.json
+
+real	0m0.043s
+user	0m0.035s
+sys	0m0.004s
+Compiling benchmark/had-last-qubit/ppl/had-last-qubit-10-10.ppl to had-last-qubit-10-10.json
+
+real	0m0.042s
+user	0m0.024s
+sys	0m0.012s
+Compiling benchmark/had-last-qubit/ppl/had-last-qubit-11-11.ppl to had-last-qubit-11-11.json
+
+real	0m0.053s
+user	0m0.038s
+sys	0m0.004s
+Compiling benchmark/had-last-qubit/ppl/had-last-qubit-12-12.ppl to had-last-qubit-12-12.json
+
+real	0m0.053s
+user	0m0.036s
+sys	0m0.008s
+Compiling benchmark/had-last-qubit/ppl/had-last-qubit-13-13.ppl to had-last-qubit-13-13.json
+
+real	0m0.063s
+user	0m0.044s
+sys	0m0.013s
+Compiling benchmark/had-last-qubit/ppl/had-last-qubit-14-14.ppl to had-last-qubit-14-14.json
+
+real	0m0.072s
+user	0m0.057s
+sys	0m0.004s
+Compiling benchmark/had-last-qubit/ppl/had-last-qubit-15-15.ppl to had-last-qubit-15-15.json
+
+real	0m0.072s
+user	0m0.055s
+sys	0m0.008s
+Compiling benchmark/had-last-qubit/ppl/had-last-qubit-16-16.ppl to had-last-qubit-16-16.json
+
+real	0m0.103s
+user	0m0.088s
+sys	0m0.008s
+Compiling benchmark/had-last-qubit/ppl/had-last-qubit-17-17.ppl to had-last-qubit-17-17.json
+
+real	0m0.092s
+user	0m0.075s
+sys	0m0.004s
+Compiling benchmark/had-last-qubit/ppl/had-last-qubit-18-18.ppl to had-last-qubit-18-18.json
+
+real	0m0.123s
+user	0m0.115s
+sys	0m0.000s
+Compiling benchmark/had-last-qubit/ppl/had-last-qubit-19-19.ppl to had-last-qubit-19-19.json
+
+real	0m0.112s
+user	0m0.099s
+sys	0m0.004s
+Compiling benchmark/had-last-qubit/ppl/had-last-qubit-20-20.ppl to had-last-qubit-20-20.json
+
+real	0m0.132s
+user	0m0.112s
+sys	0m0.004s
+Compiling benchmark/had-last-qubit/ppl/had-last-qubit-21-21.ppl to had-last-qubit-21-21.json
+
+real	0m0.142s
+user	0m0.122s
+sys	0m0.008s
+Compiling benchmark/had-last-qubit/ppl/had-last-qubit-22-22.ppl to had-last-qubit-22-22.json
+
+real	0m0.163s
+user	0m0.148s
+sys	0m0.004s
+Compiling benchmark/had-last-qubit/ppl/had-last-qubit-23-23.ppl to had-last-qubit-23-23.json
+
+real	0m0.273s
+user	0m0.252s
+sys	0m0.004s
+Compiling benchmark/had-last-qubit/ppl/had-last-qubit-24-24.ppl to had-last-qubit-24-24.json
+
+real	0m0.202s
+user	0m0.190s
+sys	0m0.000s
+Compiling benchmark/had-last-qubit/ppl/had-last-qubit-25-25.ppl to had-last-qubit-25-25.json
+
+real	0m0.323s
+user	0m0.291s
+sys	0m0.016s
+Compiling benchmark/had-last-qubit/ppl/had-last-qubit-26-26.ppl to had-last-qubit-26-26.json
+
+real	0m0.252s
+user	0m0.225s
+sys	0m0.008s
+Compiling benchmark/had-last-qubit/ppl/had-last-qubit-27-27.ppl to had-last-qubit-27-27.json
+
+real	0m0.273s
+user	0m0.256s
+sys	0m0.000s
+Compiling benchmark/had-last-qubit/ppl/had-last-qubit-28-28.ppl to had-last-qubit-28-28.json
+
+real	0m0.353s
+user	0m0.325s
+sys	0m0.008s
+Compiling benchmark/had-last-qubit/ppl/had-last-qubit-29-29.ppl to had-last-qubit-29-29.json
+
+real	0m0.373s
+user	0m0.338s
+sys	0m0.009s
+Compiling benchmark/had-last-qubit/ppl/had-last-qubit-30-30.ppl to had-last-qubit-30-30.json
+
+real	0m0.373s
+user	0m0.341s
+sys	0m0.012s
+Compiling benchmark/had-last-qubit/ppl/had-last-qubit-31-31.ppl to had-last-qubit-31-31.json
+
+real	0m0.383s
+user	0m0.352s
+sys	0m0.004s
+Compiling benchmark/had-last-qubit/ppl/had-last-qubit-32-32.ppl to had-last-qubit-32-32.json
+
+real	0m0.413s
+user	0m0.368s
+sys	0m0.016s
+Compiling benchmark/had-last-qubit/ppl/had-last-qubit-33-33.ppl to had-last-qubit-33-33.json
+
+real	0m0.473s
+user	0m0.440s
+sys	0m0.000s
+Compiling benchmark/had-last-qubit/ppl/had-last-qubit-34-34.ppl to had-last-qubit-34-34.json
+
+real	0m0.483s
+user	0m0.436s
+sys	0m0.012s
+Compiling benchmark/had-last-qubit/ppl/had-last-qubit-35-35.ppl to had-last-qubit-35-35.json
+
+real	0m0.553s
+user	0m0.514s
+sys	0m0.008s
+Compiling benchmark/had-last-qubit/ppl/had-last-qubit-36-36.ppl to had-last-qubit-36-36.json
+
+real	0m0.573s
+user	0m0.543s
+sys	0m0.000s
+Compiling benchmark/had-last-qubit/ppl/had-last-qubit-37-37.ppl to had-last-qubit-37-37.json
+
+real	0m0.633s
+user	0m0.581s
+sys	0m0.020s
+Compiling benchmark/had-last-qubit/ppl/had-last-qubit-38-38.ppl to had-last-qubit-38-38.json
+
+real	0m0.653s
+user	0m0.590s
+sys	0m0.021s
+Compiling benchmark/had-last-qubit/ppl/had-last-qubit-39-39.ppl to had-last-qubit-39-39.json
+
+real	0m0.713s
+user	0m0.662s
+sys	0m0.004s
+Compiling benchmark/had-last-qubit/ppl/had-last-qubit-40-40.ppl to had-last-qubit-40-40.json
+
+real	0m0.753s
+user	0m0.704s
+sys	0m0.008s
+Computing benchmark/had-last-qubit/json/had-last-qubit-1-1.json
+
+real	0m1.799s
+user	0m1.655s
+sys	0m0.707s
+Computing benchmark/had-last-qubit/json/had-last-qubit-2-2.json
+
+real	0m1.811s
+user	0m1.591s
+sys	0m0.817s
+Computing benchmark/had-last-qubit/json/had-last-qubit-3-3.json
+
+real	0m1.789s
+user	0m1.687s
+sys	0m0.676s
+Computing benchmark/had-last-qubit/json/had-last-qubit-4-4.json
+
+real	0m1.796s
+user	0m1.628s
+sys	0m0.747s
+Computing benchmark/had-last-qubit/json/had-last-qubit-5-5.json
+
+real	0m1.825s
+user	0m1.690s
+sys	0m0.721s
+Computing benchmark/had-last-qubit/json/had-last-qubit-6-6.json
+
+real	0m1.772s
+user	0m1.544s
+sys	0m0.824s
+Computing benchmark/had-last-qubit/json/had-last-qubit-7-7.json
+
+real	0m1.793s
+user	0m1.587s
+sys	0m0.795s
+Computing benchmark/had-last-qubit/json/had-last-qubit-8-8.json
+
+real	0m1.789s
+user	0m1.605s
+sys	0m0.762s
+Computing benchmark/had-last-qubit/json/had-last-qubit-9-9.json
+
+real	0m1.845s
+user	0m1.637s
+sys	0m0.784s
+Computing benchmark/had-last-qubit/json/had-last-qubit-10-10.json
+
+real	0m1.823s
+user	0m1.640s
+sys	0m0.747s
+Computing benchmark/had-last-qubit/json/had-last-qubit-11-11.json
+
+real	0m1.793s
+user	0m1.581s
+sys	0m0.800s
+Computing benchmark/had-last-qubit/json/had-last-qubit-12-12.json
+
+real	0m1.935s
+user	0m1.695s
+sys	0m0.756s
+Computing benchmark/had-last-qubit/json/had-last-qubit-13-13.json
+
+real	0m1.798s
+user	0m1.641s
+sys	0m0.745s
+Computing benchmark/had-last-qubit/json/had-last-qubit-14-14.json
+
+real	0m1.812s
+user	0m1.571s
+sys	0m0.828s
+Computing benchmark/had-last-qubit/json/had-last-qubit-15-15.json
+
+real	0m1.890s
+user	0m1.702s
+sys	0m0.832s
+Computing benchmark/had-last-qubit/json/had-last-qubit-16-16.json
+
+real	0m1.838s
+user	0m1.804s
+sys	0m0.775s
+Computing benchmark/had-last-qubit/json/had-last-qubit-17-17.json
+
+real	0m1.962s
+user	0m1.910s
+sys	0m0.774s
+Computing benchmark/had-last-qubit/json/had-last-qubit-18-18.json
+
+real	0m2.013s
+user	0m2.159s
+sys	0m0.719s
+Computing benchmark/had-last-qubit/json/had-last-qubit-19-19.json
+
+real	0m1.991s
+user	0m2.261s
+sys	0m0.749s
+Computing benchmark/had-last-qubit/json/had-last-qubit-20-20.json
+
+real	0m2.093s
+user	0m2.614s
+sys	0m0.910s
+Computing benchmark/had-last-qubit/json/had-last-qubit-21-21.json
+
+real	0m2.369s
+user	0m3.501s
+sys	0m1.004s
+Computing benchmark/had-last-qubit/json/had-last-qubit-22-22.json
+
+real	0m2.968s
+user	0m5.170s
+sys	0m1.477s
+Computing benchmark/had-last-qubit/json/had-last-qubit-23-23.json
+
+real	0m4.110s
+user	0m8.743s
+sys	0m2.213s
+Computing benchmark/had-last-qubit/json/had-last-qubit-24-24.json
+
+real	0m6.710s
+user	0m16.755s
+sys	0m3.874s
+Computing benchmark/had-last-qubit/json/had-last-qubit-25-25.json
+
+real	0m12.049s
+user	0m33.061s
+sys	0m7.443s
+Computing benchmark/had-last-qubit/json/had-last-qubit-26-26.json
+benchmark/test.sh: line 61: 296562 Killed                  python "${FGG_EXE_PATH}/bin/sum_product.py" -d ${file} > "${iso_result_dir}/${ofile}"
+
+real	0m33.079s
+user	0m53.250s
+sys	0m21.326s
+Stop at benchmark/had-last-qubit/json/had-last-qubit-26-26.json, the error code is non-zero (137)
+Computing benchmark/had-last-qubit/python/had-last-qubit-1-1.py
+
+real	0m3.821s
+user	0m2.442s
+sys	0m1.470s
+Computing benchmark/had-last-qubit/python/had-last-qubit-2-2.py
+
+real	0m2.419s
+user	0m2.203s
+sys	0m1.401s
+Computing benchmark/had-last-qubit/python/had-last-qubit-3-3.py
+
+real	0m2.448s
+user	0m2.280s
+sys	0m1.382s
+Computing benchmark/had-last-qubit/python/had-last-qubit-4-4.py
+
+real	0m2.437s
+user	0m2.279s
+sys	0m1.373s
+Computing benchmark/had-last-qubit/python/had-last-qubit-5-5.py
+
+real	0m2.626s
+user	0m2.308s
+sys	0m1.488s
+Computing benchmark/had-last-qubit/python/had-last-qubit-6-6.py
+
+real	0m2.498s
+user	0m2.300s
+sys	0m1.344s
+Computing benchmark/had-last-qubit/python/had-last-qubit-7-7.py
+
+real	0m2.643s
+user	0m2.339s
+sys	0m1.405s
+Computing benchmark/had-last-qubit/python/had-last-qubit-8-8.py
+
+real	0m2.482s
+user	0m2.254s
+sys	0m1.406s
+Computing benchmark/had-last-qubit/python/had-last-qubit-9-9.py
+
+real	0m2.776s
+user	0m2.293s
+sys	0m1.530s
+Computing benchmark/had-last-qubit/python/had-last-qubit-10-10.py
+
+real	0m2.604s
+user	0m2.309s
+sys	0m1.464s
+Computing benchmark/had-last-qubit/python/had-last-qubit-11-11.py
+
+real	0m2.499s
+user	0m2.344s
+sys	0m1.315s
+Computing benchmark/had-last-qubit/python/had-last-qubit-12-12.py
+
+real	0m2.492s
+user	0m2.289s
+sys	0m1.366s
+Computing benchmark/had-last-qubit/python/had-last-qubit-13-13.py
+
+real	0m2.539s
+user	0m2.313s
+sys	0m1.372s
+Computing benchmark/had-last-qubit/python/had-last-qubit-14-14.py
+
+real	0m2.670s
+user	0m2.447s
+sys	0m1.377s
+Computing benchmark/had-last-qubit/python/had-last-qubit-15-15.py
+
+real	0m2.499s
+user	0m2.408s
+sys	0m1.281s
+Computing benchmark/had-last-qubit/python/had-last-qubit-16-16.py
+
+real	0m2.680s
+user	0m2.467s
+sys	0m1.412s
+Computing benchmark/had-last-qubit/python/had-last-qubit-17-17.py
+
+real	0m2.514s
+user	0m2.375s
+sys	0m1.368s
+Computing benchmark/had-last-qubit/python/had-last-qubit-18-18.py
+
+real	0m2.934s
+user	0m3.777s
+sys	0m1.370s
+Computing benchmark/had-last-qubit/python/had-last-qubit-19-19.py
+
+real	0m2.792s
+user	0m2.764s
+sys	0m1.519s
+Computing benchmark/had-last-qubit/python/had-last-qubit-20-20.py
+
+real	0m2.871s
+user	0m3.481s
+sys	0m1.495s
+Computing benchmark/had-last-qubit/python/had-last-qubit-21-21.py
+
+real	0m2.786s
+user	0m4.374s
+sys	0m1.305s
+Computing benchmark/had-last-qubit/python/had-last-qubit-22-22.py
+
+real	0m3.571s
+user	0m7.006s
+sys	0m1.514s
+Computing benchmark/had-last-qubit/python/had-last-qubit-23-23.py
+
+real	0m3.911s
+user	0m12.614s
+sys	0m1.386s
+Computing benchmark/had-last-qubit/python/had-last-qubit-24-24.py
+
+real	0m5.245s
+user	0m23.247s
+sys	0m1.512s
+Computing benchmark/had-last-qubit/python/had-last-qubit-25-25.py
+
+real	0m8.180s
+user	0m46.834s
+sys	0m1.697s
+Computing benchmark/had-last-qubit/python/had-last-qubit-26-26.py
+
+real	0m14.737s
+user	1m35.290s
+sys	0m2.117s
+Computing benchmark/had-last-qubit/python/had-last-qubit-27-27.py
+
+real	0m27.474s
+user	3m16.207s
+sys	0m2.963s
+Computing benchmark/had-last-qubit/python/had-last-qubit-28-28.py
+
+real	0m53.510s
+user	6m42.713s
+sys	0m4.361s
+Computing benchmark/had-last-qubit/python/had-last-qubit-29-29.py
+
+real	1m49.255s
+user	14m2.214s
+sys	0m7.547s
+Computing benchmark/had-last-qubit/python/had-last-qubit-30-30.py
+
+real	3m44.281s
+user	28m49.714s
+sys	0m14.174s
+Computing benchmark/had-last-qubit/python/had-last-qubit-31-31.py
+Traceback (most recent call last):
+  File "benchmark/had-last-qubit/python/had-last-qubit-31-31.py", line 27, in <module>
+    Fgr2r0r0r5 = transpile(Fgr2r0r0r5, simulator, optimization_level=2)
+  File "/media/m/本地磁盘/Programming/Haskell/perpl/venv_linux/lib/python3.8/site-packages/qiskit/compiler/transpiler.py", line 379, in transpile
+    _check_circuits_coupling_map(circuits, coupling_map, backend)
+  File "/media/m/本地磁盘/Programming/Haskell/perpl/venv_linux/lib/python3.8/site-packages/qiskit/compiler/transpiler.py", line 443, in _check_circuits_coupling_map
+    raise CircuitTooWideForTarget(
+qiskit.transpiler.exceptions.CircuitTooWideForTarget: 'Number of qubits (31) in circuit-167 is greater than maximum (30) in the coupling_map'
+
+real	0m1.251s
+user	0m1.086s
+sys	0m0.724s
+Stop at benchmark/had-last-qubit/python/had-last-qubit-31-31.py, the error code is non-zero (1)
+Compiling benchmark/deutsch-jozsa-to-zero/iso/deutsch-jozsa-to-zero-1-1.iso to deutsch-jozsa-to-zero-1-1.ppl
+
+real	0m0.039s
+user	0m0.002s
+sys	0m0.007s
+Compiling benchmark/deutsch-jozsa-to-zero/iso/deutsch-jozsa-to-zero-2-1.iso to deutsch-jozsa-to-zero-2-1.ppl
+
+real	0m0.013s
+user	0m0.000s
+sys	0m0.007s
+Compiling benchmark/deutsch-jozsa-to-zero/iso/deutsch-jozsa-to-zero-3-1.iso to deutsch-jozsa-to-zero-3-1.ppl
+
+real	0m0.012s
+user	0m0.004s
+sys	0m0.003s
+Compiling benchmark/deutsch-jozsa-to-zero/iso/deutsch-jozsa-to-zero-4-1.iso to deutsch-jozsa-to-zero-4-1.ppl
+
+real	0m0.013s
+user	0m0.006s
+sys	0m0.003s
+Compiling benchmark/deutsch-jozsa-to-zero/iso/deutsch-jozsa-to-zero-5-1.iso to deutsch-jozsa-to-zero-5-1.ppl
+
+real	0m0.013s
+user	0m0.000s
+sys	0m0.007s
+Compiling benchmark/deutsch-jozsa-to-zero/iso/deutsch-jozsa-to-zero-6-1.iso to deutsch-jozsa-to-zero-6-1.ppl
+
+real	0m0.012s
+user	0m0.008s
+sys	0m0.000s
+Compiling benchmark/deutsch-jozsa-to-zero/iso/deutsch-jozsa-to-zero-7-1.iso to deutsch-jozsa-to-zero-7-1.ppl
+
+real	0m0.012s
+user	0m0.008s
+sys	0m0.000s
+Compiling benchmark/deutsch-jozsa-to-zero/iso/deutsch-jozsa-to-zero-8-1.iso to deutsch-jozsa-to-zero-8-1.ppl
+
+real	0m0.013s
+user	0m0.008s
+sys	0m0.000s
+Compiling benchmark/deutsch-jozsa-to-zero/iso/deutsch-jozsa-to-zero-9-1.iso to deutsch-jozsa-to-zero-9-1.ppl
+
+real	0m0.012s
+user	0m0.004s
+sys	0m0.004s
+Compiling benchmark/deutsch-jozsa-to-zero/iso/deutsch-jozsa-to-zero-10-1.iso to deutsch-jozsa-to-zero-10-1.ppl
+
+real	0m0.013s
+user	0m0.000s
+sys	0m0.008s
+Compiling benchmark/deutsch-jozsa-to-zero/iso/deutsch-jozsa-to-zero-11-1.iso to deutsch-jozsa-to-zero-11-1.ppl
+
+real	0m0.013s
+user	0m0.000s
+sys	0m0.009s
+Compiling benchmark/deutsch-jozsa-to-zero/iso/deutsch-jozsa-to-zero-12-1.iso to deutsch-jozsa-to-zero-12-1.ppl
+
+real	0m0.012s
+user	0m0.000s
+sys	0m0.009s
+Compiling benchmark/deutsch-jozsa-to-zero/iso/deutsch-jozsa-to-zero-13-1.iso to deutsch-jozsa-to-zero-13-1.ppl
+
+real	0m0.012s
+user	0m0.006s
+sys	0m0.006s
+Compiling benchmark/deutsch-jozsa-to-zero/iso/deutsch-jozsa-to-zero-14-1.iso to deutsch-jozsa-to-zero-14-1.ppl
+
+real	0m0.012s
+user	0m0.009s
+sys	0m0.000s
+Compiling benchmark/deutsch-jozsa-to-zero/iso/deutsch-jozsa-to-zero-15-1.iso to deutsch-jozsa-to-zero-15-1.ppl
+
+real	0m0.013s
+user	0m0.000s
+sys	0m0.009s
+Compiling benchmark/deutsch-jozsa-to-zero/iso/deutsch-jozsa-to-zero-16-1.iso to deutsch-jozsa-to-zero-16-1.ppl
+
+real	0m0.013s
+user	0m0.000s
+sys	0m0.010s
+Compiling benchmark/deutsch-jozsa-to-zero/iso/deutsch-jozsa-to-zero-17-1.iso to deutsch-jozsa-to-zero-17-1.ppl
+
+real	0m0.013s
+user	0m0.004s
+sys	0m0.007s
+Compiling benchmark/deutsch-jozsa-to-zero/iso/deutsch-jozsa-to-zero-18-1.iso to deutsch-jozsa-to-zero-18-1.ppl
+
+real	0m0.012s
+user	0m0.011s
+sys	0m0.000s
+Compiling benchmark/deutsch-jozsa-to-zero/iso/deutsch-jozsa-to-zero-19-1.iso to deutsch-jozsa-to-zero-19-1.ppl
+
+real	0m0.013s
+user	0m0.011s
+sys	0m0.000s
+Compiling benchmark/deutsch-jozsa-to-zero/ppl/deutsch-jozsa-to-zero-1-1.ppl to deutsch-jozsa-to-zero-1-1.json
+
+real	0m0.029s
+user	0m0.003s
+sys	0m0.008s
+Compiling benchmark/deutsch-jozsa-to-zero/ppl/deutsch-jozsa-to-zero-2-1.ppl to deutsch-jozsa-to-zero-2-1.json
+
+real	0m0.022s
+user	0m0.008s
+sys	0m0.004s
+Compiling benchmark/deutsch-jozsa-to-zero/ppl/deutsch-jozsa-to-zero-3-1.ppl to deutsch-jozsa-to-zero-3-1.json
+
+real	0m0.022s
+user	0m0.014s
+sys	0m0.004s
+Compiling benchmark/deutsch-jozsa-to-zero/ppl/deutsch-jozsa-to-zero-4-1.ppl to deutsch-jozsa-to-zero-4-1.json
+
+real	0m0.022s
+user	0m0.016s
+sys	0m0.004s
+Compiling benchmark/deutsch-jozsa-to-zero/ppl/deutsch-jozsa-to-zero-5-1.ppl to deutsch-jozsa-to-zero-5-1.json
+
+real	0m0.033s
+user	0m0.013s
+sys	0m0.010s
+Compiling benchmark/deutsch-jozsa-to-zero/ppl/deutsch-jozsa-to-zero-6-1.ppl to deutsch-jozsa-to-zero-6-1.json
+
+real	0m0.032s
+user	0m0.027s
+sys	0m0.000s
+Compiling benchmark/deutsch-jozsa-to-zero/ppl/deutsch-jozsa-to-zero-7-1.ppl to deutsch-jozsa-to-zero-7-1.json
+
+real	0m0.042s
+user	0m0.026s
+sys	0m0.009s
+Compiling benchmark/deutsch-jozsa-to-zero/ppl/deutsch-jozsa-to-zero-8-1.ppl to deutsch-jozsa-to-zero-8-1.json
+
+real	0m0.053s
+user	0m0.045s
+sys	0m0.000s
+Compiling benchmark/deutsch-jozsa-to-zero/ppl/deutsch-jozsa-to-zero-9-1.ppl to deutsch-jozsa-to-zero-9-1.json
+
+real	0m0.063s
+user	0m0.045s
+sys	0m0.008s
+Compiling benchmark/deutsch-jozsa-to-zero/ppl/deutsch-jozsa-to-zero-10-1.ppl to deutsch-jozsa-to-zero-10-1.json
+
+real	0m0.062s
+user	0m0.051s
+sys	0m0.004s
+Compiling benchmark/deutsch-jozsa-to-zero/ppl/deutsch-jozsa-to-zero-11-1.ppl to deutsch-jozsa-to-zero-11-1.json
+
+real	0m0.073s
+user	0m0.063s
+sys	0m0.000s
+Compiling benchmark/deutsch-jozsa-to-zero/ppl/deutsch-jozsa-to-zero-12-1.ppl to deutsch-jozsa-to-zero-12-1.json
+
+real	0m0.083s
+user	0m0.072s
+sys	0m0.004s
+Compiling benchmark/deutsch-jozsa-to-zero/ppl/deutsch-jozsa-to-zero-13-1.ppl to deutsch-jozsa-to-zero-13-1.json
+
+real	0m0.093s
+user	0m0.078s
+sys	0m0.008s
+Compiling benchmark/deutsch-jozsa-to-zero/ppl/deutsch-jozsa-to-zero-14-1.ppl to deutsch-jozsa-to-zero-14-1.json
+
+real	0m0.113s
+user	0m0.095s
+sys	0m0.004s
+Compiling benchmark/deutsch-jozsa-to-zero/ppl/deutsch-jozsa-to-zero-15-1.ppl to deutsch-jozsa-to-zero-15-1.json
+
+real	0m0.133s
+user	0m0.123s
+sys	0m0.000s
+Compiling benchmark/deutsch-jozsa-to-zero/ppl/deutsch-jozsa-to-zero-16-1.ppl to deutsch-jozsa-to-zero-16-1.json
+
+real	0m0.133s
+user	0m0.120s
+sys	0m0.004s
+Compiling benchmark/deutsch-jozsa-to-zero/ppl/deutsch-jozsa-to-zero-17-1.ppl to deutsch-jozsa-to-zero-17-1.json
+
+real	0m0.153s
+user	0m0.137s
+sys	0m0.004s
+Compiling benchmark/deutsch-jozsa-to-zero/ppl/deutsch-jozsa-to-zero-18-1.ppl to deutsch-jozsa-to-zero-18-1.json
+
+real	0m0.173s
+user	0m0.162s
+sys	0m0.000s
+Compiling benchmark/deutsch-jozsa-to-zero/ppl/deutsch-jozsa-to-zero-19-1.ppl to deutsch-jozsa-to-zero-19-1.json
+
+real	0m0.193s
+user	0m0.158s
+sys	0m0.019s
+Computing benchmark/deutsch-jozsa-to-zero/json/deutsch-jozsa-to-zero-1-1.json
+
+real	0m2.994s
+user	0m1.716s
+sys	0m0.790s
+Computing benchmark/deutsch-jozsa-to-zero/json/deutsch-jozsa-to-zero-2-1.json
+
+real	0m1.994s
+user	0m1.732s
+sys	0m0.789s
+Computing benchmark/deutsch-jozsa-to-zero/json/deutsch-jozsa-to-zero-3-1.json
+
+real	0m2.218s
+user	0m1.886s
+sys	0m0.811s
+Computing benchmark/deutsch-jozsa-to-zero/json/deutsch-jozsa-to-zero-4-1.json
+
+real	0m1.982s
+user	0m1.908s
+sys	0m0.647s
+Computing benchmark/deutsch-jozsa-to-zero/json/deutsch-jozsa-to-zero-5-1.json
+
+real	0m1.985s
+user	0m1.734s
+sys	0m0.771s
+Computing benchmark/deutsch-jozsa-to-zero/json/deutsch-jozsa-to-zero-6-1.json
+
+real	0m1.798s
+user	0m1.571s
+sys	0m0.730s
+Computing benchmark/deutsch-jozsa-to-zero/json/deutsch-jozsa-to-zero-7-1.json
+
+real	0m1.801s
+user	0m1.726s
+sys	0m0.716s
+Computing benchmark/deutsch-jozsa-to-zero/json/deutsch-jozsa-to-zero-8-1.json
+
+real	0m1.846s
+user	0m1.828s
+sys	0m0.671s
+Computing benchmark/deutsch-jozsa-to-zero/json/deutsch-jozsa-to-zero-9-1.json
+
+real	0m2.285s
+user	0m2.183s
+sys	0m0.791s
+Computing benchmark/deutsch-jozsa-to-zero/json/deutsch-jozsa-to-zero-10-1.json
+
+real	0m2.342s
+user	0m2.807s
+sys	0m0.895s
+Computing benchmark/deutsch-jozsa-to-zero/json/deutsch-jozsa-to-zero-11-1.json
+
+real	0m3.137s
+user	0m5.407s
+sys	0m1.470s
+Computing benchmark/deutsch-jozsa-to-zero/json/deutsch-jozsa-to-zero-12-1.json
+
+real	0m7.018s
+user	0m17.286s
+sys	0m4.197s
+Computing benchmark/deutsch-jozsa-to-zero/json/deutsch-jozsa-to-zero-13-1.json
+benchmark/test.sh: line 61: 298544 Killed                  python "${FGG_EXE_PATH}/bin/sum_product.py" -d ${file} > "${iso_result_dir}/${ofile}"
+
+real	0m31.939s
+user	0m52.234s
+sys	0m21.486s
+Stop at benchmark/deutsch-jozsa-to-zero/json/deutsch-jozsa-to-zero-13-1.json, the error code is non-zero (137)
+Computing benchmark/deutsch-jozsa-to-zero/python/deutsch-jozsa-to-zero-1-1.py
+
+real	0m3.740s
+user	0m2.375s
+sys	0m1.540s
+Computing benchmark/deutsch-jozsa-to-zero/python/deutsch-jozsa-to-zero-2-1.py
+
+real	0m2.716s
+user	0m2.490s
+sys	0m1.331s
+Computing benchmark/deutsch-jozsa-to-zero/python/deutsch-jozsa-to-zero-3-1.py
+
+real	0m2.446s
+user	0m2.201s
+sys	0m1.414s
+Computing benchmark/deutsch-jozsa-to-zero/python/deutsch-jozsa-to-zero-4-1.py
+
+real	0m2.525s
+user	0m2.210s
+sys	0m1.518s
+Computing benchmark/deutsch-jozsa-to-zero/python/deutsch-jozsa-to-zero-5-1.py
+
+real	0m2.462s
+user	0m2.247s
+sys	0m1.392s
+Computing benchmark/deutsch-jozsa-to-zero/python/deutsch-jozsa-to-zero-6-1.py
+
+real	0m2.943s
+user	0m2.479s
+sys	0m1.467s
+Computing benchmark/deutsch-jozsa-to-zero/python/deutsch-jozsa-to-zero-7-1.py
+
+real	0m2.735s
+user	0m2.389s
+sys	0m1.374s
+Computing benchmark/deutsch-jozsa-to-zero/python/deutsch-jozsa-to-zero-8-1.py
+
+real	0m2.713s
+user	0m2.326s
+sys	0m1.489s
+Computing benchmark/deutsch-jozsa-to-zero/python/deutsch-jozsa-to-zero-9-1.py
+
+real	0m2.559s
+user	0m2.284s
+sys	0m1.392s
+Computing benchmark/deutsch-jozsa-to-zero/python/deutsch-jozsa-to-zero-10-1.py
+
+real	0m2.644s
+user	0m2.396s
+sys	0m1.449s
+Computing benchmark/deutsch-jozsa-to-zero/python/deutsch-jozsa-to-zero-11-1.py
+
+real	0m2.495s
+user	0m2.276s
+sys	0m1.415s
+Computing benchmark/deutsch-jozsa-to-zero/python/deutsch-jozsa-to-zero-12-1.py
+
+real	0m2.537s
+user	0m2.159s
+sys	0m1.526s
+Computing benchmark/deutsch-jozsa-to-zero/python/deutsch-jozsa-to-zero-13-1.py
+
+real	0m2.652s
+user	0m2.424s
+sys	0m1.361s
+Computing benchmark/deutsch-jozsa-to-zero/python/deutsch-jozsa-to-zero-14-1.py
+
+real	0m2.513s
+user	0m2.353s
+sys	0m1.370s
+Computing benchmark/deutsch-jozsa-to-zero/python/deutsch-jozsa-to-zero-15-1.py
+
+real	0m2.698s
+user	0m2.374s
+sys	0m1.527s
+Computing benchmark/deutsch-jozsa-to-zero/python/deutsch-jozsa-to-zero-16-1.py
+
+real	0m2.512s
+user	0m2.411s
+sys	0m1.354s
+Computing benchmark/deutsch-jozsa-to-zero/python/deutsch-jozsa-to-zero-17-1.py
+
+real	0m3.472s
+user	0m3.163s
+sys	0m1.518s
+Computing benchmark/deutsch-jozsa-to-zero/python/deutsch-jozsa-to-zero-18-1.py
+
+real	0m2.470s
+user	0m2.739s
+sys	0m1.301s
+Computing benchmark/deutsch-jozsa-to-zero/python/deutsch-jozsa-to-zero-19-1.py
+
+real	0m2.714s
+user	0m3.178s
+sys	0m1.450s
+Compiling benchmark/deutsch-jozsa-is-even/iso/deutsch-jozsa-is-even-1-1.iso to deutsch-jozsa-is-even-1-1.ppl
+
+real	0m0.038s
+user	0m0.009s
+sys	0m0.000s
+Compiling benchmark/deutsch-jozsa-is-even/iso/deutsch-jozsa-is-even-2-1.iso to deutsch-jozsa-is-even-2-1.ppl
+
+real	0m0.013s
+user	0m0.004s
+sys	0m0.004s
+Compiling benchmark/deutsch-jozsa-is-even/iso/deutsch-jozsa-is-even-3-1.iso to deutsch-jozsa-is-even-3-1.ppl
+
+real	0m0.012s
+user	0m0.004s
+sys	0m0.004s
+Compiling benchmark/deutsch-jozsa-is-even/iso/deutsch-jozsa-is-even-4-1.iso to deutsch-jozsa-is-even-4-1.ppl
+
+real	0m0.013s
+user	0m0.000s
+sys	0m0.008s
+Compiling benchmark/deutsch-jozsa-is-even/iso/deutsch-jozsa-is-even-5-1.iso to deutsch-jozsa-is-even-5-1.ppl
+
+real	0m0.012s
+user	0m0.000s
+sys	0m0.009s
+Compiling benchmark/deutsch-jozsa-is-even/iso/deutsch-jozsa-is-even-6-1.iso to deutsch-jozsa-is-even-6-1.ppl
+
+real	0m0.013s
+user	0m0.008s
+sys	0m0.000s
+Compiling benchmark/deutsch-jozsa-is-even/iso/deutsch-jozsa-is-even-7-1.iso to deutsch-jozsa-is-even-7-1.ppl
+
+real	0m0.012s
+user	0m0.000s
+sys	0m0.009s
+Compiling benchmark/deutsch-jozsa-is-even/iso/deutsch-jozsa-is-even-8-1.iso to deutsch-jozsa-is-even-8-1.ppl
+
+real	0m0.012s
+user	0m0.004s
+sys	0m0.005s
+Compiling benchmark/deutsch-jozsa-is-even/iso/deutsch-jozsa-is-even-9-1.iso to deutsch-jozsa-is-even-9-1.ppl
+
+real	0m0.013s
+user	0m0.005s
+sys	0m0.005s
+Compiling benchmark/deutsch-jozsa-is-even/iso/deutsch-jozsa-is-even-10-1.iso to deutsch-jozsa-is-even-10-1.ppl
+
+real	0m0.013s
+user	0m0.007s
+sys	0m0.004s
+Compiling benchmark/deutsch-jozsa-is-even/iso/deutsch-jozsa-is-even-11-1.iso to deutsch-jozsa-is-even-11-1.ppl
+
+real	0m0.012s
+user	0m0.011s
+sys	0m0.000s
+Compiling benchmark/deutsch-jozsa-is-even/iso/deutsch-jozsa-is-even-12-1.iso to deutsch-jozsa-is-even-12-1.ppl
+
+real	0m0.013s
+user	0m0.012s
+sys	0m0.000s
+Compiling benchmark/deutsch-jozsa-is-even/iso/deutsch-jozsa-is-even-13-1.iso to deutsch-jozsa-is-even-13-1.ppl
+
+real	0m0.023s
+user	0m0.011s
+sys	0m0.006s
+Compiling benchmark/deutsch-jozsa-is-even/iso/deutsch-jozsa-is-even-14-1.iso to deutsch-jozsa-is-even-14-1.ppl
+
+real	0m0.013s
+user	0m0.004s
+sys	0m0.009s
+Compiling benchmark/deutsch-jozsa-is-even/iso/deutsch-jozsa-is-even-15-1.iso to deutsch-jozsa-is-even-15-1.ppl
+
+real	0m0.013s
+user	0m0.008s
+sys	0m0.004s
+Compiling benchmark/deutsch-jozsa-is-even/iso/deutsch-jozsa-is-even-16-1.iso to deutsch-jozsa-is-even-16-1.ppl
+
+real	0m0.013s
+user	0m0.007s
+sys	0m0.007s
+Compiling benchmark/deutsch-jozsa-is-even/iso/deutsch-jozsa-is-even-17-1.iso to deutsch-jozsa-is-even-17-1.ppl
+
+real	0m0.013s
+user	0m0.002s
+sys	0m0.011s
+Compiling benchmark/deutsch-jozsa-is-even/iso/deutsch-jozsa-is-even-18-1.iso to deutsch-jozsa-is-even-18-1.ppl
+
+real	0m0.012s
+user	0m0.008s
+sys	0m0.004s
+Compiling benchmark/deutsch-jozsa-is-even/iso/deutsch-jozsa-is-even-19-1.iso to deutsch-jozsa-is-even-19-1.ppl
+
+real	0m0.013s
+user	0m0.007s
+sys	0m0.007s
+Compiling benchmark/deutsch-jozsa-is-even/ppl/deutsch-jozsa-is-even-1-1.ppl to deutsch-jozsa-is-even-1-1.json
+
+real	0m0.038s
+user	0m0.011s
+sys	0m0.004s
+Compiling benchmark/deutsch-jozsa-is-even/ppl/deutsch-jozsa-is-even-2-1.ppl to deutsch-jozsa-is-even-2-1.json
+
+real	0m0.033s
+user	0m0.022s
+sys	0m0.000s
+Compiling benchmark/deutsch-jozsa-is-even/ppl/deutsch-jozsa-is-even-3-1.ppl to deutsch-jozsa-is-even-3-1.json
+
+real	0m0.033s
+user	0m0.020s
+sys	0m0.008s
+Compiling benchmark/deutsch-jozsa-is-even/ppl/deutsch-jozsa-is-even-4-1.ppl to deutsch-jozsa-is-even-4-1.json
+
+real	0m0.042s
+user	0m0.039s
+sys	0m0.000s
+Compiling benchmark/deutsch-jozsa-is-even/ppl/deutsch-jozsa-is-even-5-1.ppl to deutsch-jozsa-is-even-5-1.json
+
+real	0m0.063s
+user	0m0.050s
+sys	0m0.000s
+Compiling benchmark/deutsch-jozsa-is-even/ppl/deutsch-jozsa-is-even-6-1.ppl to deutsch-jozsa-is-even-6-1.json
+
+real	0m0.073s
+user	0m0.052s
+sys	0m0.008s
+Compiling benchmark/deutsch-jozsa-is-even/ppl/deutsch-jozsa-is-even-7-1.ppl to deutsch-jozsa-is-even-7-1.json
+
+real	0m0.083s
+user	0m0.071s
+sys	0m0.005s
+Compiling benchmark/deutsch-jozsa-is-even/ppl/deutsch-jozsa-is-even-8-1.ppl to deutsch-jozsa-is-even-8-1.json
+
+real	0m0.102s
+user	0m0.086s
+sys	0m0.008s
+Compiling benchmark/deutsch-jozsa-is-even/ppl/deutsch-jozsa-is-even-9-1.ppl to deutsch-jozsa-is-even-9-1.json
+
+real	0m0.122s
+user	0m0.108s
+sys	0m0.004s
+Compiling benchmark/deutsch-jozsa-is-even/ppl/deutsch-jozsa-is-even-10-1.ppl to deutsch-jozsa-is-even-10-1.json
+
+real	0m0.153s
+user	0m0.132s
+sys	0m0.004s
+Compiling benchmark/deutsch-jozsa-is-even/ppl/deutsch-jozsa-is-even-11-1.ppl to deutsch-jozsa-is-even-11-1.json
+
+real	0m0.173s
+user	0m0.157s
+sys	0m0.000s
+Compiling benchmark/deutsch-jozsa-is-even/ppl/deutsch-jozsa-is-even-12-1.ppl to deutsch-jozsa-is-even-12-1.json
+
+real	0m0.213s
+user	0m0.194s
+sys	0m0.005s
+Compiling benchmark/deutsch-jozsa-is-even/ppl/deutsch-jozsa-is-even-13-1.ppl to deutsch-jozsa-is-even-13-1.json
+
+real	0m0.233s
+user	0m0.213s
+sys	0m0.008s
+Compiling benchmark/deutsch-jozsa-is-even/ppl/deutsch-jozsa-is-even-14-1.ppl to deutsch-jozsa-is-even-14-1.json
+
+real	0m0.283s
+user	0m0.256s
+sys	0m0.008s
+Compiling benchmark/deutsch-jozsa-is-even/ppl/deutsch-jozsa-is-even-15-1.ppl to deutsch-jozsa-is-even-15-1.json
+
+real	0m0.323s
+user	0m0.299s
+sys	0m0.004s
+Compiling benchmark/deutsch-jozsa-is-even/ppl/deutsch-jozsa-is-even-16-1.ppl to deutsch-jozsa-is-even-16-1.json
+
+real	0m0.364s
+user	0m0.324s
+sys	0m0.020s
+Compiling benchmark/deutsch-jozsa-is-even/ppl/deutsch-jozsa-is-even-17-1.ppl to deutsch-jozsa-is-even-17-1.json
+
+real	0m0.413s
+user	0m0.373s
+sys	0m0.016s
+Compiling benchmark/deutsch-jozsa-is-even/ppl/deutsch-jozsa-is-even-18-1.ppl to deutsch-jozsa-is-even-18-1.json
+
+real	0m0.454s
+user	0m0.415s
+sys	0m0.012s
+Compiling benchmark/deutsch-jozsa-is-even/ppl/deutsch-jozsa-is-even-19-1.ppl to deutsch-jozsa-is-even-19-1.json
+
+real	0m0.524s
+user	0m0.484s
+sys	0m0.012s
+Computing benchmark/deutsch-jozsa-is-even/json/deutsch-jozsa-is-even-1-1.json
+
+real	0m3.018s
+user	0m1.769s
+sys	0m0.807s
+Computing benchmark/deutsch-jozsa-is-even/json/deutsch-jozsa-is-even-2-1.json
+
+real	0m1.962s
+user	0m1.748s
+sys	0m0.763s
+Computing benchmark/deutsch-jozsa-is-even/json/deutsch-jozsa-is-even-3-1.json
+
+real	0m1.788s
+user	0m1.606s
+sys	0m0.778s
+Computing benchmark/deutsch-jozsa-is-even/json/deutsch-jozsa-is-even-4-1.json
+
+real	0m1.792s
+user	0m1.638s
+sys	0m0.746s
+Computing benchmark/deutsch-jozsa-is-even/json/deutsch-jozsa-is-even-5-1.json
+
+real	0m1.835s
+user	0m1.742s
+sys	0m0.711s
+Computing benchmark/deutsch-jozsa-is-even/json/deutsch-jozsa-is-even-6-1.json
+
+real	0m1.853s
+user	0m1.726s
+sys	0m0.798s
+Computing benchmark/deutsch-jozsa-is-even/json/deutsch-jozsa-is-even-7-1.json
+
+real	0m1.916s
+user	0m1.969s
+sys	0m0.762s
+Computing benchmark/deutsch-jozsa-is-even/json/deutsch-jozsa-is-even-8-1.json
+
+real	0m2.274s
+user	0m3.114s
+sys	0m0.945s
+Computing benchmark/deutsch-jozsa-is-even/json/deutsch-jozsa-is-even-9-1.json
+
+real	0m5.389s
+user	0m12.668s
+sys	0m2.734s
+Computing benchmark/deutsch-jozsa-is-even/json/deutsch-jozsa-is-even-10-1.json
+Traceback (most recent call last):
+  File "benchmark/../../perpl/fggs/bin/sum_product.py", line 113, in <module>
+    zs = fggs.sum_products(fgg, method=args.method, tol=args.tol, kmax=args.kmax, j_precompute=args.j_precompute)
+  File "/media/m/本地磁盘/Programming/Haskell/perpl/fggs/fggs/sum_product.py", line 563, in sum_products
+    comp_values = SumProduct.apply_to_patterned_tensors(fgg, comp_opts, inputs.keys(), comp_labels, *inputs.values())
+  File "/media/m/本地磁盘/Programming/Haskell/perpl/fggs/fggs/sum_product.py", line 519, in apply_to_patterned_tensors
+    (nonphysicals, *physicals) = SumProduct.apply(
+  File "/media/m/本地磁盘/Programming/Haskell/perpl/fggs/fggs/sum_product.py", line 474, in forward
+    out = F(fgg, x0, inputs, semiring)
+  File "/media/m/本地磁盘/Programming/Haskell/perpl/fggs/fggs/sum_product.py", line 110, in F
+    tau_rule = sum_product_edges(fgg, rule.rhs.nodes(), rule.rhs.edges(), rule.rhs.ext, x, inputs, semiring=semiring)
+  File "/media/m/本地磁盘/Programming/Haskell/perpl/fggs/fggs/sum_product.py", line 361, in sum_product_edges
+    out = einsum(tensors, indexing, outputs, semiring)
+  File "/media/m/本地磁盘/Programming/Haskell/perpl/fggs/fggs/indices.py", line 1691, in einsum
+    out = semiring.einsum(compiled, *viewed_tensors)
+  File "/media/m/本地磁盘/Programming/Haskell/perpl/fggs/fggs/semirings.py", line 143, in einsum
+    return torch_semiring_einsum.semiring_einsum_forward(equation, args, torch_semiring_einsum.AUTOMATIC_BLOCK_SIZE, callback)
+  File "/media/m/本地磁盘/Programming/Python/semiring-einsum/torch_semiring_einsum/extend.py", line 141, in semiring_einsum_forward
+    return func(compute_sum)
+  File "/media/m/本地磁盘/Programming/Haskell/perpl/fggs/fggs/semirings.py", line 139, in callback
+    return compute_sum(torch_semiring_einsum.utils.add_in_place,
+  File "/media/m/本地磁盘/Programming/Python/semiring-einsum/torch_semiring_einsum/extend.py", line 129, in compute_sum
+    return semiring_einsum_forward_impl(
+  File "/media/m/本地磁盘/Programming/Python/semiring-einsum/torch_semiring_einsum/extend.py", line 181, in semiring_einsum_forward_impl
+    return reduce_in_place(add_in_place, generate_terms())
+  File "/media/m/本地磁盘/Programming/Python/semiring-einsum/torch_semiring_einsum/extend.py", line 199, in reduce_in_place
+    result = next(it)
+  File "/media/m/本地磁盘/Programming/Python/semiring-einsum/torch_semiring_einsum/extend.py", line 165, in generate_terms
+    term = reduce_in_place(
+  File "/media/m/本地磁盘/Programming/Python/semiring-einsum/torch_semiring_einsum/extend.py", line 201, in reduce_in_place
+    result = initialize(result)
+  File "/media/m/本地磁盘/Programming/Python/semiring-einsum/torch_semiring_einsum/extend.py", line 171, in <lambda>
+    lambda x: adjust_size(x, term_size))
+  File "/media/m/本地磁盘/Programming/Python/semiring-einsum/torch_semiring_einsum/extend.py", line 194, in adjust_size
+    return arg.repeat(*repeat_size)
+RuntimeError: [enforce fail at alloc_cpu.cpp:75] err == 0. DefaultCPUAllocator: can't allocate memory: you tried to allocate 34359738368 bytes. Error code 12 (Cannot allocate memory)
+
+real	0m2.519s
+user	0m2.956s
+sys	0m0.882s
+Stop at benchmark/deutsch-jozsa-is-even/json/deutsch-jozsa-is-even-10-1.json, the error code is non-zero (1)
+Computing benchmark/deutsch-jozsa-is-even/python/deutsch-jozsa-is-even-1-1.py
+
+real	0m2.798s
+user	0m2.485s
+sys	0m1.341s
+Computing benchmark/deutsch-jozsa-is-even/python/deutsch-jozsa-is-even-2-1.py
+
+real	0m2.742s
+user	0m2.442s
+sys	0m1.454s
+Computing benchmark/deutsch-jozsa-is-even/python/deutsch-jozsa-is-even-3-1.py
+
+real	0m2.733s
+user	0m2.396s
+sys	0m1.376s
+Computing benchmark/deutsch-jozsa-is-even/python/deutsch-jozsa-is-even-4-1.py
+
+real	0m2.864s
+user	0m2.482s
+sys	0m1.424s
+Computing benchmark/deutsch-jozsa-is-even/python/deutsch-jozsa-is-even-5-1.py
+
+real	0m2.638s
+user	0m2.704s
+sys	0m2.035s
+Computing benchmark/deutsch-jozsa-is-even/python/deutsch-jozsa-is-even-6-1.py
+
+real	0m2.653s
+user	0m2.882s
+sys	0m1.899s
+Computing benchmark/deutsch-jozsa-is-even/python/deutsch-jozsa-is-even-7-1.py
+
+real	0m2.660s
+user	0m2.821s
+sys	0m1.954s
+Computing benchmark/deutsch-jozsa-is-even/python/deutsch-jozsa-is-even-8-1.py
+
+real	0m2.693s
+user	0m2.867s
+sys	0m1.992s
+Computing benchmark/deutsch-jozsa-is-even/python/deutsch-jozsa-is-even-9-1.py
+
+real	0m3.220s
+user	0m3.716s
+sys	0m2.034s
+Computing benchmark/deutsch-jozsa-is-even/python/deutsch-jozsa-is-even-10-1.py
+
+real	0m3.810s
+user	0m7.181s
+sys	0m2.168s
+Computing benchmark/deutsch-jozsa-is-even/python/deutsch-jozsa-is-even-11-1.py
+
+real	0m9.964s
+user	0m43.766s
+sys	0m3.082s
+Computing benchmark/deutsch-jozsa-is-even/python/deutsch-jozsa-is-even-12-1.py
+
+real	0m52.505s
+user	5m25.801s
+sys	0m7.725s
+Computing benchmark/deutsch-jozsa-is-even/python/deutsch-jozsa-is-even-13-1.py
+benchmark/test.sh: line 73: 300195 Killed                  python ${file} > "${qiskit_result_dir}/${ofile}"
+
+real	6m33.057s
+user	42m6.381s
+sys	0m47.975s
+Stop at benchmark/deutsch-jozsa-is-even/python/deutsch-jozsa-is-even-13-1.py, the error code is non-zero (137)
+Compiling benchmark/simon/iso/simon-1-1.iso to simon-1-1.ppl
+
+real	0m0.070s
+user	0m0.000s
+sys	0m0.011s
+Compiling benchmark/simon/iso/simon-2-2.iso to simon-2-2.ppl
+
+real	0m0.013s
+user	0m0.003s
+sys	0m0.006s
+Compiling benchmark/simon/iso/simon-3-3.iso to simon-3-3.ppl
+
+real	0m0.032s
+user	0m0.014s
+sys	0m0.009s
+Compiling benchmark/simon/iso/simon-4-4.iso to simon-4-4.ppl
+
+real	0m0.143s
+user	0m0.122s
+sys	0m0.022s
+Compiling benchmark/simon/ppl/simon-1-1.ppl to simon-1-1.json
+
+real	0m0.045s
+user	0m0.012s
+sys	0m0.004s
+Compiling benchmark/simon/ppl/simon-2-2.ppl to simon-2-2.json
+
+real	0m0.085s
+user	0m0.070s
+sys	0m0.004s
+Compiling benchmark/simon/ppl/simon-3-3.ppl to simon-3-3.json
+
+real	0m1.068s
+user	0m1.017s
+sys	0m0.032s
+Compiling benchmark/simon/ppl/simon-4-4.ppl to simon-4-4.json
+
+real	0m39.335s
+user	0m38.881s
+sys	0m0.457s
+Computing benchmark/simon/json/simon-1-1.json
+
+real	0m3.673s
+user	0m1.748s
+sys	0m0.833s
+Computing benchmark/simon/json/simon-2-2.json
+
+real	0m1.841s
+user	0m1.677s
+sys	0m0.724s
+Computing benchmark/simon/json/simon-3-3.json
+
+real	0m1.995s
+user	0m1.850s
+sys	0m0.732s
+Computing benchmark/simon/json/simon-4-4.json
+
+real	0m2.630s
+user	0m2.515s
+sys	0m0.737s
+Computing benchmark/simon/python/simon-1-1.py
+
+real	0m3.483s
+user	0m2.515s
+sys	0m1.378s
+Computing benchmark/simon/python/simon-2-2.py
+
+real	0m2.450s
+user	0m2.154s
+sys	0m1.459s
+Computing benchmark/simon/python/simon-3-3.py
+
+real	0m2.530s
+user	0m2.756s
+sys	0m1.914s
+Computing benchmark/simon/python/simon-4-4.py
+
+real	0m2.567s
+user	0m2.662s
+sys	0m2.035s
