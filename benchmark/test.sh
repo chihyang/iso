@@ -6,6 +6,7 @@ BENCHMARK_ROOT_DIR="benchmark"
 ISO_EXE_PATH="${BENCHMARK_ROOT_DIR}/.."
 PERPL_EXE_PATH="${BENCHMARK_ROOT_DIR}/../../perpl"
 FGG_EXE_PATH="${BENCHMARK_ROOT_DIR}/../../perpl/fggs"
+RUN_QISKIT="false"
 
 function create_dir_if_needed {
     local dir_name="${1}"
@@ -30,6 +31,7 @@ function check_tools {
 
 function run_benchmark {
     local suite_name="${1}"
+    local do_python="${2}"
     local iso_suite_dir="${BENCHMARK_ROOT_DIR}/${suite_name}/iso"
     local qiskit_suite_dir="${BENCHMARK_ROOT_DIR}/${suite_name}/python"
 
@@ -66,22 +68,62 @@ function run_benchmark {
         fi
     done
 
-    for file in $(find "${qiskit_suite_dir}" -type f -name "*.py" | sort -V); do
-        ofile="$(basename ${file} .py)"-qiskit.txt
-        echo "Computing ${file}"
-        time python ${file} > "${qiskit_result_dir}/${ofile}"
-        ret=$?
-        if [ ${ret} -ne 0 ]; then
-            echo "Stop at ${file}, the error code is non-zero (${ret})"
-            break
-        fi
+    if [ "${do_python}" -eq "true" ]; then
+        for file in $(find "${qiskit_suite_dir}" -type f -name "*.py" | sort -V); do
+            ofile="$(basename ${file} .py)"-qiskit.txt
+            echo "Computing ${file}"
+            time python ${file} > "${qiskit_result_dir}/${ofile}"
+            ret=$?
+            if [ ${ret} -ne 0 ]; then
+                echo "Stop at ${file}, the error code is non-zero (${ret})"
+                break
+            fi
+        done
+    fi
+}
+
+#### Run benchmarks
+function print_help {
+    cat <<EOF
+test.sh [OPTION]...
+
+Options:
+  -q, --qiskit: run qiskit test
+EOF
+}
+
+function parse_args {
+    while [[ $# -gt 0 ]]; do
+        case $1 in
+            -q|--qiskit)
+                RUN_QISKIT="true"
+                shift # past argument
+                ;;
+            -h|--help)
+                print_help
+                exit 0
+                ;;
+            -*|--*)
+                echo "Unknown option $1"
+                exit 1
+                ;;
+            *)
+                POSITIONAL_ARGS+=("$1") # save positional arg
+                shift # past argument
+                ;;
+        esac
     done
 }
 
-check_tools
+function run_test {
+    local do_python="${1}"
+    run_benchmark "had-last-qubit" "${do_python}"
+    run_benchmark "deutsch-jozsa-to-zero" "${do_python}"
+    run_benchmark "deutsch-jozsa-is-even" "${do_python}"
+    run_benchmark "simon" "${do_python}"
+}
 
-#### Run benchmarks
-run_benchmark "had-last-qubit"
-run_benchmark "deutsch-jozsa-to-zero"
-run_benchmark "deutsch-jozsa-is-even"
-run_benchmark "simon"
+parse_args $@
+check_tools
+echo "${RUN_QISKIT}"
+run_test "${RUN_QISKIT}"
