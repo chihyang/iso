@@ -69,7 +69,7 @@ function run_benchmark {
         fi
     done
 
-    if [ "${do_python}" -eq "true" ]; then
+    if [ "true" == "${do_python}" ]; then
         for file in $(find "${qiskit_suite_dir}" -type f -name "*.py" | sort -V); do
             ofile="$(basename ${file} .py)"-qiskit.txt
             echo "Computing ${file}"
