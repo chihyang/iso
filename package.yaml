@@ -27,6 +27,8 @@ dependencies:
 - flatparse >= 0.5.0.2
 - repline >= 0.4.2.0
 - cmdargs >= 0.10.22
+- semirings >= 0.6
+- mtl >= 2.3.1
 
 ghc-options:
 - -Wall

@@ -6,6 +6,14 @@ import qualified Data.Map.Strict as Map
 import Data.Tuple (swap)
 
 type Scale = Complex Double
+andOrd :: Ordering -> Ordering -> Ordering
+andOrd GT _ = GT
+andOrd EQ o = o
+andOrd LT _ = LT
+
+compareScale :: Scale -> Scale -> Ordering
+compareScale (a :+ b) (a' :+ b') =
+  andOrd (compare a a') (compare b b')
 
 -- Type
 data BaseType =
@@ -78,7 +86,7 @@ instance Show Exp where
 instance Ord Exp where
   compare (ExpVal v) (ExpVal v') = compare v v'
   compare (ExpVal _) _ = LT
-  compare (ExpLet _ _ _ _) (ExpVal _) = GT
+  compare (ExpLet {}) (ExpVal _) = GT
   compare (ExpLet vars iso pat body) (ExpLet vars' iso' pat' body')
     | cv && ci && cp && body == body' = EQ
     | cv && ci && cp = compare body body'
@@ -89,21 +97,19 @@ instance Ord Exp where
         cv = vars == vars'
         ci = iso == iso'
         cp = pat == pat'
-  compare (ExpLet _ _ _ _) _ = LT
-  compare (ExpScale _ _) (ExpVal _) = GT
-  compare (ExpScale _ _) (ExpLet _ _ _ _) = GT
-  compare (ExpScale _ e) (ExpScale _ e') = compare e e'
-  compare (ExpScale _ _) _ = LT
+  compare (ExpLet {}) _ = LT
+  compare (ExpScale {}) (ExpVal _) = GT
+  compare (ExpScale {}) (ExpLet {}) = GT
+  compare (ExpScale s e) (ExpScale s' e') = andOrd (compareScale s s') (compare e e')
+  compare (ExpScale {}) _ = LT
   compare (ExpPlus _) (ExpVal _) = GT
-  compare (ExpPlus _) (ExpLet _ _ _ _) = GT
+  compare (ExpPlus _) (ExpLet {}) = GT
   compare (ExpPlus _) (ExpScale _ _) = GT
   compare (ExpPlus []) (ExpPlus []) = EQ
   compare (ExpPlus (_:_)) (ExpPlus []) = GT
   compare (ExpPlus []) (ExpPlus (_:_)) = LT
-  compare (ExpPlus (e1:es1)) (ExpPlus (e2:es2))
-    | compare e1 e2 == LT = LT
-    | compare e1 e2 == EQ = compare (ExpPlus es1) (ExpPlus es2)
-    | otherwise = GT
+  compare (ExpPlus (e1:es1)) (ExpPlus (e2:es2)) =
+    andOrd (compare e1 e2) (compare (ExpPlus es1) (ExpPlus es2))
 
 data Pattern =
   PtSingleVar String

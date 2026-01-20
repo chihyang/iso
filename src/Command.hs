@@ -9,7 +9,9 @@ module Command
     typeOf,
     typeOfFile,
     toPerpl,
-    toPerplFile
+    toPerplFile,
+    toFgg,
+    toFggFile
   ) where
 
 import Control.Exception
@@ -60,6 +62,12 @@ toPerpl = procOneLine Run.toPerplPg
 
 toPerplFile :: Handle -> String -> IO ()
 toPerplFile = loadF toPerpl
+
+toFgg :: Handle -> String -> IO ()
+toFgg = procOneLine Run.toFggPg
+
+toFggFile :: Handle -> String -> IO ()
+toFggFile = loadF toPerpl
 
 -- Helper functions
 trim :: String -> String

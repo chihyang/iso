@@ -1,4 +1,4 @@
-module Run (check, typeOf, run, runTypedMat, toPerplPg, compile) where
+module Run (check, typeOf, run, runTypedMat, toPerplPg, toFggPg, compile) where
 
 import Convert
 import Debug.Trace as T (trace)
@@ -16,6 +16,8 @@ import Syntax as S
 import Translate
 import TypeCheck
 import Uniquify
+import TranslateToFgg
+import Perpl.Util.JSON
 
 moduleName :: String
 moduleName = "Run: "
@@ -38,6 +40,9 @@ compile str = Right str >>= check >>= uniquify >>= closureConvert
 
 toPerplPg :: String -> S.Result PProg
 toPerplPg str = compile str >>= transToPerplPg
+
+toFggPg :: String -> S.Result JSON
+toFggPg str = compile str >>= transToFggPg
 
 typeOf :: String -> S.Result ProgramType
 typeOf str = do

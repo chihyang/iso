@@ -32,6 +32,7 @@ optionsList =
   , ("lt", typeOfF), ("type", typeOfPg)
   , ("lp", toPerplF), ("perpl", toPerpl)
   , ("lc", compileF), ("compile", compile)
+  , ("lf", toFggF), ("fgg", toFgg)
   , ("quit", quit), ("q", quit)
   ]
 
@@ -42,7 +43,9 @@ help _ = liftIO $ putStrLn $
   "                       its type if exp evaluates to an iso or a base value.\n" ++
   ":lt file               Show the type of the program in the file.\n" ++
   ":lp file               Convert the file to an equivalent perpl program.\n" ++
-  ":c exp, :lc file        [For debugging] Compile the file or expression.\n" ++
+  ":lf file               Convert the file to an equivalent FGG program.\n" ++
+  ":c exp, :lc file       [For debugging] Compile the file or expression.\n" ++
+  ":fgg exp               Convert the exp to an equivalent FGG program.\n" ++
   ":m exp, :matrix exp\n" ++
   "                       Convert the exp into a matrix according to\n" ++
   "                       its type if exp evaluates to an iso.\n" ++
@@ -81,6 +84,12 @@ toPerpl = liftIO . Cmd.toPerpl stdout
 
 toPerplF :: String -> Repl ()
 toPerplF = liftIO . Cmd.toPerplFile stdout
+
+toFgg :: String -> Repl ()
+toFgg = liftIO . Cmd.toFgg stdout
+
+toFggF :: String -> Repl ()
+toFggF = liftIO . Cmd.toFggFile stdout
 
 quit :: String -> Repl ()
 quit = const $ do

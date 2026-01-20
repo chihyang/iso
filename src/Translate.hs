@@ -209,7 +209,7 @@ transIsoWithTyp info _ (IsoLam var lTy rTy body) = do
   let newTy = Perpl.TpArr lTy' rTy'
   body' <- transIso info body
   return $ Perpl.UsLam (fromString var) (simplifyType newTy) body'
-transIsoWithTyp info _ (IsoFix var lTy rTy body) =
+transIsoWithTyp _ _ (IsoFix var lTy rTy body) =
   err $ "TODO: Unimplemented yet: " ++ show (IsoFix var lTy rTy body)
 transIsoWithTyp info _ (IsoApp rator rand) = do
   usRator <- transIso info rator
@@ -250,11 +250,6 @@ type Clause = (ExtPattern, Perpl.UsTm)
 
 -- | A match expression is a list of clauses.
 type MatchExp = [Clause]
-
--- | Test if a clause's condition is wildcard, i.e., there is no pattern
--- variable inside the condition.
-isWildcard :: Clause -> Bool
-isWildcard (pats, _) = Map.size pats == 0
 
 -- | Convert a user pattern to a term.
 toUsTm :: UsPattern -> Perpl.UsTm

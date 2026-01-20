@@ -38,13 +38,18 @@ library
       Perpl.Struct.Helpers
       Perpl.Struct.Lib
       Perpl.Struct.Show
+      Perpl.Util.FGG
       Perpl.Util.Helpers
+      Perpl.Util.JSON
+      Perpl.Util.RuleM
+      Perpl.Util.Tensor
       Reduce
       Repl
       RevealFix
       Run
       Syntax
       Translate
+      TranslateToFgg
       TypeCheck
       Uniquify
   other-modules:
@@ -61,7 +66,9 @@ library
     , containers >=0.6.7
     , flatparse >=0.5.0.2
     , matrix >=0.3.6.3
+    , mtl >=2.3.1
     , repline >=0.4.2.0
+    , semirings >=0.6
   default-language: Haskell2010
 
 executable iso-exe
@@ -81,7 +88,9 @@ executable iso-exe
     , flatparse >=0.5.0.2
     , iso
     , matrix >=0.3.6.3
+    , mtl >=2.3.1
     , repline >=0.4.2.0
+    , semirings >=0.6
   default-language: Haskell2010
 
 test-suite iso-test
@@ -102,5 +111,7 @@ test-suite iso-test
     , flatparse >=0.5.0.2
     , iso
     , matrix >=0.3.6.3
+    , mtl >=2.3.1
     , repline >=0.4.2.0
+    , semirings >=0.6
   default-language: Haskell2010
