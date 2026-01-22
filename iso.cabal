@@ -40,6 +40,7 @@ library
       Perpl.Struct.Show
       Perpl.Util.FGG
       Perpl.Util.Helpers
+      Perpl.Util.Indices
       Perpl.Util.JSON
       Perpl.Util.RuleM
       Perpl.Util.Tensor

@@ -89,7 +89,7 @@ helpInfo =
       },
     CmdHelp {
       cmd = ":lm", short = "", args = ["<file>"], kind = General,
-      help = "Convert <file> into a matrix according to its type if <exp> evaluates to an iso."
+      help = "Convert <file> into a matrix according to its type if <file> evaluates to an iso."
       },
     CmdHelp {
       cmd = ":type", short = ":t", args = ["<exp>"], kind = General,
