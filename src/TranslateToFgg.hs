@@ -7,8 +7,10 @@ import PatternMatch
 import Syntax
 import qualified Data.Map.Strict as Map
 import qualified Data.Set as Set
-import Debug.Trace (trace)
+import Perpl.Util.FGG
 import Perpl.Util.JSON
+import Perpl.Util.Tensor (TensorLike)
+import Debug.Trace (trace)
 
-transToFggPg :: (Definitions, Program) -> Result JSON
+transToFggPg :: Bool -> (Definitions, Program) -> Result JSON
 transToFggPg = undefined

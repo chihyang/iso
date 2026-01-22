@@ -63,11 +63,11 @@ toPerpl = procOneLine Run.toPerplPg
 toPerplFile :: Handle -> String -> IO ()
 toPerplFile = loadF toPerpl
 
-toFgg :: Handle -> String -> IO ()
-toFgg = procOneLine Run.toFggPg
+toFgg :: Bool -> Handle -> String -> IO ()
+toFgg compact = procOneLine $ Run.toFggPg compact
 
-toFggFile :: Handle -> String -> IO ()
-toFggFile = loadF toPerpl
+toFggFile :: Bool -> Handle -> String -> IO ()
+toFggFile compact = loadF $ toFgg compact
 
 -- Helper functions
 trim :: String -> String

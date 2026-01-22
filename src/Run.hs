@@ -41,8 +41,8 @@ compile str = Right str >>= check >>= uniquify >>= closureConvert
 toPerplPg :: String -> S.Result PProg
 toPerplPg str = compile str >>= transToPerplPg
 
-toFggPg :: String -> S.Result JSON
-toFggPg str = compile str >>= transToFggPg
+toFggPg :: Bool -> String -> S.Result JSON
+toFggPg compact str = compile str >>= transToFggPg compact
 
 typeOf :: String -> S.Result ProgramType
 typeOf str = do
