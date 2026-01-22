@@ -108,8 +108,8 @@ helpInfo =
       help = "Convert <file> to an equivalent perpl program."
       },
     CmdHelp {
-      cmd = ":help", short = ":h", args = [], kind = General,
-      help = "Show this information."
+      cmd = ":help", short = ":h", args = ["[<cmd>]"], kind = General,
+      help = "Show help information for <cmd>. If <cmd> is not given, show all."
       },
     CmdHelp {
       cmd = ":quit", short = ":q", args = [], kind = General,
