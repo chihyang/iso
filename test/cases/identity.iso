@@ -1,4 +1,1 @@
-identity :: (Unit + Unit) <-> (Unit + Unit)
-identity = { x <-> x }
-
-identity
+{ x :: (Unit + Unit) <-> x }
