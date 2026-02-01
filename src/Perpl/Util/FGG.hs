@@ -1,25 +1,25 @@
+{-# LANGUAGE PatternSynonyms #-}
 {- A minimalist implementation of factor graph grammars (FGGs), which
    are the main target of the compiler. For more information about
    FGGs, see: David Chiang and Darcey Riley. Factor graph grammars. In
    Proc. NeurIPS, 6648–6658. 2020. -}
 
-module Perpl.Util.FGG (Node, NodeName(..), NodeLabel,
-                  Domain(..), Value(..),
+module Perpl.Util.FGG (Node, NodeName(..), NodeLabel(..),
+                  Domain(..), DValue(..),
                   Edge(..), EdgeLabel(..),
                   Factor(..), Weights, Weight,
-                  HGF(..), Rule(..), FGG(..), showFGG) where
-import Syntax (Scale, andOrd, compareScale)
+                  HGF(..), Rule(..), FGG(..), showFGG, fgg_to_json) where
+import Syntax (Scale, BaseType, IsoType, Exp, Iso, Term, pattern (:+))
 import qualified Data.Map as Map
-import Perpl.Struct.Lib
 import Perpl.Util.Helpers
 import Perpl.Util.Tensor
 import Perpl.Util.JSON
 import Data.List (intercalate)
-import Data.Complex as C
+import Debug.Trace (trace)
 
 -- Domain contains the size and a list of all values.
-data Domain = Domain Int [Value]
-newtype Value = Value String
+data Domain = Domain Int [DValue]
+newtype DValue = DValue String
   deriving Show
 type Weight = Scale
 type Weights a = a Weight
@@ -29,13 +29,13 @@ type Weights a = a Weight
    NodeNames for the two kinds of nodes. -}
 
 data NodeName =
-    NnOut           -- external node holding the value of an expression
-  | NnVar TmVar     -- external node holding the value of a free variable
+    NnOut Int       -- external node holding the value of an expression
+  | NnVar String    -- external node holding the value of a free variable
   | NnInternal Int  -- internal node
   deriving (Eq, Ord)
 instance Show NodeName where
-  show NnOut = "*out*"
-  show (NnVar v) = show v
+  show (NnOut i) = "*out*" ++ show i
+  show (NnVar v) = v
   show (NnInternal i) = "*" ++ show i ++ "*"
 
 {- Every node in an FGG has a NodeLabel, which determines a set, called
@@ -44,7 +44,14 @@ instance Show NodeName where
    Domain is the set of String representations of all the inhabitants
    of that Type. -}
 
-type NodeLabel = Type
+type Type = BaseType
+data NodeLabel =
+    TmNodeLabel BaseType
+  | IsoNodeLabel IsoType
+  deriving (Eq, Ord)
+instance Show NodeLabel where
+  show (TmNodeLabel ty) = show ty
+  show (IsoNodeLabel ty) = show ty
 
 {- Every Edge (really, a hyperedge) in an FGG has an EdgeLabel, which is
    either terminal or nonterminal.
@@ -61,12 +68,16 @@ type NodeLabel = Type
      Rules. Here, nonterminal labels always correspond to Terms. -}
 
 data EdgeLabel =
-    ElNonterminal Term
+    ElTmNonterminal Term
+  | ElIsoNonterminal Iso
   | ElTerminal Factor
-  deriving (Eq, Ord)
+  deriving (Eq, Ord, Show)
+{-
 instance Show EdgeLabel where
-  show (ElNonterminal tm) = show tm
-  show (ElTerminal fac) = show fac
+  show (ElTmNonterminal tm) = "[NTM]: " ++ show tm
+  show (ElIsoNonterminal iso) = "[NIso]: " ++ show iso
+  show (ElTerminal fac) = "[T]: " ++ show fac
+-}
 
 data Factor =
     FaScalar Weight                     -- just a scalar weight
@@ -75,38 +86,8 @@ data Factor =
   | FaArrow Type Type                   -- tensor mapping (tp1, tp2) to tp1, tp2
   | FaAddProd [Type] Int                -- matrix projecting tp1+...+tpn to tpk
   | FaMulProd [Type]                    -- tensor mapping (tp1,...,tpn) to tp1,...,tpn
-  | FaCtor [Ctor] Int                   -- k'th constructor in cs
-  deriving (Eq)
-instance Ord Factor where
-  compare (FaScalar w) (FaScalar w') = compareScale w w'
-  compare (FaScalar _) _ = LT
-  compare (FaIdentity {}) (FaScalar _) = GT
-  compare (FaIdentity t) (FaIdentity t') = compare t t'
-  compare (FaIdentity _) _ = LT
-  compare (FaEqual {}) (FaScalar {}) = GT
-  compare (FaEqual {}) (FaIdentity {}) = GT
-  compare (FaEqual t n) (FaEqual t' n') = andOrd (compare t t') (compare n n')
-  compare (FaEqual {}) _ = LT
-  compare (FaArrow {}) (FaScalar {}) = GT
-  compare (FaArrow {}) (FaIdentity {}) = GT
-  compare (FaArrow {}) (FaEqual {}) = GT
-  compare (FaArrow t1 t2) (FaArrow t1' t2') = andOrd (compare t1 t1') (compare t2 t2')
-  compare (FaArrow {}) _ = LT
-  compare (FaAddProd {}) (FaScalar {}) = GT
-  compare (FaAddProd {}) (FaIdentity {}) = GT
-  compare (FaAddProd {}) (FaEqual {}) = GT
-  compare (FaAddProd {}) (FaArrow {}) = GT
-  compare (FaAddProd tys n) (FaAddProd tys' n') = andOrd (compare tys tys') (compare n n')
-  compare (FaAddProd {}) _ = LT
-  compare (FaMulProd {}) (FaScalar {}) = GT
-  compare (FaMulProd {}) (FaIdentity {}) = GT
-  compare (FaMulProd {}) (FaEqual {}) = GT
-  compare (FaMulProd {}) (FaArrow {}) = GT
-  compare (FaMulProd {}) (FaAddProd {}) = GT
-  compare (FaMulProd tys) (FaMulProd tys') = compare tys tys'
-  compare (FaMulProd {}) _ = LT
-  compare (FaCtor ctors n) (FaCtor ctors' n') = andOrd (compare ctors ctors') (compare n n')
-  compare (FaCtor {}) _ = GT
+  deriving (Eq, Ord, Show)
+{-
 instance Show Factor where
   show (FaScalar w) = show w
   show (FaIdentity tp) = "Identity[" ++ show tp ++ "]"
@@ -114,7 +95,7 @@ instance Show Factor where
   show (FaArrow tp1 tp2) = "Arrow[" ++ show tp1 ++ "," ++ show tp2 ++ "]"
   show (FaAddProd tps k) = "AddProd[" ++ intercalate "," (show <$> tps) ++ ";" ++ show k ++ "]"
   show (FaMulProd tps) = "MulProd[" ++ intercalate "," (show <$> tps) ++ "]"
-  show (FaCtor cs k) = "Ctor[" ++ show (cs !! k) ++ "]"
+-}
 
 type Node = (NodeName, NodeLabel)
 data Edge = Edge { edge_atts :: [Node], edge_label :: EdgeLabel }
@@ -178,7 +159,7 @@ fgg_to_json si (FGG ds fs nts s rs) =
                           ])
            else (show nl, JSobject [
                              ("class", JSstring "finite"),
-                             ("values", JSarray $ [JSstring v | Value v <- dom])
+                             ("values", JSarray $ [JSstring v | DValue v <- dom])
                              ])),
        ("factors",
           mapToList fs $

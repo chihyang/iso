@@ -5,6 +5,7 @@ module Repl
 import qualified Command as Cmd
 import Control.Monad.IO.Class
 import Control.Monad.State.Strict
+import Data.Char (toLower)
 import Data.List (groupBy, sortBy, intersperse, isPrefixOf)
 import System.Console.Repline as Repline hiding (banner)
 import System.Exit
@@ -52,6 +53,7 @@ optionsList =
   , ("lf", toFggF), ("fgg", toFgg)
   , ("quit", quit), ("q", quit)
   , ("set", setOption . words)
+  , ("get", getOption . words)
   ]
 
 -- Each help info is a tuple: (command, short command, arguments, CmdKind, help)
@@ -118,6 +120,10 @@ helpInfo =
     CmdHelp {
       cmd = ":set compact", short = "", args = ["<bool>"], kind = Setting,
       help = "Set compact mode to <bool> (true or false) for printing FGG."
+      },
+    CmdHelp {
+      cmd = ":get compact", short = "", args = [], kind = Setting,
+      help = "Get current compact mode for printing FGG."
       }
   ]
 
@@ -133,7 +139,11 @@ showCmdArgs cmd args = [unwords $ cmd:args]
 showCmdHelp :: String -> CmdHelp -> String
 showCmdHelp indent CmdHelp{cmd=c, short=s, args=a, kind=_, help=h} =
   form ++ "\n" ++ help where
-  form = indent ++ unwords (showCmdArgs c a) ++ ", " ++ unwords (showCmdArgs s a)
+  long = unwords (showCmdArgs c a)
+  short = unwords (showCmdArgs s a)
+  form = case short of
+    [] -> indent ++ long
+    _  -> indent ++ long ++ ", " ++ short
   help = indent ++ replicate 20 ' ' ++ h
 
 showAllHelp :: String
@@ -202,8 +212,21 @@ setOption :: [String] -> Repl ()
 setOption args =
   case args of
     [] -> helpCmd $ unwords $ ":set ":args
-    ["compact", b] -> setCompact ":set compact" b
+    ["compact", b] -> setCompact ":set compact" (map toLower b)
     _ -> helpCmd $ unwords $ ":set ":args
+
+getCompact :: Repl ()
+getCompact =
+  do
+    c <- get
+    liftIO $ print c
+
+getOption :: [String] -> Repl ()
+getOption args =
+  case args of
+    [] -> helpCmd $ ":get "
+    ["compact"] -> getCompact
+    _ -> helpCmd $ unwords $ ":get ":args
 
 quit :: String -> Repl ()
 quit = const $ do
@@ -215,7 +238,7 @@ completer :: WordCompleter (StateT ReplState IO)
 completer n = do
   let names = [":help", ":load", ":lc", ":lf", ":lm", ":lp", ":lt",
                ":compile", ":matrix", ":m", ":type", ":paste",
-               ":perpl", ":quit", ":set"]
+               ":perpl", ":quit", ":set", ":get", ":fgg"]
   pure $ filter (isPrefixOf n) names
 
 prefixCompleter :: CompleterStyle (StateT ReplState IO)
@@ -223,7 +246,9 @@ prefixCompleter = Repline.Prefix (wordCompleter completer)
   [(":l" , fileCompleter), (":load" , fileCompleter),
    (":lm" , fileCompleter), (":lt" , fileCompleter),
    (":lp" , fileCompleter), (":lc" , fileCompleter),
-   (":lf" , fileCompleter)
+   (":lf" , fileCompleter),
+   (":set", listCompleter ["compact"]),
+   (":get", listCompleter ["compact"])
   ]
 
 repl :: IO ()

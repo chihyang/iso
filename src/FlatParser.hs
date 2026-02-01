@@ -15,7 +15,6 @@ module FlatParser (
 --import qualified Language.Haskell.TH as TH
 
 import qualified Data.ByteString as B
-import qualified Data.Complex as C
 
 import FlatParse.Basic as F hiding (Parser, runParser, string, cut)
 import FlatParse.Common.Parser (PureMode)
@@ -390,7 +389,7 @@ pComplex = do
   $(symbol' ":+")
   imag <- pAllNumber
   $(symbol ")")
-  return $ real C.:+ imag
+  return $ real :+ imag
 
 pScale :: Parser Scale
 pScale = pComplex <|> ((\r -> r :+ 0) <$> pNumber)

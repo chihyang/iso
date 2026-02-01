@@ -64,6 +64,7 @@ lcTm env (TmLet pat rhs body) = do
   env''' <- lcTm env'' body
   dropPat env''' pat
 lcTm env (TmAnn tm _) = lcTm env tm
+lcTm _ tm = Left $ moduleName ++ "Unsupported term" ++ show tm
 
 {---------- Linear checking for Isos ----------}
 lcIso :: LinearEnv -> Iso -> Result LinearEnv

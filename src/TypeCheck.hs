@@ -81,6 +81,7 @@ tiTm env (TmLet pat rhs body) = do
   (bodyTy, body') <- tiTm newEnv body
   return (bodyTy , TmAnn (TmLet pat rhs' body') bodyTy)
 tiTm env (TmAnn tm ty) = tcTm env tm ty
+tiTm _ tm = reportErr moduleName ("Unsupported term in type inference: " ++ show tm)
 
 tcTm :: TypEnv -> Term -> BaseType -> Result (BaseType, Term)
 tcTm env TmUnit ty =

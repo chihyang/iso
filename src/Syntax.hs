@@ -1,19 +1,16 @@
-module Syntax (module Syntax, module C) where
+module Syntax (module Syntax, module OrdComplex) where
 
-import Data.Complex as C
 import qualified Data.List as L
 import qualified Data.Map.Strict as Map
 import Data.Tuple (swap)
+import OrdComplex
 
-type Scale = Complex Double
+type Scale = OrdComplex Double
+
 andOrd :: Ordering -> Ordering -> Ordering
 andOrd GT _ = GT
 andOrd EQ o = o
 andOrd LT _ = LT
-
-compareScale :: Scale -> Scale -> Ordering
-compareScale (a :+ b) (a' :+ b') =
-  andOrd (compare a a') (compare b b')
 
 -- Type
 data BaseType =
@@ -76,40 +73,13 @@ data Exp =
   | ExpLet Pattern Iso Pattern Exp
   | ExpScale Scale Exp
   | ExpPlus [Exp]
-  deriving (Eq)
+  deriving (Eq, Ord)
 instance Show Exp where
   show (ExpVal v) = show v
   show (ExpLet pat iso pat' body) =
     "let " ++ show pat ++ " = " ++ show iso ++ " " ++ show pat' ++ " in " ++ show body
-  show (ExpPlus es) = "(" ++ L.intercalate " + " (map show es) ++ ")"
   show (ExpScale c e) = "(" ++ show c ++ ") * " ++ show e
-instance Ord Exp where
-  compare (ExpVal v) (ExpVal v') = compare v v'
-  compare (ExpVal _) _ = LT
-  compare (ExpLet {}) (ExpVal _) = GT
-  compare (ExpLet vars iso pat body) (ExpLet vars' iso' pat' body')
-    | cv && ci && cp && body == body' = EQ
-    | cv && ci && cp = compare body body'
-    | cv && ci = compare pat pat'
-    | cv = compare iso iso'
-    | vars < vars' = LT
-    | vars > vars' = GT where
-        cv = vars == vars'
-        ci = iso == iso'
-        cp = pat == pat'
-  compare (ExpLet {}) _ = LT
-  compare (ExpScale {}) (ExpVal _) = GT
-  compare (ExpScale {}) (ExpLet {}) = GT
-  compare (ExpScale s e) (ExpScale s' e') = andOrd (compareScale s s') (compare e e')
-  compare (ExpScale {}) _ = LT
-  compare (ExpPlus _) (ExpVal _) = GT
-  compare (ExpPlus _) (ExpLet {}) = GT
-  compare (ExpPlus _) (ExpScale _ _) = GT
-  compare (ExpPlus []) (ExpPlus []) = EQ
-  compare (ExpPlus (_:_)) (ExpPlus []) = GT
-  compare (ExpPlus []) (ExpPlus (_:_)) = LT
-  compare (ExpPlus (e1:es1)) (ExpPlus (e2:es2)) =
-    andOrd (compare e1 e2) (compare (ExpPlus es1) (ExpPlus es2))
+  show (ExpPlus es) = "(" ++ L.intercalate " + " (map show es) ++ ")"
 
 data Pattern =
   PtSingleVar String
@@ -117,7 +87,7 @@ data Pattern =
   deriving (Eq, Ord)
 instance Show Pattern where
   show (PtSingleVar var) = var
-  show (PtMultiVar vars) = show "<" ++ (L.intercalate ", " vars) ++ show ">"
+  show (PtMultiVar vars) = "<" ++ (L.intercalate ", " vars) ++ ">"
 
 data Iso =
   IsoValue [(Value, Exp)]
@@ -153,6 +123,9 @@ data Term =
   | TmPair Term Term
   | TmIsoApp Iso Term
   | TmLet Pattern Term Term
+  | TmSuc Term         -- internal use
+  | TmScale Scale Term -- internal use
+  | TmPlus [Term]      -- internal use
   | TmAnn Term BaseType
   -- | TmFold Term
   deriving (Eq, Ord)
@@ -168,7 +141,10 @@ instance Show Term where
   show (TmPair l r) = "<" ++ show l ++ ", " ++ show r ++ ">"
   show (TmIsoApp iso tm) = "(" ++ show iso ++ " " ++ show tm ++ ")"
   show (TmLet pat rhs body) =
-    "let " ++ show pat ++ " = " ++ show rhs ++ "in " ++ show body
+    "let " ++ show pat ++ " = " ++ show rhs ++ " in " ++ show body
+  show (TmSuc t) = "suc " ++ show t
+  show (TmScale c t) = "(" ++ show c ++ ") * " ++ show t
+  show (TmPlus tms) = "(" ++ L.intercalate " + " (map show tms) ++ ")"
   show (TmAnn v _) = show v
 
 data Program =

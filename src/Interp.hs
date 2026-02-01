@@ -54,6 +54,7 @@ interpTm env (TmLet pat rhs body) = do
   vRhs <- interpTm env rhs
   patternMatchEnt env [(patToVal pat, flip interpTm $ body)] vRhs
 interpTm env (TmAnn tm _) = interpTm env tm
+interpTm _ tm = Left $ moduleName ++ "Unknown term " ++ show tm
 
 {---------- Interpretation of Isos ----------}
 interpIso :: ValEnv -> Iso -> Result ProgramIsoValue
