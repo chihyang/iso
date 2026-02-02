@@ -57,7 +57,7 @@ compileToFggPg (defs, pg) =
 prog2NodeLabel :: Program -> Result [NodeLabel]
 prog2NodeLabel (PgTm (TmAnn _ t)) = return $ map snd (newOutNodes [t])
 prog2NodeLabel (PgIs (IsoAnn _ (ITyBase ty1 ty2))) = return $ map snd (newOutNodes [ty1, ty2])
-prog2NodeLabel pg@(PgIs (IsoAnn {})) = err $ "The given iso is not supported to convert to FGG: " ++ show pg
+prog2NodeLabel pg@(PgIs (IsoAnn {})) = err $ "The given iso is not supported to translate to FGG: " ++ show pg
 prog2NodeLabel pg = err $ "The given program is not type annotated: " ++ show pg
 
 prog2NtEdgeLabel :: Program -> Result EdgeLabel
@@ -137,7 +137,7 @@ term2Fgg info t@(TmScale s tm) ty =
         e2 = termEdge ns tm
     mkTermRule t ns [e1, e2] ns varsNs
 term2Fgg info t@(TmPlus tms) ty = do
-  (varsNs, hgfs) <- mkHGFs (tm2hgf info) tms ty
+  (varsNs, hgfs) <- mkHGFs (tm2Hgf info) tms ty
   bindTmCases varsNs t hgfs
 term2Fgg info (TmAnn tm ty1) ty2 | ty1 == ty2 = term2Fgg info tm ty1
 term2Fgg _ tm _ = error $ "Unsupported term for translating to FGG: " ++ show tm
@@ -179,8 +179,8 @@ mkHGFs f as b = foldlM acc ([], []) as where
     (ns', hgfs') <- f a b
     return (nub $ ns ++ ns', nub $ hgfs ++ hgfs')
 
-tm2hgf :: Info -> Term -> BaseType -> ResultT ([Node], [HGF])
-tm2hgf info tm ty = do
+tm2Hgf :: Info -> Term -> BaseType -> ResultT ([Node], [HGF])
+tm2Hgf info tm ty = do
   varsNs <- term2Fgg info tm ty
   let tyNs = newOutNodes [ty]
       ns = varsNs ++ tyNs
@@ -198,7 +198,7 @@ val2Tm (ValRInj v) = TmRInj <$> val2Tm v
 val2Tm (ValAnn v ty) = do
   tm <- val2Tm v
   return $ TmAnn tm ty
-val2Tm v = errT $ "Unsupported base value when converting to FGG: " ++ show v
+val2Tm v = errT $ "Unsupported base value for converting to FGG: " ++ show v
 
 exp2Tm :: Exp -> ResultT Term
 exp2Tm (ExpVal v) = val2Tm v
@@ -238,7 +238,7 @@ domainBaseType (BTyProd lTy rTy) = do
   lVals <- domainBaseType lTy
   rVals <- domainBaseType rTy
   return $ [PBValPair l r | l <- lVals, r <- rVals]
-domainBaseType ty = err $ "Unsupported Base type to convert to a domain: " ++ show ty
+domainBaseType ty = err $ "Unsupported Base type for converting to a FGG domain: " ++ show ty
 
 domainIsoType :: IsoType -> Result [ProgramBaseValue]
 domainIsoType (ITyBase vTy eTy) = do
@@ -246,7 +246,7 @@ domainIsoType (ITyBase vTy eTy) = do
   eVals <- domainBaseType eTy
   -- We use product type to enumerate all possible base values
   return $ [PBValPair l r | l <- vVals, r <- eVals]
-domainIsoType ty = err $ "Unsupported ISO type to convert to a domain: " ++ show ty
+domainIsoType ty = err $ "Unsupported ISO type to converting to a FGG domain: " ++ show ty
 
 mkDomain :: [ProgramBaseValue] -> Domain
 mkDomain vals = Domain (length vals) (map (DValue . show) vals)
