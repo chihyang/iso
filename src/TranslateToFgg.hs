@@ -235,37 +235,37 @@ isoEdge nodes iso = Edge nodes (ElIsoNonterminal (unwrapIso iso))
 {- domain ty
 
 Convert a type to a domain. -}
-domainBaseType :: BaseType -> Result [ProgramBaseValue]
-domainBaseType BTyUnit = return [PBValUnit]
+domainBaseType :: BaseType -> Result (Int, [ProgramBaseValue])
+domainBaseType BTyUnit = return (1, [PBValUnit])
 domainBaseType (BTySum lTy rTy) = do
-  lVals <- domainBaseType lTy
-  rVals <- domainBaseType rTy
-  return $ map PBValLeft lVals ++ map PBValRight rVals
+  (lSz, lVals) <- domainBaseType lTy
+  (rSz, rVals) <- domainBaseType rTy
+  return (lSz + rSz, map PBValLeft lVals ++ map PBValRight rVals)
 domainBaseType (BTyProd lTy rTy) = do
-  lVals <- domainBaseType lTy
-  rVals <- domainBaseType rTy
-  return $ [PBValPair l r | l <- lVals, r <- rVals]
+  (lSz, lVals) <- domainBaseType lTy
+  (rSz, rVals) <- domainBaseType rTy
+  return (lSz * rSz, [PBValPair l r | l <- lVals, r <- rVals])
 domainBaseType ty = err $ "Unsupported Base type for converting to a FGG domain: " ++ show ty
 
-domainIsoType :: IsoType -> Result [ProgramBaseValue]
+domainIsoType :: IsoType -> Result (Int, [ProgramBaseValue])
 domainIsoType (ITyBase vTy eTy) = do
-  vVals <- domainBaseType vTy
-  eVals <- domainBaseType eTy
+  (vSz, vVals) <- domainBaseType vTy
+  (eSz, eVals) <- domainBaseType eTy
   -- We use product type to enumerate all possible base values
-  return $ [PBValPair l r | l <- vVals, r <- eVals]
+  return (vSz * eSz, [PBValPair l r | l <- vVals, r <- eVals])
 domainIsoType ty@(ITyFun lhsTy rhsTy bodyTy) =
   err $ "Getting domain of higher-order iso type is in progress: " ++ show ty
 
-mkDomain :: [ProgramBaseValue] -> Domain
-mkDomain vals = Domain (length vals) (map (DValue . show) vals)
+mkDomain :: Int -> [ProgramBaseValue] -> Domain
+mkDomain sz vals = Domain sz (map (DValue . show) vals)
 
 domain :: NodeLabel -> Domain
 domain (TmNodeLabel ty) = case domainBaseType ty of
   Left msg -> error msg
-  Right vals -> mkDomain vals
+  Right (sz, vals) -> mkDomain sz vals
 domain (IsoNodeLabel ty) = case domainIsoType ty of
   Left msg -> error msg
-  Right vals -> mkDomain vals
+  Right (sz, vals) -> mkDomain sz vals
 
 {- mkRule lhs ns es xs
 
