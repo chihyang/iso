@@ -48,7 +48,7 @@ toPerpl = Perpl {
 
 toFgg :: IsoMode
 toFgg = Fgg {
-  input = def &= typ "<ISO to translate>" &= argPos 0 &= typ "FILE",
+  input = def &= typ "<ISO to translate>" &= argPos 1 &= typ "FILE",
   output = def &= help "Write the FGG to the specified file" &= typ "FILE",
   compact = def &= help "Output in compact mode, which suppresses specific values"
   } &=
