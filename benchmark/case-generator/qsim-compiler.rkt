@@ -4,7 +4,7 @@
 (provide define-gate define-unitary to-gate to-unitary
          para casc n-casc
          scircuit qcircuit
-         hadamard x
+         hadamard x cx
          to-iso to-iso/port
          to-qiskit to-qiskit/port)
 
@@ -59,6 +59,9 @@
 
 (define x
   (make-circuit 'neg 1 '()))
+
+(define cx
+  (make-circuit 'cx 2 '()))
 
 (define (file-writer f name)
   (let ([src (open-output-file name)])
@@ -495,10 +498,8 @@ from qiskit_aer import Aer, AerSimulator"))
       (generate-qiskit-qcirc name size spec)))
     ((scircuit name _ _)
      (error 'generate-qiskit-elem "Unsupported circuit type: scircuit ~a" name))
-    ((circuit 'hadamard _ _)
-     (error 'generate-qiskit-elem "Cannot redefine hadamard!"))
-    ((circuit 'neg _ _)
-     (error 'generate-qiskit-elem "Cannot redefine neg!"))
+    ((circuit name _ _) #:when (memv name '(hadamard neg cx))
+     (error 'generate-qiskit-elem "Cannot redefine ~a!" name))
     ((circuit name size spec)
      (generate-lines*
       (generate-qiskit-circ-def name size)

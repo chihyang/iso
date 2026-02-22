@@ -81,6 +81,14 @@
     (list uf circ (list circ 1))))
 
 ;;; Simplified Deutsch Jozsa, balanced, Qiskit
+(define (qiskit-simplified-deutsch-jozsa-is-even f in-size out-size)
+  (let* ((n (add1 in-size))
+         (circ (to-gate (deutsch n)
+                 (para hadamard n)
+                 (para cx 1 0)
+                 (para hadamard (range 1 n)))))
+    (list circ (list circ 1))))
+
 (define (qiskit-deutsch-jozsa-is-even f in-size out-size)
   (let* ((n (add1 in-size))
          (uf (let* ((bvars (map (λ (id) (format "a~a" id))
