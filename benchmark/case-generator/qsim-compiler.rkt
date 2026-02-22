@@ -60,6 +60,11 @@
 (define x
   (make-circuit 'neg 1 '()))
 
+(define (file-writer f name)
+  (let ([src (open-output-file name)])
+    (f src)
+    (close-output-port src)))
+
 (define-syntax (define-gate stx)
   (syntax-parse stx
     [(_ (name size) spec ...)
@@ -374,9 +379,7 @@ Neg = { left unit <-> right unit; right unit <-> left unit }"))
   (λ (prog source-name)
     (when (file-exists? source-name)
       (delete-file source-name))
-    (let ([src (open-output-file source-name)])
-      (to-iso/port prog src)
-      (close-output-port src))))
+    (file-writer ((curry to-iso/port) prog) source-name)))
 
 ;;; compiler to Qiskit
 (define qiskit-keywords
@@ -543,6 +546,4 @@ from qiskit_aer import Aer, AerSimulator"))
   (λ (prog source-name)
     (when (file-exists? source-name)
       (delete-file source-name))
-    (let ([src (open-output-file source-name)])
-      (to-qiskit/port prog src)
-      (close-output-port src))))
+    (file-writer ((curry to-qiskit/port) prog) source-name)))
