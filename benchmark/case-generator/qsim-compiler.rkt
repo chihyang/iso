@@ -6,7 +6,8 @@
          scircuit qcircuit
          hadamard x cx
          to-iso to-iso/port
-         to-qiskit to-qiskit/port)
+         to-qiskit to-qiskit/port
+         to-qasm to-qasm/port)
 
 ;;; Spec of the case generator:
 ;;; Prog      ::= Circ ... Main
@@ -548,3 +549,175 @@ from qiskit_aer import Aer, AerSimulator"))
     (when (file-exists? source-name)
       (delete-file source-name))
     (file-writer ((curry to-qiskit/port) prog) source-name)))
+
+;;; compiler to qasm
+(define qasm-builtin
+  '(CNOT SWAP H Rx Ry Rz X Y Z CPHASE CRk CZ))
+
+(define qasm-keywords
+  '(def1 def2))
+
+(define (make-qasm-qbits size val)
+  (~r val #:base 2 #:min-width size #:pad-string "0"))
+
+(define (safe-qasm-name name)
+  (let ([str-sym (raw-safe name)])
+    (cond
+      [(memv str-sym qasm-keywords)
+       (string-append "Qasm" str-sym)]
+      [else str-sym])))
+
+(define (generate-qasm-name name)
+  (string-upcase (safe-qasm-name name)))
+
+(define ((generate-qasm-circ-spec name size) spec)
+  (match spec
+    (`(,gate ,qids ...)
+     (match (gate-name gate)
+       (`hadamard (format "H ~a" (join (map number->string qids) " ")))
+       (`neg (format "X ~a" (join (map number->string qids) " ")))
+       (`,g #:when (memv g qasm-builtin) (format "~a ~a" g (join (map number->string qids) " ")))
+       (`,g (format "~a ~a" (generate-qasm-name g) (join (map number->string qids) " ")))))))
+
+(define (generate-qasm-circ name size spec)
+  (map (generate-qasm-circ-spec (generate-qasm-name name) size) spec))
+
+(define (generate-qasm-unitary-matrix size mapping)
+  (let ((sz (expt 2 size)))
+    (flatten
+     (map (λ (i)
+            (map (λ (j)
+                   (if (member (list i j) mapping) 1 0))
+                 (range sz)))
+          (range sz)))))
+
+(define (generate-qasm-unitary-file size mapping)
+  (match size
+    (n #:when (or (eqv? n 1) (eqv? n 2))
+     (join (map number->string (generate-qasm-unitary-matrix size mapping)) " "))
+    (_ (error 'generate-qasm-unitary "QASM only supports 1 or 2 qubits gates!"))))
+
+(define (generate-qasm-unitary-def source-name gate)
+  (match gate
+    ((unitary name size _)
+     (let ((gate (generate-qasm-name name)))
+       (match size
+         (1 (format "def1 ~a ~a.gate" gate source-name))
+         (2 (format "def2 ~a ~a.gate" gate source-name))
+         (_ (error 'generate-qasm-unitary "QASM only supports 1 or 2 qubits gates!")))))))
+
+(define (generate-qasm-main gate)
+  (match gate
+    ((circuit name size spec)
+     (generate-qasm-circ name size spec))
+    ((unitary name size _)
+     (format "~a ~a" name (join (map number->string (range size)) " ")))
+    ((qcircuit _ _ _)
+     (error 'generate-qasm-scirc "QASM doesn't support Qiskit circuit!"))
+    ((scircuit _ _ _)
+     (error 'generate-qasm-scirc "QASM doesn't support ISO circuit!"))
+    (`,var #:when (symbol? var) (generate-qasm-name var))))
+
+(define (generate-qasm-initialize size val)
+  (let ((bit-str (string->list (make-qasm-qbits size val))))
+    (join (map (λ (v)
+                 (format "X ~a" (cdr v)))
+               (filter
+                (λ (v) (eqv? (car v) #\1))
+                (map cons bit-str (range (length bit-str)))))
+          "\n")))
+
+(define (generate-qasm-prog prog source-mats)
+  (match prog
+    (`(,_ ... (,gate ,n))
+     (generate-lines*
+      (number->string (gate-size gate))
+      (map generate-qasm-unitary-def source-mats (collect-unitary-defs prog))
+      (generate-qasm-initialize (gate-size gate) n)
+      (generate-qasm-main gate)))))
+
+(define generate-qasm-source!
+  (λ (prog source-mats port)
+    (display
+     (generate-qasm-prog prog source-mats)
+     port)))
+
+(define generate-qasm-unitary-file!
+  (λ (unitary-circ port)
+    (match unitary-circ
+      ((unitary name size mapping)
+       (display (generate-qasm-unitary-file size mapping) port)))))
+
+(define (collect-unitary-defs prog)
+  (match prog
+    (`(,circ ... (,_ ,_))
+     (filter unitary? circ))))
+
+(define (generate-qasm-unitary-defs! prog port)
+  (match prog
+    (map (λ (c) (generate-qasm-unitary-file! c port))
+         (collect-unitary-defs prog))))
+
+(define (generate-qasm-measurement prog)
+  (match prog
+    (`(,_ ... (,gate ,_))
+     (join (map (λ (_) "0") (range (gate-size gate))) " "))))
+
+(define (generate-qasm-measurement! prog port)
+  (display
+   (generate-qasm-measurement prog)
+   port))
+
+(define (generate-qasm-simulation! qasm-path measurement-path thread-num contraction output-path port)
+  (display
+   (generate-lines*
+    (format ">int threads ~a" thread-num)
+    (format ">string qasm ~a" qasm-path)
+    (format ">string measurement ~a" measurement-path)
+    (format ">string contractmethod ~a" contraction)
+    (format ">string outputpath ~a" output-path))
+   port))
+
+(define (to-qasm/port prog out-port)
+  (display "unitary defs:\n" out-port)
+  (generate-qasm-unitary-defs! prog out-port)
+  (display "\nqasm:\n" out-port)
+  (generate-qasm-source! prog (collect-unitary-def-names prog "") out-port)
+  (display "\nmeasurement:\n" out-port)
+  (generate-qasm-measurement! prog out-port)
+  (display "\nsimulation:\n" out-port)
+  (generate-qasm-simulation! "<test-qasm>" "<test-measurement>" "8" "simple-stoch" "<test-out>" out-port))
+
+(define (collect-unitary-def-names prog source-name)
+  (map (λ (c)
+          (build-path source-name
+                      (string-append (symbol->string (unitary-name c)) ".def")))
+       (collect-unitary-defs prog)))
+
+(define (to-qasm prog source-name)
+  (let ((qasm-name (build-path (string-append source-name ".qasm")))
+        (meas-name (build-path (string-append source-name ".meas")))
+        (sim-name (build-path (string-append source-name ".sim")))
+        (mat-names (collect-unitary-def-names prog source-name))
+        (out-name (build-path (string-append source-name ".out"))))
+    (for-each
+     (λ (name)
+       (when (file-exists? name)
+         (delete-file name)))
+     (append `(,qasm-name ,meas-name ,sim-name) mat-names))
+    ;; generate all unitary defines
+    (unless (directory-exists? source-name)
+      (make-directory source-name))
+    (let ((unitaries (map cons (collect-unitary-defs prog) mat-names)))
+      (for-each
+       (λ (u)
+         (file-writer ((curry generate-qasm-unitary-file!) (car u)) (cdr u)))
+       unitaries))
+    ;; generate the qasm
+    (file-writer ((curry generate-qasm-source!) prog mat-names) qasm-name)
+    ;; generate the measurement
+    (file-writer ((curry generate-qasm-measurement!) prog) meas-name)
+    ;; generate the instruction
+    (file-writer ((curry generate-qasm-simulation!)
+                  qasm-name meas-name "8" "simple-stoch" out-name)
+                 sim-name)))
