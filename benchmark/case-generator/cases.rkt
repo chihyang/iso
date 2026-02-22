@@ -48,7 +48,7 @@
 
 
 ;;; Simplified Deutsch Jozsa, constant 0, ISO
-(define (simplified-deutsch-jozsa-to-zero f in-size out-size)
+(define (iso-simplified-deutsch-jozsa-to-zero f in-size out-size)
   (let* ((n (add1 in-size))
          (circ (to-gate (deutsch n)
                  (para hadamard n)
@@ -56,7 +56,7 @@
     (list circ (list circ 1))))
 
 ;;; Simplified Deutsch Jozsa, constant 0, Qiskit
-(define (qiskit-deutsch-jozsa-to-zero f in-size out-size)
+(define (qiskit-simplified-deutsch-jozsa-to-zero f in-size out-size)
   (let* ((n (add1 in-size))
          (circ (to-gate (deutsch n)
                  (para hadamard n)
@@ -64,7 +64,7 @@
     (list circ (list circ 1))))
 
 ;;; Simplified Deutsch Jozsa, balanced, ISO
-(define (simplified-deutsch-jozsa-is-even f in-size out-size)
+(define (iso-simplified-deutsch-jozsa-is-even f in-size out-size)
   (let* ((n (add1 in-size))
          (uf (let* ((bvars (map (λ (id) (format "a~a" id))
                                 (range 0 (sub1 in-size))))
@@ -145,8 +145,8 @@
 
 (define (gen-cases)
   (gen-had-case 'had-last-qubit)
-  (gen-dj-case 'deutsch-jozsa-to-zero simplified-deutsch-jozsa-to-zero qiskit-deutsch-jozsa-to-zero to-zero)
-  (gen-dj-case 'deutsch-jozsa-is-even simplified-deutsch-jozsa-is-even qiskit-deutsch-jozsa-is-even is-even)
+  (gen-dj-case 'deutsch-jozsa-to-zero iso-simplified-deutsch-jozsa-to-zero qiskit-simplified-deutsch-jozsa-to-zero to-zero)
+  (gen-dj-case 'deutsch-jozsa-is-even iso-simplified-deutsch-jozsa-is-even qiskit-deutsch-jozsa-is-even is-even)
   (gen-simon-case 'simon))
 
 (command-line
