@@ -8,12 +8,26 @@
          to-iso to-iso/port
          to-qiskit to-qiskit/port)
 
+;;; Spec of the case generator:
+;;; Prog      ::= Circ ... Main
+;;; Main      ::= Circ Nat ; apply a circuit to the initial input
+;;; Circ      ::= circuit | unitary | scircuit | qcircuit
+;;; circuit   ::= (circuit Symbol Nat Spec ...)
+;;; unitary   ::= (unitary Symbol Nat Map)
+;;; scircuit  ::= (scircuit Symbol Nat SSpec ...)
+;;; qcircuit  ::= (scircuit Symbol Nat Spec ...)
+;;; Spec      ::= (para Circ Ids) | (casc Spec ...) | (Circ Ids) | Symbol
+;;; ScircSpec ::= (Exp Exp) ...
+;;; Exp       ::= String | Symbol | #t | #f | () |
+;;;               (let ((var (Symbol Exp))) Exp) | (Exp) | (Exp . Exp)
+;;; Ids       ::= (range Nat Nat) | Nat | Nat ...
+
 (define-struct circuit
   (name size spec)
   #:transparent)
 
 (define-struct unitary
-  (name size mappings)
+  (name size mapping)
   #:transparent)
 
 ;;; for iso
@@ -21,7 +35,7 @@
   (name size spec)
   #:transparent)
 
-;;; for qiskit
+;;; for qiskit, qasm
 (define-struct qcircuit
   (name size spec)
   #:transparent)
@@ -193,16 +207,7 @@ Neg = { left unit <-> right unit; right unit <-> left unit }"))
 
 ;;; Name converters.
 (define iso-keywords
-  '(Int
-    Unit
-    fix
-    in
-    left
-    let
-    mu
-    right
-    unit
-    μ))
+  '(Int Unit fix in left let mu right unit μ))
 
 (define new-iso-indent
   (λ () "  "))
@@ -286,13 +291,13 @@ Neg = { left unit <-> right unit; right unit <-> left unit }"))
            (rstr (make-iso-qbits size r)))
        (format "~a~a <-> ~a" indent lstr rstr)))))
 
-(define (generate-iso-unitary-body size mappings)
+(define (generate-iso-unitary-body size mapping)
   (join
-   (map (λ (mapping) (generate-iso-unitary-mapping size mapping (new-iso-indent))) mappings)
+   (map (λ (mapping) (generate-iso-unitary-mapping size mapping (new-iso-indent))) mapping)
    ";\n"))
 
-(define (generate-iso-unitary name size mappings)
-  (format "~a = {\n~a\n}" (generate-iso-name name) (generate-iso-unitary-body size mappings)))
+(define (generate-iso-unitary name size mapping)
+  (format "~a = {\n~a\n}" (generate-iso-name name) (generate-iso-unitary-body size mapping)))
 
 (define ((generate-iso-scirc-side indent) spec)
   (define recur (generate-iso-scirc-side indent))
@@ -339,10 +344,10 @@ Neg = { left unit <-> right unit; right unit <-> left unit }"))
      (generate-lines*
       (generate-iso-circ-type name size)
       (generate-iso-circ name size spec)))
-    ((unitary name size mappings)
+    ((unitary name size mapping)
      (generate-lines*
       (generate-iso-circ-type name size)
-      (generate-iso-unitary name size mappings)))
+      (generate-iso-unitary name size mapping)))
     (`,var #:when (symbol? var) (generate-iso-name var))
     (`(,gate ,n) #:when (integer? n)
      (let ((name (gate-name gate))
@@ -495,28 +500,29 @@ from qiskit_aer import Aer, AerSimulator"))
      (generate-lines*
       (generate-qiskit-circ-def name size)
       (generate-qiskit-circ name size spec)))
-    ((unitary name size mappings)
+    ((unitary name size mapping)
      (generate-lines*
       (generate-qiskit-circ-def name size)
-      (generate-qiskit-unitary name size mappings)))
+      (generate-qiskit-unitary name size mapping)))
     (`,var #:when (symbol? var) (generate-qiskit-name var))
-    (`(,gate ,n) #:when (integer? n)
-                 (let* ((name (gate-name gate))
-                        (size (gate-size gate))
-                        (final (generate-qiskit-name (gensym 'fg))))
-                   (generate-lines*
-                    (format "~a = QuantumCircuit(~a, ~a)" final size size)
-                    (format "~a.initialize('~a', ~a.qubits)"
-                            final (make-qiskit-qbits size n) final)
-                    (format "~a.append(~a, ~a.qubits)" final (generate-qiskit-name name) final)
-                    (format "simulator = AerSimulator()")
-                    (format "~a = transpile(~a, simulator, optimization_level=2)" final final)
-                    (format "job = Aer.get_backend('statevector_simulator').run(~a, shots=1)"
-                            final)
-                    (format "result = job.result()")
-                    (format "print(f'execution time: {result.time_taken}')")
-                    (format "state = result.get_statevector()")
-                    (format "print(state)"))))))
+    (`(,gate ,n)
+     #:when (integer? n)
+     (let* ((name (gate-name gate))
+            (size (gate-size gate))
+            (final (generate-qiskit-name (gensym 'fg))))
+       (generate-lines*
+        (format "~a = QuantumCircuit(~a, ~a)" final size size)
+        (format "~a.initialize('~a', ~a.qubits)"
+                final (make-qiskit-qbits size n) final)
+        (format "~a.append(~a, ~a.qubits)" final (generate-qiskit-name name) final)
+        (format "simulator = AerSimulator()")
+        (format "~a = transpile(~a, simulator, optimization_level=2)" final final)
+        (format "job = Aer.get_backend('statevector_simulator').run(~a, shots=1)"
+                final)
+        (format "result = job.result()")
+        (format "print(f'execution time: {result.time_taken}')")
+        (format "state = result.get_statevector()")
+        (format "print(state)"))))))
 
 (define (generate-qiskit-prog prog)
   (join (map generate-qiskit-elem prog) "\n\n"))
