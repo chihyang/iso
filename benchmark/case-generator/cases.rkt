@@ -183,7 +183,8 @@
                is-even)
   (gen-dj-case 'deutsch-jozsa-is-even-simplified simplified-deutsch-jozsa-is-even is-even)
   (parameterize [(supported-simulators `((iso    . ,gen-iso-case)
-                                         (qiskit . ,gen-qiskit-case)))]
+                                         (qiskit . ,gen-qiskit-case)
+                                         (qsim   . ,gen-cirq-case)))]
     (gen-simon-case 'simon)))
 
 (command-line

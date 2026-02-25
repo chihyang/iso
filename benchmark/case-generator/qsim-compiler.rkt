@@ -65,6 +65,9 @@
 (define cx
   (make-circuit 'cx 2 '()))
 
+(define swap
+  (make-circuit 'cx 2 '()))
+
 (define (file-writer f name)
   (let ([src (open-output-file name)])
     (f src)
@@ -208,7 +211,10 @@ Cx =
   <right unit, x> <-> <right unit, x>;
   <left unit, right unit> <-> <left unit, left unit>;
   <left unit, left unit> <-> <left unit, right unit>
-}")
+}
+
+Swap :: ((Unit + Unit) x (Unit + Unit)) <-> ((Unit + Unit) x (Unit + Unit))
+Swap = { <x, y> <-> <y, x> }")
 
 ;;; Name converters.
 (define iso-keywords
@@ -340,12 +346,8 @@ Cx =
      (generate-lines*
       (generate-iso-circ-type name size)
       (generate-iso-scirc name size spec)))
-    ((circuit 'hadamard _ _)
-     (error 'generate-iso-elem "Cannot redefine hadamard!"))
-    ((circuit 'neg _ _)
-     (error 'generate-iso-elem "Cannot redefine neg!"))
-    ((circuit 'cx _ _)
-     (error 'generate-iso-elem "Cannot redefine cx!"))
+    ((circuit name _ _) #:when (memv name '(hadamard neg cx swap))
+     (error 'generate-iso-elem "Cannot redefine ~a!" name))
     ((circuit name size spec)
      (generate-lines*
       (generate-iso-circ-type name size)
@@ -435,6 +437,7 @@ from qiskit_aer import Aer, AerSimulator"))
        ('hadamard (format "~a.h(~a)" name (generate-qiskit-circ-args size qids)))
        ('x (format "~a.x(~a)" name (generate-qiskit-circ-args size qids)))
        ('cx (format "~a.cx(~a)" name (generate-qiskit-circ-args size qids)))
+       ('swap (format "~a.swap(~a)" name (generate-qiskit-circ-args size qids)))
        (`,g (format "~a.append(~a, [~a])" name (generate-qiskit-name g)
                     (generate-qiskit-circ-args size qids)))))))
 
@@ -472,7 +475,7 @@ from qiskit_aer import Aer, AerSimulator"))
       (generate-qiskit-qcirc name size spec)))
     ((scircuit name _ _)
      (error 'generate-qiskit-elem "Unsupported circuit type: scircuit ~a" name))
-    ((circuit name _ _) #:when (memv name '(hadamard neg cx))
+    ((circuit name _ _) #:when (memv name '(hadamard neg cx swap))
      (error 'generate-qiskit-elem "Cannot redefine ~a!" name))
     ((circuit name size spec)
      (generate-lines*
@@ -730,6 +733,8 @@ import qsimcirq")
 
 (define ((generate-cirq-circ-spec circ-name qids-name) spec)
   (match spec
+    (`(,(unitary name _ _) ,qids ...)
+     (generate-cirq-circ-append circ-name (format "~a().on" (generate-cirq-name name)) qids-name qids))
     (`(,gate ,qids ...)
      (match (gate-name gate)
        (`hadamard
@@ -738,8 +743,10 @@ import qsimcirq")
         (generate-cirq-circ-append circ-name "cirq.X" qids-name qids))
        (`cx
         (generate-cirq-circ-append circ-name "cirq.CX" qids-name qids))
+       (`swap
+        (generate-cirq-circ-append circ-name "cirq.SWAP" qids-name qids))
        (`,g #:when (memv g cirq-builtin)
-        (generate-cirq-circ-append circ-name (format "cirq.~a" g) qids-name qids))
+            (generate-cirq-circ-append circ-name (format "cirq.~a" g) qids-name qids))
        (`,g
         (generate-cirq-circ-append circ-name (generate-cirq-name g) qids-name qids))))))
 
@@ -764,13 +771,13 @@ import qsimcirq")
     ((unitary name size mapping)
      (let ((mat (gensym 'mat))
            (indices (gensym 'indices))
-           (ug (gensym 'ug))
            (gate (generate-cirq-name name)))
        (generate-lines*
         (format "~a = np.zeros((~a, ~a))" mat (expt 2 size) (expt 2 size))
         (format "~a = [~a]" indices (join (map (λ (p) (format "(~a, ~a)" (car p) (cadr p))) mapping) ", "))
         (format "for i, j in ~a:\n~a~a[i, j] = 1" indices (new-python-indent) mat)
-        (generate-cirq-class ug size indices))))))
+        ""
+        (generate-cirq-class gate size mat))))))
 
 (define (generate-cirq-defs circs)
   (join (map generate-cirq-unitary-def (filter unitary? circs)) "\n\n"))
@@ -790,8 +797,8 @@ import qsimcirq")
   (match gate
     ((circuit name size spec)
      (join (map (generate-cirq-circ-spec circ-name qbits) spec) "\n"))
-    ((unitary name _ _)
-     (format "~a.append(~a.on(*~a))" circ-name (generate-cirq-name name) qbits))
+    ((unitary name size _)
+     (generate-cirq-circ-append circ-name (format "~a().on" (generate-cirq-name name)) qbits (range size)))
     ((qcircuit _ _ _)
      (error 'generate-qasm-scirc "Cirq doesn't support Qiskit circuit!"))
     ((scircuit _ _ _)
@@ -816,8 +823,10 @@ import qsimcirq")
 (define (generate-cirq-prog prog)
   (match prog
     (`(,circ ... (,gate ,n))
-     (generate-cirq-defs circ)
-     (generate-cirq-main gate n))))
+     (generate-lines*
+      (generate-cirq-defs circ)
+      ""
+      (generate-cirq-main gate n)))))
 
 (define (generate-cirq-source! prog port)
   (display
