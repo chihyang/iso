@@ -40,11 +40,15 @@ function run_benchmark {
     local json_dir="${BENCHMARK_ROOT_DIR}/${suite_name}/json"
     local iso_result_dir="${BENCHMARK_ROOT_DIR}/${suite_name}/iso-text"
     local qiskit_result_dir="${BENCHMARK_ROOT_DIR}/${suite_name}/qiskit-text"
+    local iso_fgg_dir="${BENCHMARK_ROOT_DIR}/${suite_name}/iso-fgg"
+    local iso_fgg_result_dir="${BENCHMARK_ROOT_DIR}/${suite_name}/iso-fgg-text"
 
     create_dir_if_needed "${ppl_dir}"
     create_dir_if_needed "${json_dir}"
     create_dir_if_needed "${iso_result_dir}"
     create_dir_if_needed "${qiskit_result_dir}"
+    create_dir_if_needed "${iso_fgg_dir}"
+    create_dir_if_needed "${iso_fgg_result_dir}"
 
     for file in $(find "${iso_suite_dir}" -type f -name "*.iso" | sort -V); do
         ofile=$(basename ${file} .iso).ppl
@@ -62,6 +66,23 @@ function run_benchmark {
         ofile="$(basename ${file} .json)"-iso.txt
         echo "Computing ${file}"
         time python "${FGG_EXE_PATH}/bin/sum_product.py" -d ${file} > "${iso_result_dir}/${ofile}"
+        ret=$?
+        if [ ${ret} -ne 0 ]; then
+            echo "Stop at ${file}, the error code is non-zero (${ret})"
+            break
+        fi
+    done
+
+    for file in $(find "${iso_suite_dir}" -type f -name "*.iso" | sort -V); do
+        ofile=$(basename ${file} .iso)-iso-fgg.json
+        echo "Compiling ${file} to ${ofile}"
+        time "${ISO_EXE_PATH}/iso-exe" fgg -o "${iso_fgg_dir}/${ofile}" -c ${file}
+    done
+
+    for file in $(find "${iso_fgg_dir}" -type f -name "*.json" | sort -V); do
+        ofile="$(basename ${file} .json)"-iso.txt
+        echo "Computing ${file}"
+        time python "${FGG_EXE_PATH}/bin/sum_product.py" -d ${file} > "${iso_fgg_result_dir}/${ofile}"
         ret=$?
         if [ ${ret} -ne 0 ]; then
             echo "Stop at ${file}, the error code is non-zero (${ret})"
