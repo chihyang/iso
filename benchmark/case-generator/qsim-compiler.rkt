@@ -149,65 +149,49 @@
     (string-append*
      (add-between lst separater))))
 
-(define generate-lines*
-  (λ (str . strs)
-    (join (cons str (flatten strs)) "\n")))
+(define (generate-lines* str . strs)
+  (join (cons str (flatten strs)) "\n"))
 
-(define generate-lines
-  (λ (strs)
-    (join strs "\n")))
+(define (generate-lines strs)
+  (join strs "\n"))
 
-(define qsim-append
-  (lambda args
-    (string-append*
-     (map (lambda (elt)
-            (cond
-              [(symbol? elt) (format "~a" elt)]
-              [(number? elt) (format "~s" elt)]
-              [(string? elt) elt]
-              [else (error 'pc2c-append "Invalid argument ~s" elt)]))
-       args))))
+(define (new-safe-char char)
+  (cond
+    [(eqv? #\? char) ""]
+    [(eqv? #\! char) ""]
+    [(eqv? #\. char) ""]
+    [(eqv? #\+ char) ""]
+    [(eqv? #\- char) ""]
+    [(eqv? #\* char) ""]
+    [(eqv? #\/ char) ""]
+    [(eqv? #\< char) ""]
+    [(eqv? #\> char) ""]
+    [(eqv? #\: char) ""]
+    [(eqv? #\% char) ""]
+    [(eqv? #\^ char) "_cap"]
+    [(eqv? #\& char) ""]
+    [(eqv? #\~ char) ""]
+    [(eqv? #\' char) ""]
+    [(and (char>=? char #\0) (char<=? char #\9))
+     (string-append "r" (list->string `(,char)))]
+    [else (list->string `(,char))]))
 
-(define new-safe-char
-  (λ (char)
-    (cond
-      [(eqv? #\? char) ""]
-      [(eqv? #\! char) ""]
-      [(eqv? #\. char) ""]
-      [(eqv? #\+ char) ""]
-      [(eqv? #\- char) ""]
-      [(eqv? #\* char) ""]
-      [(eqv? #\/ char) ""]
-      [(eqv? #\< char) ""]
-      [(eqv? #\> char) ""]
-      [(eqv? #\: char) ""]
-      [(eqv? #\% char) ""]
-      [(eqv? #\^ char) "_cap"]
-      [(eqv? #\& char) ""]
-      [(eqv? #\~ char) ""]
-      [(eqv? #\' char) ""]
-      [(and (char>=? char #\0) (char<=? char #\9))
-       (string-append "r" (list->string `(,char)))]
-      [else (list->string `(,char))])))
-
-(define raw-safe
-  (λ (sym)
-    (if (or (symbol? sym) (string? sym))
-        (let loop ([l (string->list (if (symbol? sym) (symbol->string sym) sym))])
-          (cond
-            [(null? l) ""]
-            [else (string-append
-                   (new-safe-char (car l))
-                   (loop (cdr l)))]))
-        sym)))
+(define (raw-safe sym)
+  (if (or (symbol? sym) (string? sym))
+      (let loop ([l (string->list (if (symbol? sym) (symbol->string sym) sym))])
+        (cond
+          [(null? l) ""]
+          [else (string-append
+                 (new-safe-char (car l))
+                 (loop (cdr l)))]))
+      sym))
 
 (define (make-qbits-str size val)
   (~r val #:base 2 #:min-width size #:pad-string "0"))
 
 ;;; Compiler to Iso
-(define generate-iso-header
-  (λ ()
-    "Hadamard :: (Unit + Unit) <-> (Unit + Unit)
+(define (generate-iso-header)
+  "Hadamard :: (Unit + Unit) <-> (Unit + Unit)
 Hadamard =
 {
   left unit <-> [0.707106781188 * left unit + 0.707106781188 * right unit];
@@ -223,18 +207,17 @@ Cx =
   <right unit, x> <-> <right unit, x>;
   <left unit, right unit> <-> <left unit, left unit>;
   <left unit, left unit> <-> <left unit, right unit>
-}"))
+}")
 
 ;;; Name converters.
 (define iso-keywords
   '(Int Unit fix in left let mu right unit μ))
 
-(define new-iso-indent
-  (λ () "  "))
+(define (new-iso-indent)
+  "  ")
 
-(define incre-iso-indent
-  (λ (indent)
-    (string-append indent (new-iso-indent))))
+(define (incre-iso-indent indent)
+  (string-append indent (new-iso-indent)))
 
 (define (safe-iso-name name)
   (let ([str-sym (raw-safe name)])
@@ -380,23 +363,20 @@ Cx =
   (join (map generate-iso-elem prog) "\n\n"))
 
 ;;; a prog is a list of circuits + a (symbol | application)
-(define generate-iso-source!
-  (λ (prog port)
-    (display
-     (generate-lines*
-      (generate-iso-header) ""
-      (generate-iso-prog prog))
-     port)))
+(define (generate-iso-source! prog port)
+  (display
+   (generate-lines*
+    (generate-iso-header) ""
+    (generate-iso-prog prog))
+   port))
 
-(define to-iso/port
-  (λ (prog out-port)
-    (generate-iso-source! prog out-port)))
+(define (to-iso/port prog out-port)
+  (generate-iso-source! prog out-port))
 
-(define to-iso
-  (λ (prog source-name)
-    (when (file-exists? source-name)
-      (delete-file source-name))
-    (file-writer ((curry to-iso/port) prog) source-name)))
+(define (to-iso prog source-name)
+  (when (file-exists? source-name)
+    (delete-file source-name))
+  (file-writer ((curry to-iso/port) prog) source-name))
 
 ;;; compiler to Qiskit
 (define qiskit-keywords
@@ -427,8 +407,8 @@ from qiskit.circuit.library import UnitaryGate
 from qiskit.quantum_info import Statevector
 from qiskit_aer import Aer, AerSimulator"))
 
-(define new-python-indent
-  (λ () "    "))
+(define (new-python-indent)
+  "    ")
 
 (define (safe-qiskit-name name)
   (let ([str-sym (raw-safe name)])
@@ -524,23 +504,20 @@ from qiskit_aer import Aer, AerSimulator"))
 (define (generate-qiskit-prog prog)
   (join (map generate-qiskit-elem prog) "\n\n"))
 
-(define generate-qiskit-source!
-  (λ (prog port)
-    (display
-     (generate-lines*
-      (generate-qiskit-header) ""
-      (generate-qiskit-prog prog))
-     port)))
+(define (generate-qiskit-source! prog port)
+  (display
+   (generate-lines*
+    (generate-qiskit-header) ""
+    (generate-qiskit-prog prog))
+   port))
 
-(define to-qiskit/port
-  (λ (prog out-port)
-    (generate-qiskit-source! prog out-port)))
+(define (to-qiskit/port prog out-port)
+  (generate-qiskit-source! prog out-port))
 
-(define to-qiskit
-  (λ (prog source-name)
-    (when (file-exists? source-name)
-      (delete-file source-name))
-    (file-writer ((curry to-qiskit/port) prog) source-name)))
+(define (to-qiskit prog source-name)
+  (when (file-exists? source-name)
+    (delete-file source-name))
+  (file-writer ((curry to-qiskit/port) prog) source-name))
 
 ;;; compiler to qasm
 (define qasm-builtin
@@ -625,17 +602,15 @@ from qiskit_aer import Aer, AerSimulator"))
       (generate-qasm-initialize (gate-size gate) n)
       (generate-qasm-main gate)))))
 
-(define generate-qasm-source!
-  (λ (prog source-mats port)
-    (display
-     (generate-qasm-prog prog source-mats)
-     port)))
+(define (generate-qasm-source! prog source-mats port)
+  (display
+   (generate-qasm-prog prog source-mats)
+   port))
 
-(define generate-qasm-unitary-file!
-  (λ (unitary-circ port)
-    (match unitary-circ
-      ((unitary name size mapping)
-       (display (generate-qasm-unitary-file size mapping) port)))))
+(define (generate-qasm-unitary-file! unitary-circ port)
+  (match unitary-circ
+    ((unitary name size mapping)
+     (display (generate-qasm-unitary-file size mapping) port))))
 
 (define (collect-unitary-defs prog)
   (match prog
