@@ -1,0 +1,17 @@
+map :: ((Unit + Unit) <-> (Unit + Unit)) -> [(Unit + Unit)] <-> [(Unit + Unit)]
+map =
+\g :: ((Unit + Unit) <-> (Unit + Unit)) -> [f g]
+
+f :: ((Unit + Unit) <-> (Unit + Unit)) -> [(Unit + Unit)] <-> [(Unit + Unit)]
+f =
+\g :: ((Unit + Unit) <-> (Unit + Unit)) ->
+  { [] <-> []; h : t <-> let x = g h in let y = [f g] t in x : y }
+
+foo :: (Unit + Unit) <-> (Unit + Unit)
+foo =
+{
+  left unit <-> right unit ;
+  right unit <-> left unit
+}
+
+([map foo] [left unit, right unit, right unit])

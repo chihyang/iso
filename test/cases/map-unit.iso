@@ -1,0 +1,16 @@
+map :: (Unit <-> Unit) -> [Unit] <-> [Unit]
+map =
+\g :: (Unit <-> Unit) ->
+  fix f :: ([Unit] <-> [Unit]) ->
+    { [] <-> [];
+      h : t <-> let x = g h in
+                let y = f t in
+                x : y }
+
+g :: Unit <-> Unit
+g =
+{
+  unit <-> unit
+}
+
+([map g] [unit, unit, unit])
