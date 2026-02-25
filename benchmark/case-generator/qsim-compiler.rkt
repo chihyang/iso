@@ -685,3 +685,150 @@ from qiskit_aer import Aer, AerSimulator"))
     (file-writer ((curry generate-qasm-simulation!)
                   qasm-name meas-name "8" "simple-stoch" out-name)
                  sim-name)))
+
+;;; compiler to Cirq
+(define cirq-builtin
+  '(CNOT SWAP H X Y Z))
+
+(define cirq-keywords
+  '(False class from or None continue global pass True
+    def if raise and del import return as elif
+    in try assert else is while async except
+    lambda with await finally nonlocal yield break
+    for not))
+
+(define (generate-cirq-header)
+  "### Install Cirq, if needed
+
+\"\"\"
+!pip install numpy
+!pip install cirq --quiet
+!pip install qsimcirq --quiet
+\"\"\"
+
+import numpy as np
+import cirq
+import qsimcirq")
+
+(define (safe-cirq-name name)
+  (let ([str-sym (raw-safe name)])
+    (cond
+      [(memv str-sym cirq-keywords)
+       =>
+       (λ (_) (string-append "Cirq" str-sym))]
+      [else str-sym])))
+
+(define (generate-cirq-name name)
+  (string-titlecase (safe-cirq-name name)))
+
+(define (generate-cirq-circ-append circ-name op-name qids-name qids)
+  (format "~a.append(~a(~a))"
+          circ-name
+          op-name
+          (join (map (λ (id) (format "~a[~a]" qids-name (number->string id))) qids) ", ")))
+
+(define ((generate-cirq-circ-spec circ-name qids-name) spec)
+  (match spec
+    (`(,gate ,qids ...)
+     (match (gate-name gate)
+       (`hadamard
+        (generate-cirq-circ-append circ-name "cirq.H" qids-name qids))
+       (`neg
+        (generate-cirq-circ-append circ-name "cirq.X" qids-name qids))
+       (`cx
+        (generate-cirq-circ-append circ-name "cirq.CX" qids-name qids))
+       (`,g #:when (memv g cirq-builtin)
+        (generate-cirq-circ-append circ-name (format "cirq.~a" g) qids-name qids))
+       (`,g
+        (generate-cirq-circ-append circ-name (generate-cirq-name g) qids-name qids))))))
+
+(define (generate-cirq-class name size array)
+  (format
+   "class ~a(cirq.Gate):
+    def __init__(self):
+        super(~a, self)
+
+    def _num_qubits_(self):
+        return ~a
+
+    def _unitary_(self):
+        return ~a
+
+    def _circuit_diagram_info_(self, args):
+        return \"~a\""
+   name name size array name))
+
+(define (generate-cirq-unitary-def gate)
+  (match gate
+    ((unitary name size mapping)
+     (let ((mat (gensym 'mat))
+           (indices (gensym 'indices))
+           (ug (gensym 'ug))
+           (gate (generate-cirq-name name)))
+       (generate-lines*
+        (format "~a = np.zeros((~a, ~a))" mat (expt 2 size) (expt 2 size))
+        (format "~a = [~a]" indices (join (map (λ (p) (format "(~a, ~a)" (car p) (cadr p))) mapping) ", "))
+        (format "for i, j in ~a:\n~a~a[i, j] = 1" indices (new-python-indent) mat)
+        (generate-cirq-class ug size indices))))))
+
+(define (generate-cirq-defs circs)
+  (join (map generate-cirq-unitary-def (filter unitary? circs)) "\n\n"))
+
+(define (generate-cirq-initialize circ-name qbits size val)
+  (generate-lines*
+   (format "~a = cirq.LineQubit.range(~a)" qbits size)
+   (let ((bit-str (string->list (make-qbits-str size val))))
+     (join (map (λ (v)
+                  (format "~a.append(cirq.X(~a[~a]))" circ-name qbits (cdr v)))
+                (filter
+                 (λ (v) (eqv? (car v) #\1))
+                 (map cons bit-str (range (length bit-str)))))
+           "\n"))))
+
+(define (generate-cirq-main-spec circ-name gate qbits)
+  (match gate
+    ((circuit name size spec)
+     (join (map (generate-cirq-circ-spec circ-name qbits) spec) "\n"))
+    ((unitary name _ _)
+     (format "~a.append(~a.on(*~a))" circ-name (generate-cirq-name name) qbits))
+    ((qcircuit _ _ _)
+     (error 'generate-qasm-scirc "Cirq doesn't support Qiskit circuit!"))
+    ((scircuit _ _ _)
+     (error 'generate-qasm-scirc "Cirq doesn't support ISO circuit!"))))
+
+(define (generate-cirq-execution circ-name)
+  (generate-lines*
+   (format "qsim_simulator = qsimcirq.QSimSimulator()")
+   (format "qsim_results = qsim_simulator.simulate(~a)" circ-name)
+   (format "print(qsim_results)")))
+
+(define (generate-cirq-main gate initials)
+  (let* ((name (generate-cirq-name (gensym (gate-name gate))))
+         (size (gate-size gate))
+         (qbits (gensym 'q)))
+    (generate-lines*
+     (format "~a = cirq.Circuit()" name)
+     (generate-cirq-initialize name qbits size initials)
+     (generate-cirq-main-spec name gate qbits)
+     (generate-cirq-execution name))))
+
+(define (generate-cirq-prog prog)
+  (match prog
+    (`(,circ ... (,gate ,n))
+     (generate-cirq-defs circ)
+     (generate-cirq-main gate n))))
+
+(define (generate-cirq-source! prog port)
+  (display
+   (generate-lines*
+    (generate-cirq-header) ""
+    (generate-cirq-prog prog))
+   port))
+
+(define (to-cirq/port prog out-port)
+  (generate-cirq-source! prog out-port))
+
+(define (to-cirq prog source-name)
+  (when (file-exists? source-name)
+    (delete-file source-name))
+  (file-writer ((curry to-cirq/port) prog) source-name))
