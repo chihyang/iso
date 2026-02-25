@@ -201,6 +201,9 @@
                    (loop (cdr l)))]))
         sym)))
 
+(define (make-qbits-str size val)
+  (~r val #:base 2 #:min-width size #:pad-string "0"))
+
 ;;; Compiler to Iso
 (define generate-iso-header
   (λ ()
@@ -282,7 +285,7 @@ Neg = { left unit <-> right unit; right unit <-> left unit }"))
   (format "~a = {\n~a\n}" (generate-iso-name name) (generate-iso-circ-body size spec)))
 
 (define (make-iso-qbits size val)
-  (let* ((bits (string->list (~r val #:base 2 #:min-width size #:pad-string "0")))
+  (let* ((bits (string->list (make-qbits-str val size)))
          (vals (join (map (λ (v)
                             (match v
                               (#\1 "right unit")
@@ -414,12 +417,8 @@ from qiskit.circuit.library import UnitaryGate
 from qiskit.quantum_info import Statevector
 from qiskit_aer import Aer, AerSimulator"))
 
-(define new-qiskit-indent
+(define new-python-indent
   (λ () "    "))
-
-(define incre-qiskit-indent
-  (λ (indent)
-    (string-append indent (new-qiskit-indent))))
 
 (define (safe-qiskit-name name)
   (let ([str-sym (raw-safe name)])
@@ -435,20 +434,21 @@ from qiskit_aer import Aer, AerSimulator"))
 (define (generate-qiskit-circ-def name size)
   (format "~a = QuantumCircuit(~a)" (generate-qiskit-name name) size))
 
+(define (generate-qiskit-circ-args size qids)
+  (join (map (λ (id) (number->string (- size id 1))) qids) ", "))
+
 (define ((generate-qiskit-circ-spec name size) spec)
   (match spec
     (`(,gate ,qids ...)
      (match (gate-name gate)
-       ('hadamard (format "~a.h(~a)" name (join (map number->string qids) ", ")))
-       ('x (format "~a.x(~a)" name (join (map number->string qids) ", ")))
-       ('cx (format "~a.cx(~a)" name (join (map number->string qids) ", ")))
-       (`,g (format "~a.append(~a, [~a])" name (generate-qiskit-name g) (join (map number->string qids) ", ")))))))
+       ('hadamard (format "~a.h(~a)" name (generate-qiskit-circ-args size qids)))
+       ('x (format "~a.x(~a)" name (generate-qiskit-circ-args size qids)))
+       ('cx (format "~a.cx(~a)" name (generate-qiskit-circ-args size qids)))
+       (`,g (format "~a.append(~a, [~a])" name (generate-qiskit-name g)
+                    (generate-qiskit-circ-args size qids)))))))
 
 (define (generate-qiskit-circ name size spec)
   (map (generate-qiskit-circ-spec (generate-qiskit-name name) size) spec))
-
-(define (make-qiskit-qbits size val)
-  (~r val #:base 2 #:min-width size #:pad-string "0"))
 
 (define (generate-qiskit-unitary name size mapping)
   (let ((mat (gensym 'mat))
@@ -458,27 +458,9 @@ from qiskit_aer import Aer, AerSimulator"))
     (generate-lines*
      (format "~a = np.zeros((~a, ~a))" mat (expt 2 size) (expt 2 size))
      (format "~a = [~a]" indices (join (map (λ (p) (format "(~a, ~a)" (car p) (cadr p))) mapping) ", "))
-     (format "for i, j in ~a:\n~a~a[i, j] = 1" indices (new-qiskit-indent) mat)
+     (format "for i, j in ~a:\n~a~a[i, j] = 1" indices (new-python-indent) mat)
      (format "~a = UnitaryGate(~a)" ug mat)
      (format "~a.append(~a, [~a])" gate ug (join (map number->string (range size)) ", ")))))
-
-(define ((generate-qiskit-scirc-side indent) spec)
-  (define recur (generate-qiskit-scirc-side indent))
-  (match spec
-    (`,x #:when (symbol? x) (symbol->string x))
-    (`,x #:when (string? x) x)
-    (#t "left unit")
-    (#f "right unit")
-    ('() "unit")
-    (`(let ((,lvar (,gate ,spec))) ,body)
-     (let ((lvar (format "~a" lvar)))
-       (format "~alet ~a = ~a ~a in\n~a~a"
-               indent lvar (generate-qiskit-name gate) (recur spec)
-               (incre-qiskit-indent indent) (recur body))))
-    (`(,s) (recur s))
-    (`(,a . ,d)
-     (let ((l (recur a)))
-       (format "<~a, ~a>" l ((generate-qiskit-scirc-side (+ 2 (string-length l))) d))))))
 
 (define (generate-qiskit-qcirc name size spec)
   (let ((um (gensym 'um))
@@ -518,7 +500,7 @@ from qiskit_aer import Aer, AerSimulator"))
        (generate-lines*
         (format "~a = QuantumCircuit(~a, ~a)" final size size)
         (format "~a.initialize('~a', ~a.qubits)"
-                final (make-qiskit-qbits size n) final)
+                final (make-qbits-str size n) final)
         (format "~a.append(~a, ~a.qubits)" final (generate-qiskit-name name) final)
         (format "simulator = AerSimulator()")
         (format "~a = transpile(~a, simulator, optimization_level=2)" final final)
@@ -556,9 +538,6 @@ from qiskit_aer import Aer, AerSimulator"))
 
 (define qasm-keywords
   '(def1 def2))
-
-(define (make-qasm-qbits size val)
-  (~r val #:base 2 #:min-width size #:pad-string "0"))
 
 (define (safe-qasm-name name)
   (let ([str-sym (raw-safe name)])
@@ -619,7 +598,7 @@ from qiskit_aer import Aer, AerSimulator"))
     (`,var #:when (symbol? var) (generate-qasm-name var))))
 
 (define (generate-qasm-initialize size val)
-  (let ((bit-str (string->list (make-qasm-qbits size val))))
+  (let ((bit-str (string->list (make-qbits-str size val))))
     (join (map (λ (v)
                  (format "X ~a" (cdr v)))
                (filter

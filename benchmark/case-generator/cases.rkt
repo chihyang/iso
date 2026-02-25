@@ -47,20 +47,12 @@
     (list uf circ (list circ (sub1 (expt 2 out-size))))))
 
 
-;;; Simplified Deutsch Jozsa, constant 0, ISO
-(define (iso-simplified-deutsch-jozsa-to-zero f in-size out-size)
+;;; Simplified Deutsch Jozsa, constant 0
+(define (simplified-deutsch-jozsa-to-zero f in-size out-size)
   (let* ((n (add1 in-size))
          (circ (to-gate (deutsch n)
                  (para hadamard n)
                  (para hadamard in-size))))
-    (list circ (list circ 1))))
-
-;;; Simplified Deutsch Jozsa, constant 0, Qiskit
-(define (qiskit-simplified-deutsch-jozsa-to-zero f in-size out-size)
-  (let* ((n (add1 in-size))
-         (circ (to-gate (deutsch n)
-                 (para hadamard n)
-                 (para hadamard (range 1 n)))))
     (list circ (list circ 1))))
 
 ;;; Simplified Deutsch Jozsa, balanced, ISO
@@ -85,8 +77,8 @@
   (let* ((n (add1 in-size))
          (circ (to-gate (deutsch n)
                  (para hadamard n)
-                 (para cx 1 0)
-                 (para hadamard (range 1 n)))))
+                 (para cx (range (- n 2) n))
+                 (para hadamard (range 0 (- n 1))))))
     (list circ (list circ 1))))
 
 (define (qiskit-deutsch-jozsa-is-even f in-size out-size)
@@ -104,7 +96,7 @@
          (circ (to-gate (deutsch n)
                  (para hadamard n)
                  (uf (range 0 n))
-                 (para hadamard (range 1 n)))))
+                 (para hadamard (range 0 (- n 1))))))
     (list uf circ (list circ 1))))
 
 ;;; General Simon
@@ -153,7 +145,7 @@
 
 (define (gen-cases)
   (gen-had-case 'had-last-qubit)
-  (gen-dj-case 'deutsch-jozsa-to-zero iso-simplified-deutsch-jozsa-to-zero qiskit-simplified-deutsch-jozsa-to-zero to-zero)
+  (gen-dj-case 'deutsch-jozsa-to-zero simplified-deutsch-jozsa-to-zero simplified-deutsch-jozsa-to-zero to-zero)
   (gen-dj-case 'deutsch-jozsa-is-even iso-simplified-deutsch-jozsa-is-even qiskit-deutsch-jozsa-is-even is-even)
   (gen-simon-case 'simon))
 
