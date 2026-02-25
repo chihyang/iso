@@ -215,7 +215,15 @@ Hadamard =
 }
 
 Neg :: (Unit + Unit) <-> (Unit + Unit)
-Neg = { left unit <-> right unit; right unit <-> left unit }"))
+Neg = { left unit <-> right unit; right unit <-> left unit }
+
+Cx :: ((Unit + Unit) x (Unit + Unit)) <-> ((Unit + Unit) x (Unit + Unit))
+Cx =
+{
+  <right unit, x> <-> <right unit, x>;
+  <left unit, right unit> <-> <left unit, left unit>;
+  <left unit, left unit> <-> <left unit, right unit>
+}"))
 
 ;;; Name converters.
 (define iso-keywords
@@ -352,6 +360,8 @@ Neg = { left unit <-> right unit; right unit <-> left unit }"))
      (error 'generate-iso-elem "Cannot redefine hadamard!"))
     ((circuit 'neg _ _)
      (error 'generate-iso-elem "Cannot redefine neg!"))
+    ((circuit 'cx _ _)
+     (error 'generate-iso-elem "Cannot redefine cx!"))
     ((circuit name size spec)
      (generate-lines*
       (generate-iso-circ-type name size)

@@ -55,8 +55,17 @@
                  (para hadamard in-size))))
     (list circ (list circ 1))))
 
-;;; Simplified Deutsch Jozsa, balanced, ISO
-(define (iso-simplified-deutsch-jozsa-is-even f in-size out-size)
+;;; Simplified Deutsch Jozsa, balanced
+(define (simplified-deutsch-jozsa-is-even f in-size out-size)
+  (let* ((n (add1 in-size))
+         (circ (to-gate (deutsch n)
+                 (para hadamard n)
+                 (para cx (range (- n 2) n))
+                 (para hadamard in-size))))
+    (list circ (list circ 1))))
+
+;;; Deutsch Jozsa, balanced, ISO
+(define (iso-deutsch-jozsa-is-even f in-size out-size)
   (let* ((n (add1 in-size))
          (uf (let* ((bvars (map (λ (id) (format "a~a" id))
                                 (range 0 (sub1 in-size))))
@@ -72,15 +81,7 @@
                  (para hadamard in-size))))
     (list uf circ (list circ 1))))
 
-;;; Simplified Deutsch Jozsa, balanced, Qiskit
-(define (qiskit-simplified-deutsch-jozsa-is-even f in-size out-size)
-  (let* ((n (add1 in-size))
-         (circ (to-gate (deutsch n)
-                 (para hadamard n)
-                 (para cx (range (- n 2) n))
-                 (para hadamard (range 0 (- n 1))))))
-    (list circ (list circ 1))))
-
+;;; Deutsch Jozsa, balanced, Qiskit
 (define (qiskit-deutsch-jozsa-is-even f in-size out-size)
   (let* ((n (add1 in-size))
          (uf (let* ((bvars (map (λ (id) (format "a~a" id))
@@ -96,7 +97,7 @@
          (circ (to-gate (deutsch n)
                  (para hadamard n)
                  (uf (range 0 n))
-                 (para hadamard (range 0 (- n 1))))))
+                 (para hadamard in-size))))
     (list uf circ (list circ 1))))
 
 ;;; General Simon
@@ -146,7 +147,8 @@
 (define (gen-cases)
   (gen-had-case 'had-last-qubit)
   (gen-dj-case 'deutsch-jozsa-to-zero simplified-deutsch-jozsa-to-zero simplified-deutsch-jozsa-to-zero to-zero)
-  (gen-dj-case 'deutsch-jozsa-is-even iso-simplified-deutsch-jozsa-is-even qiskit-deutsch-jozsa-is-even is-even)
+  (gen-dj-case 'deutsch-jozsa-is-even iso-deutsch-jozsa-is-even qiskit-deutsch-jozsa-is-even is-even)
+  (gen-dj-case 'deutsch-jozsa-is-even-simplified simplified-deutsch-jozsa-is-even simplified-deutsch-jozsa-is-even is-even)
   (gen-simon-case 'simon))
 
 (command-line
