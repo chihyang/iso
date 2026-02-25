@@ -1,0 +1,9 @@
+-- rotate 45 degrees on z
+Rz :: (Unit + Unit) <-> (Unit + Unit)
+Rz =
+{
+  left x  <-> (0.923879532511 :+ (-0.382683432365)) * left x;
+  right x <-> (0.923879532511 :+ 0.382683432365) * right x
+}
+
+Rz

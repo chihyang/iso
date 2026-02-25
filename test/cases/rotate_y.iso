@@ -1,0 +1,9 @@
+-- rotate 90 degrees on y
+Ry :: (Unit + Unit) <-> (Unit + Unit)
+Ry =
+{
+  left x  <-> [0.707106781188 * left x - 0.707106781188 * right x];
+  right x <-> [0.707106781188 * left x + 0.707106781188 * right x]
+}
+
+Ry

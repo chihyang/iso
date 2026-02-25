@@ -1,0 +1,9 @@
+-- rotate 90 degrees on x
+Rx :: (Unit + Unit) <-> (Unit + Unit)
+Rx =
+{
+  left x  <-> [0.707106781188 * left x + (0 :+ (-0.707106781188)) * right x];
+  right x <-> [(0 :+ (-0.707106781188)) * left x + 0.707106781188 * right x]
+}
+
+(Rx (Rx (left unit)))
