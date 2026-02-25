@@ -5,15 +5,30 @@
 (define (create-if-not-exist dir)
   (unless (directory-exists? dir)
     (make-directory* dir)))
-(define (create-case-dir tag)
-  (create-if-not-exist (build-path (working-directory) (symbol->string tag) "iso"))
-  (create-if-not-exist (build-path (working-directory) (symbol->string tag) "python")))
+
+(define (create-case-dir tag name)
+  (create-if-not-exist (build-path (working-directory) (symbol->string tag) (symbol->string name))))
 
 (define (gen-iso-case tag gen-spec f in-size out-size)
   (to-iso (gen-spec f in-size out-size) (build-path (working-directory) (format "~a-~a-~a.iso" tag in-size out-size))))
 
 (define (gen-qiskit-case tag gen-spec f in-size out-size)
   (to-qiskit (gen-spec f in-size out-size) (build-path (working-directory) (format "~a-~a-~a.py" tag in-size out-size))))
+
+(define (gen-qasm-case tag gen-spec f in-size out-size)
+  (to-qasm (gen-spec f in-size out-size)
+           (path->string
+            (build-path (working-directory) (format "~a-~a-~a" tag in-size out-size)))))
+
+(define (gen-cirq-case tag gen-spec f in-size out-size)
+  (to-cirq (gen-spec f in-size out-size) (build-path (working-directory) (format "~a-~a-~a.py" tag in-size out-size))))
+
+(define supported-simulators
+  (make-parameter
+   `((iso    . ,gen-iso-case)
+     (qiskit . ,gen-qiskit-case)
+     (qtorch . ,gen-qasm-case)
+     (qsim   . ,gen-cirq-case))))
 
 ;;; Oracles
 (define (not n)
@@ -111,45 +126,65 @@
     (list uf circ (list circ (sub1 (expt 2 out-size))))))
 
 ;;; Generate cases
-(define (gen-had-case tag)
-  (create-case-dir tag)
-  (parameterize ((working-directory (build-path (working-directory) (symbol->string tag) "iso")))
+(define (gen-one-benchmark case-generator algo-name simulator spec oracle f-out-size qubits)
+  (parameterize ((working-directory (build-path (working-directory)
+                                                (symbol->string algo-name)
+                                                (symbol->string simulator))))
     (map (λ (in-size)
-           (gen-iso-case tag had-to-last-spec identity in-size in-size))
-         (range 1 41)))
-  (parameterize ((working-directory (build-path (working-directory) (symbol->string tag) "python")))
-    (map (λ (in-size)
-           (gen-qiskit-case tag had-to-last-spec identity in-size in-size))
-         (range 1 41))))
+           (case-generator algo-name spec (oracle in-size) in-size (f-out-size in-size)))
+         qubits)))
 
-(define (gen-dj-case tag spec-iso spec-qiskit oracle)
-  (create-case-dir tag)
-  (parameterize ((working-directory (build-path (working-directory) (symbol->string tag) "iso")))
-    (map (λ (in-size)
-           (gen-iso-case tag spec-iso oracle in-size 1))
-         (range 1 20)))
-  (parameterize ((working-directory (build-path (working-directory) (symbol->string tag) "python")))
-    (map (λ (in-size)
-           (gen-qiskit-case tag spec-qiskit oracle in-size 1))
-         (range 1 20))))
+(define (gen-benchmarks algo-name specs oracle out-size qubits)
+  (define all-specs
+    (cond
+      ((list? specs) specs)
+      ((procedure? specs) (make-list (length (supported-simulators)) specs))
+      (else (error 'gen-benchmarks "Invalid case spec: must be a list of procedures or one procedure."))))
+
+  (for-each
+   (λ (gen spec simulator)
+     (create-case-dir algo-name simulator)
+     (gen-one-benchmark gen algo-name simulator spec oracle out-size qubits))
+   (map cdr (supported-simulators))
+   all-specs
+   (map car (supported-simulators))))
+
+(define (gen-had-case tag)
+  (define algo-name tag)
+  (define spec had-to-last-spec)
+  (define oracle identity)
+  (define out-size identity)
+  (define qubits (range 1 20))
+  (gen-benchmarks algo-name spec oracle out-size qubits))
+
+(define (gen-dj-case tag specs oracle^)
+  (define algo-name tag)
+  (define spec specs)
+  (define oracle (λ (_) oracle^))
+  (define out-size (λ (_) 1))
+  (define qubits (range 1 20))
+  (gen-benchmarks algo-name spec oracle out-size qubits))
 
 (define (gen-simon-case tag)
-  (create-case-dir tag)
-  (parameterize ((working-directory (build-path (working-directory) (symbol->string tag) "iso")))
-    (map (λ (in-size)
-           (gen-iso-case 'simon simon-spec (simon-f in-size (sub1 (expt 2 in-size))) in-size in-size))
-         (range 1 5)))
-  (parameterize ((working-directory (build-path (working-directory) (symbol->string tag) "python")))
-    (map (λ (in-size)
-           (gen-qiskit-case 'simon simon-spec (simon-f in-size (sub1 (expt 2 in-size))) in-size in-size))
-         (range 1 5))))
+  (define algo-name tag)
+  (define spec simon-spec)
+  (define oracle (λ (in-size) (simon-f in-size (sub1 (expt 2 in-size)))))
+  (define out-size identity)
+  (define qubits (range 1 5))
+  (gen-benchmarks algo-name spec oracle out-size qubits))
 
 (define (gen-cases)
   (gen-had-case 'had-last-qubit)
-  (gen-dj-case 'deutsch-jozsa-to-zero simplified-deutsch-jozsa-to-zero simplified-deutsch-jozsa-to-zero to-zero)
-  (gen-dj-case 'deutsch-jozsa-is-even iso-deutsch-jozsa-is-even qiskit-deutsch-jozsa-is-even is-even)
-  (gen-dj-case 'deutsch-jozsa-is-even-simplified simplified-deutsch-jozsa-is-even simplified-deutsch-jozsa-is-even is-even)
-  (gen-simon-case 'simon))
+  (gen-dj-case 'deutsch-jozsa-to-zero simplified-deutsch-jozsa-to-zero to-zero)
+  (gen-dj-case 'deutsch-jozsa-is-even
+               (list iso-deutsch-jozsa-is-even qiskit-deutsch-jozsa-is-even
+                     simplified-deutsch-jozsa-to-zero
+                     simplified-deutsch-jozsa-to-zero)
+               is-even)
+  (gen-dj-case 'deutsch-jozsa-is-even-simplified simplified-deutsch-jozsa-is-even is-even)
+  (parameterize [(supported-simulators `((iso    . ,gen-iso-case)
+                                         (qiskit . ,gen-qiskit-case)))]
+    (gen-simon-case 'simon)))
 
 (command-line
  #:program "cases"
