@@ -140,7 +140,7 @@ term2Fgg info t@(TmPlus tms) ty = do
   (varsNs, hgfs) <- mkHGFs (tm2Hgf info) tms ty
   bindTmCases varsNs t hgfs
 term2Fgg info (TmAnn tm ty1) ty2 | ty1 == ty2 = term2Fgg info tm ty1
-term2Fgg _ tm _ = error $ "Unsupported term for translating to FGG: " ++ show tm
+term2Fgg _ tm _ = errT $ "Unsupported term for translating to FGG: " ++ show tm
 
 iso2Fgg :: Info -> Iso -> IsoType -> ResultT [Node]
 iso2Fgg info iso@(IsoValue ves) (ITyBase vTy eTy) = do
