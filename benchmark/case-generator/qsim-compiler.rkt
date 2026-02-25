@@ -7,7 +7,8 @@
          hadamard x cx
          to-iso to-iso/port
          to-qiskit to-qiskit/port
-         to-qasm to-qasm/port)
+         to-qasm to-qasm/port
+         to-cirq to-cirq/port)
 
 ;;; Spec of the case generator:
 ;;; Prog      ::= Circ ... Main
@@ -276,7 +277,7 @@ Cx =
   (format "~a = {\n~a\n}" (generate-iso-name name) (generate-iso-circ-body size spec)))
 
 (define (make-iso-qbits size val)
-  (let* ((bits (string->list (make-qbits-str val size)))
+  (let* ((bits (string->list (make-qbits-str size val)))
          (vals (join (map (λ (v)
                             (match v
                               (#\1 "right unit")
