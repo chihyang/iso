@@ -631,7 +631,7 @@
   (match prog
     (`(,circ ... (,gate ,n))
      (generate-lines*
-      (generate-iso-defs (append circ `(,gate)))
+      (generate-iso-defs `(,gate))
       ""
       (generate-iso-main gate n)))))
 
@@ -844,7 +844,7 @@ from qiskit_aer import Aer, AerSimulator"))
   (match prog
     (`(,circ ... (,gate ,n))
      (generate-lines*
-      (generate-qiskit-defs (append circ `(,gate)))
+      (generate-qiskit-defs `(,gate))
       ""
       (generate-qiskit-main gate n)))))
 
@@ -1189,7 +1189,7 @@ import qsimcirq")
   (match prog
     (`(,circ ... (,gate ,n))
      (generate-lines*
-      (generate-cirq-defs (append circ `(,gate)))
+      (generate-cirq-defs `(,gate))
       ""
       (generate-cirq-main gate n)))))
 

@@ -88,7 +88,7 @@
                     (fvars (append bvars `(#f ,lvar)))
                     (tvars (append bvars `(#t ,lvar))))
                (scircuit 'uf n `((,tvars ,tvars)
-                                 (,fvars (let ((,lvar (neg ,lvar)))
+                                 (,fvars (let ((,lvar (,x ,lvar)))
                                            ,(append bvars `(#f ,lvar))))))))
          (circ (to-gate (deutsch n)
                  (para hadamard n)
