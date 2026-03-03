@@ -56,6 +56,13 @@
     ((scircuit _ size _) size)
     ((qcircuit _ size _) size)))
 
+(define (gate-spec gate)
+  (match gate
+    ((circuit _ _ spec) spec)
+    ((unitary _ _ spec) spec)
+    ((scircuit _ _ spec) spec)
+    ((qcircuit _ _ spec) spec)))
+
 (define hadamard
   (make-circuit 'hadamard 1 '()))
 
@@ -66,7 +73,21 @@
   (make-circuit 'cx 2 '()))
 
 (define swap
-  (make-circuit 'cx 2 '()))
+  (make-circuit 'swap 2 '()))
+
+(define (rx deg)
+  (make-circuit 'rx 1 `(,deg)))
+
+(define (ry deg)
+  (make-circuit 'ry 1 `(,deg)))
+
+(define (rz deg)
+  (make-circuit 'rz 1 `(,deg)))
+
+(define (rotation-deg deg)
+  (- deg (* 2 pi (floor (/ deg (* 2 pi))))))
+
+(define rotation-gates '(rx ry rz))
 
 (define (file-writer f name)
   (let ([src (open-output-file name)])
@@ -117,7 +138,7 @@
 (define-syntax (casc stx)
   (syntax-parse stx
     [(_ gate ...)
-     #'(append (gate-spec gate) ...)]))
+     #'(append (make-spec gate) ...)]))
 
 (define (split-list lst n)
   (if (null? lst)
@@ -125,7 +146,7 @@
       (let-values (((h t) (split-at lst n)))
         (cons h (split-list t n)))))
 
-(define-syntax (gate-spec stx)
+(define-syntax (make-spec stx)
   (syntax-parse stx
     [(_ ((~datum para) gate id ...))
      #'(para gate id ...)]
@@ -193,28 +214,261 @@
 (define (make-qbits-str size val)
   (~r val #:base 2 #:min-width size #:pad-string "0"))
 
+;;; Decompose a permutation into a series of one or two permutations
+;;; Each two permutations will become a swap
+;;;
+;;; map-classify : Dict(Nat, Nat) -> List(Dict(Nat, Nat))
+;;;
+;;; Given a permutation represented as a map, return a list of maps that have no
+;;; interaction.
+(define (map-classify mapping)
+  (cond
+    ((null? mapping) '())
+    (else (update-or-append (caar mapping) (cadar mapping) (map-classify (cdr mapping))))))
+
+(define (update-or-append k v maps)
+  (cond
+    ((null? maps) (list (list (list k v))))
+    ((assv v (car maps)) (cons (cons (list k v) (car maps)) (cdr maps)))
+    (else
+     (cons (car maps)
+           (update-or-append k v (cdr maps))))))
+
+;;; map-decompose : Dict(Nat, Nat) -> Dict(Nat, Nat)
+;;; Given a permutation, decompose it into a list of two permutations.
+;;; WARNING: the meaning of the output is different from input!
+;;; For example, the input is:
+;;;   ((1 2) (2 3) (3 4) (4 5))
+;;; The result is in cycle notation:
+;;;   ((1 4) (2 4) (3 4))
+;;; which can be converted to the equivalent input form of three maps:
+;;;   (((1 4) (4 1))
+;;;    ((2 4) (4 2))
+;;;    ((3 4) (4 4)))
+(define (map-decompose mapping)
+  (map-decompose-helper
+   mapping
+   (map (λ (kv) (list (cadr kv) (car kv))) mapping)))
+
+(define (map-decompose-helper mapping reverse-mapping)
+  (match mapping
+    ('() '())
+    (`((,k ,v) . ,mapping^)
+     #:when (eqv? k v)
+     (map-decompose-helper mapping^ reverse-mapping))
+    (`((,k ,v) . ,mapping^)
+     (let* ((v^ (cadr (assv k reverse-mapping)))
+            (mapping^ (dict-set mapping^ v^ `(,v)))
+            (reverse-mapping (dict-set reverse-mapping v `(,v^))))
+       (if (eqv? v^ v)
+           (list (list k v^))
+           (cons (list k v^)
+                 (map-decompose-helper mapping^ reverse-mapping)))))))
+
+;;; Decompose a unitary map to transpositions (two-cycles) in cyclic notation.
+;;; unitary-decompose : List((Nat, Nat)) -> List((Nat, Nat))
+(define (unitary-decompose mapping)
+  (append* (map map-decompose (map-classify mapping))))
+
+;;; Decompose a unitary map to transpositions (two-cycles) in cyclic notation.
+;;; permutation->commands : List((Nat, Nat)) -> List(Spec)
+(define (permutation->commands transpositions)
+  (append*
+   (map (λ (qids)
+          (match (sort qids <)
+            (`(,a ,d) #:when (eqv? (add1 a) d)
+             (make-spec (swap a d)))
+            (`(,a ,d)
+             (make-spec (swap a d)))))
+        transpositions)))
+
+(define (name-conflict name)
+  (memv name (append builtin-gates rotation-gates)))
+
+(define (collect-defs-from-scirc-side spec)
+  (match spec
+    (`(let ((,lvar (,gate ,spec))) ,body)
+     (set-union (collect-defs-from-gate gate)
+                (collect-defs-from-scirc-side spec)
+                (collect-defs-from-scirc-side body)))
+    (`(,s) (collect-defs-from-scirc-side s))
+    (`(,a . ,d)
+     (set-union (collect-defs-from-scirc-side a)
+                (collect-defs-from-scirc-side d)))
+    (_ (set))))
+
+(define (collect-from-scirc-spec spec)
+  (foldl (λ (p r) (set-union (collect-defs-from-scirc-side (cadr p)) r))
+         (set)
+         spec))
+
+(define (collect-defs-from-spec spec)
+  (match spec
+    (`(,gate ,_ ...)
+     (collect-defs-from-gate gate))))
+
+(define (collect-defs-from-specs specs)
+  (foldl (λ (spec r) (set-union (collect-defs-from-spec spec) r))
+         (set)
+         specs))
+
+(define (collect-defs-from-gate gate)
+  (match gate
+    ((scircuit name _ spec)
+     #:when (not (name-conflict name))
+     (set-union (set gate) (collect-from-scirc-spec spec)))
+    ((circuit name _ _)
+     #:when (memv name builtin-gates)
+     (set gate))
+    ((circuit name 1 `(,deg))
+     #:when (memv name rotation-gates)
+     (set (circuit name 1 `(,(rotation-deg deg)))))
+    ((circuit name _ spec)
+     #:when (not (name-conflict name))
+     (set-union (set gate) (collect-defs-from-specs spec)))
+    ((unitary name _ _)
+     #:when (not (name-conflict name))
+     (set gate))
+    ((qcircuit name _ _)
+     #:when (not (name-conflict name))
+     (set gate))))
+
+(define (gate-comp g1 g2)
+  (match `(,g1 ,g2)
+    (`(,(unitary name1 _ _) ,(unitary name2 _ _)) (symbol<? name1 name2))
+    (`(,(unitary _ _ _) ,_) #t)
+    (`(,(qcircuit _ _ _) ,(unitary _ _ _)) #f)
+    (`(,(qcircuit name1 _ _) ,(qcircuit name2 _ _)) (symbol<? name1 name2))
+    (`(,(qcircuit _ _ _) ,_) #t)
+    (`(,(circuit _ _ _) ,(unitary _ _ _)) #f)
+    (`(,(circuit _ _ _) ,(qcircuit _ _ _)) #f)
+    (`(,(circuit name1 _ _) ,(circuit name2 _ _))
+     (cond
+       ((and (memv name1 builtin-gates) (memv name2 builtin-gates))
+        (symbol<? name1 name2))
+       ((and (memv name1 builtin-gates)) #t)
+       ((memv name2 builtin-gates) #f)
+       ((and (memv name1 rotation-gates) (memv name2 rotation-gates))
+        (symbol<? name1 name2))
+       ((memv name1 rotation-gates) #t)
+       ((memv name2 rotation-gates) #f)
+       (else (symbol<? name1 name2))))
+    (`(,(circuit _ _ _) ,_) #t)
+    (`(,(scircuit name1 _ _) ,(scircuit name2 _ _)) (symbol<? name1 name2))
+    (`(,(scircuit _ _ _) ,_) #f)))
+
+(define (collect-defs gates)
+  (let ((all-gates
+         (foldl (λ (gate r) (set-union (collect-defs-from-gate gate) r))
+                (set)
+                gates)))
+    (sort (set->list all-gates) gate-comp)))
+
 ;;; Compiler to Iso
-(define (generate-iso-header)
-  "Hadamard :: (Unit + Unit) <-> (Unit + Unit)
-Hadamard =
+(define builtin-gates
+  '(hadamard neg cx swap))
+
+(define (generate-iso-had name)
+  (format
+   "~a :: (Unit + Unit) <-> (Unit + Unit)
+~a =
 {
   left unit <-> [0.707106781188 * left unit + 0.707106781188 * right unit];
   right unit <-> [0.707106781188 * left unit - 0.707106781188 * right unit]
-}
+}" name name))
 
-Neg :: (Unit + Unit) <-> (Unit + Unit)
-Neg = { left unit <-> right unit; right unit <-> left unit }
+(define (generate-iso-x name)
+  (format
+   "~a :: (Unit + Unit) <-> (Unit + Unit)
+~a = { left unit <-> right unit; right unit <-> left unit }"
+   name name))
 
-Cx :: ((Unit + Unit) x (Unit + Unit)) <-> ((Unit + Unit) x (Unit + Unit))
-Cx =
+(define (generate-iso-cx name)
+  (format
+   "~a :: ((Unit + Unit) x (Unit + Unit)) <-> ((Unit + Unit) x (Unit + Unit))
+~a =
 {
-  <right unit, x> <-> <right unit, x>;
-  <left unit, right unit> <-> <left unit, left unit>;
-  <left unit, left unit> <-> <left unit, right unit>
-}
+  <left unit, x>           <-> <left unit, x>;
+  <right unit, right unit> <-> <right unit, left unit>;
+  <right unit, left unit>  <-> <right unit, right unit>
+}"
+   name name))
 
-Swap :: ((Unit + Unit) x (Unit + Unit)) <-> ((Unit + Unit) x (Unit + Unit))
-Swap = { <x, y> <-> <y, x> }")
+(define (generate-iso-swap name)
+  (format
+   "~a :: ((Unit + Unit) x (Unit + Unit)) <-> ((Unit + Unit) x (Unit + Unit))
+~a = { <x, y> <-> <y, x> }"
+   name name))
+
+(define (generate-iso-builtin name)
+  (match name
+    ('hadamard (generate-iso-had 'Hadamard))
+    ('neg (generate-iso-x 'Neg))
+    ('cx (generate-iso-cx 'Cx))
+    ('swap (generate-iso-swap 'Swap))))
+
+(define (print-iso-scalar num)
+  (if (< num 0)
+      (format "(~a)" (~r num #:precision 10))
+      (~r num #:precision 10)))
+
+(define (generate-iso-rx name deg)
+  (let ((c (cos (/ deg 2)))
+        (s (sin (/ deg 2))))
+    (format
+     "~a :: (Unit + Unit) <-> (Unit + Unit)
+~a =
+{
+  left unit  <-> [~a * left unit + (0 :+ ~a) * right unit];
+  right unit <-> [(0 :+ ~a) * left unit + ~a * right unit]
+}"
+     name name
+     (print-iso-scalar c) (print-iso-scalar (- s))
+     (print-iso-scalar (- s)) (print-iso-scalar c))))
+
+(define (generate-iso-ry name deg)
+  (let ((c (cos (/ deg 2)))
+        (s (sin (/ deg 2))))
+    (format
+     "~a :: (Unit + Unit) <-> (Unit + Unit)
+~a =
+{
+  left unit  <-> [~a * left unit + ~a * right unit];
+  right unit <-> [~a * left unit + ~a * right unit]
+}"
+     name name
+     (print-iso-scalar c) (print-iso-scalar (- s))
+     (print-iso-scalar s) (print-iso-scalar c))))
+
+(define (generate-iso-rz name deg)
+  (let ((c (cos (/ deg 2)))
+        (s (sin (/ deg 2))))
+    (format
+     "~a :: (Unit + Unit) <-> (Unit + Unit)
+~a =
+{
+  left unit  <-> (~a :+ ~a) * right unit;
+  right unit <-> (~a :+ ~a) * left unit
+}"
+     name name
+     (print-iso-scalar c) (print-iso-scalar (- s))
+     (print-iso-scalar c) (print-iso-scalar s))))
+
+(define (generate-iso-rotation-name name deg)
+  (let ((deg (- deg (* 2 pi (floor (/ deg (* 2 pi) ))))))
+    (format "~a~a"
+            (generate-iso-name name)
+            (list->string
+             (filter char-numeric? (string->list (number->string deg)))))))
+
+(define (generate-iso-rotation name deg)
+  (match deg
+    (`(,val)
+     (let ((name^ (generate-iso-rotation-name name val)))
+       (match name
+         ('rx (generate-iso-rx name^ val))
+         ('ry (generate-iso-ry name^ val))
+         ('rz (generate-iso-rz name^ val)))))))
 
 ;;; Name converters.
 (define iso-keywords
@@ -243,6 +497,11 @@ Swap = { <x, y> <-> <y, x> }")
 (define (generate-iso-name name)
   (string-titlecase (safe-iso-name name)))
 
+(define (generate-iso-gate-name gate)
+  (if (memv (gate-name gate) rotation-gates)
+      (generate-iso-rotation-name (gate-name gate) (car (gate-spec gate)))
+      (generate-iso-name (gate-name gate))))
+
 (define (generate-iso-circ-type name size)
   (format "~a :: ~a" (generate-iso-name name) (generate-iso-type size)))
 
@@ -258,9 +517,9 @@ Swap = { <x, y> <-> <y, x> }")
 (define (generate-iso-gate var app indent)
   (match app
     (`(,gate ,qids ...)
-     (let ((name (gate-name gate))
+     (let ((name (generate-iso-gate-name gate))
            (vars (generate-iso-vals var qids)))
-       (format "~alet ~a = ~a ~a in\n" indent vars (generate-iso-name name) vars)))))
+       (format "~alet ~a = ~a ~a in\n" indent vars name vars)))))
 
 (define (generate-iso-rhs var size spec indent)
   (define (foo var body spec indent)
@@ -320,7 +579,7 @@ Swap = { <x, y> <-> <y, x> }")
     (`(let ((,lvar (,gate ,spec))) ,body)
      (let ((lvar (format "~a" lvar)))
        (format "~alet ~a = ~a ~a in\n~a~a"
-               indent lvar (generate-iso-name gate) (recur spec)
+               indent lvar (generate-iso-gate-name gate) (recur spec)
                (incre-iso-indent indent) (recur body))))
     (`(,s) (recur s))
     (`(,a . ,d)
@@ -340,14 +599,16 @@ Swap = { <x, y> <-> <y, x> }")
 (define (generate-iso-scirc name size spec)
   (format "~a = {\n~a\n}" (generate-iso-name name) (generate-iso-scirc-body size spec)))
 
-(define (generate-iso-elem code)
-  (match code
+(define (generate-iso-def gate)
+  (match gate
     ((scircuit name size spec)
      (generate-lines*
       (generate-iso-circ-type name size)
       (generate-iso-scirc name size spec)))
-    ((circuit name _ _) #:when (memv name '(hadamard neg cx swap))
-     (error 'generate-iso-elem "Cannot redefine ~a!" name))
+    ((circuit name _ _) #:when (memv name builtin-gates)
+     (generate-iso-builtin name))
+    ((circuit name 1 spec) #:when (memv name rotation-gates)
+     (generate-iso-rotation name spec))
     ((circuit name size spec)
      (generate-lines*
       (generate-iso-circ-type name size)
@@ -356,21 +617,28 @@ Swap = { <x, y> <-> <y, x> }")
      (generate-lines*
       (generate-iso-circ-type name size)
       (generate-iso-unitary name size mapping)))
-    (`,var #:when (symbol? var) (generate-iso-name var))
-    (`(,gate ,n) #:when (integer? n)
-     (let ((name (gate-name gate))
-           (size (gate-size gate)))
-       (format "(~a ~a)" (generate-iso-name name) (make-iso-qbits size n))))))
+    (_ (error 'generate-iso-def "Unsupported gate type: ~a" gate))))
+
+(define (generate-iso-defs circs)
+  (join (map generate-iso-def (collect-defs circs)) "\n\n"))
+
+(define (generate-iso-main gate n)
+  (let ((name (generate-iso-gate-name gate))
+        (size (gate-size gate)))
+    (format "(~a ~a)" name (make-iso-qbits size n))))
 
 (define (generate-iso-prog prog)
-  (join (map generate-iso-elem prog) "\n\n"))
+  (match prog
+    (`(,circ ... (,gate ,n))
+     (generate-lines*
+      (generate-iso-defs (append circ `(,gate)))
+      ""
+      (generate-iso-main gate n)))))
 
 ;;; a prog is a list of circuits + a (symbol | application)
 (define (generate-iso-source! prog port)
   (display
-   (generate-lines*
-    (generate-iso-header) ""
-    (generate-iso-prog prog))
+   (generate-iso-prog prog)
    port))
 
 (define (to-iso/port prog out-port)
@@ -406,7 +674,7 @@ Swap = { <x, y> <-> <y, x> }")
 import numpy as np
 from qiskit import transpile
 from qiskit.circuit import QuantumCircuit
-from qiskit.circuit.library import UnitaryGate
+from qiskit.circuit.library import UnitaryGate, RXGate, RYGate, RZGate, HGate, CXGate, XGate, SwapGate
 from qiskit.quantum_info import Statevector
 from qiskit_aer import Aer, AerSimulator"))
 
@@ -424,6 +692,29 @@ from qiskit_aer import Aer, AerSimulator"))
 (define (generate-qiskit-name name)
   (string-titlecase (safe-qiskit-name name)))
 
+(define (generate-qiskit-gate-name gate)
+  (if (memv (gate-name gate) rotation-gates)
+      (generate-qiskit-rotation-name (gate-name gate) (car (gate-spec gate)))
+      (generate-qiskit-name (gate-name gate))))
+
+(define (generate-qiskit-rotation-name name deg)
+  (let ((deg (- deg (* 2 pi (floor (/ deg (* 2 pi) ))))))
+    (format "~a~a"
+            (generate-iso-name name)
+            (list->string
+             (filter char-numeric? (string->list (number->string deg)))))))
+
+(define (generate-qiskit-builtin name)
+  (match name
+    ('hadamard
+     (format "~a = ~aGate()" (generate-qiskit-name name) 'H))
+    ('neg
+     (format "~a = ~aGate()" (generate-qiskit-name name) 'X))
+    ('cx
+     (format "~a = ~aGate()" (generate-qiskit-name name) 'CX))
+    ('swap
+     (format "~a = ~aGate()" (generate-qiskit-name name) 'Swap))))
+
 (define (generate-qiskit-circ-def name size)
   (format "~a = QuantumCircuit(~a)" (generate-qiskit-name name) size))
 
@@ -434,11 +725,7 @@ from qiskit_aer import Aer, AerSimulator"))
   (match spec
     (`(,gate ,qids ...)
      (match (gate-name gate)
-       ('hadamard (format "~a.h(~a)" name (generate-qiskit-circ-args size qids)))
-       ('x (format "~a.x(~a)" name (generate-qiskit-circ-args size qids)))
-       ('cx (format "~a.cx(~a)" name (generate-qiskit-circ-args size qids)))
-       ('swap (format "~a.swap(~a)" name (generate-qiskit-circ-args size qids)))
-       (`,g (format "~a.append(~a, [~a])" name (generate-qiskit-name g)
+       (`,g (format "~a.append(~a, [~a])" name (generate-qiskit-gate-name gate)
                     (generate-qiskit-circ-args size qids)))))))
 
 (define (generate-qiskit-circ name size spec)
@@ -467,6 +754,28 @@ from qiskit_aer import Aer, AerSimulator"))
              um
              (join (map number->string (range size)) ", ")))))
 
+(define (generate-qiskit-def gate)
+  (match gate
+    ((qcircuit name size spec)
+     (generate-lines*
+      (generate-qiskit-circ-def name size)
+      (generate-qiskit-qcirc name size spec)))
+    ((scircuit name _ _)
+     (error 'generate-qiskit-elem "Unsupported circuit type: scircuit ~a" name))
+    ((circuit name _ _) #:when (memv name builtin-gates)
+     (generate-qiskit-builtin name))
+    ((circuit name 1 `(,deg)) #:when (memv name rotation-gates)
+     (let ((rotation-name (generate-qiskit-rotation-name name deg)))
+       (format "~a = ~aGate(~a)" rotation-name (string-upcase (symbol->string name)) deg)))
+    ((circuit name size spec)
+     (generate-lines*
+      (generate-qiskit-circ-def name size)
+      (generate-qiskit-circ name size spec)))
+    ((unitary name size mapping)
+     (generate-lines*
+      (generate-qiskit-circ-def name size)
+      (generate-qiskit-unitary name size mapping)))))
+
 (define (generate-qiskit-elem code)
   (match code
     ((qcircuit name size spec)
@@ -476,7 +785,10 @@ from qiskit_aer import Aer, AerSimulator"))
     ((scircuit name _ _)
      (error 'generate-qiskit-elem "Unsupported circuit type: scircuit ~a" name))
     ((circuit name _ _) #:when (memv name '(hadamard neg cx swap))
-     (error 'generate-qiskit-elem "Cannot redefine ~a!" name))
+                        (error 'generate-qiskit-elem "Cannot redefine ~a!" name))
+    ((circuit name 1 `(,deg)) #:when (memv name rotation-gates)
+     (let ((rotation-name (generate-qiskit-rotation-name name deg)))
+       (format "~a = ~aGate(~a)" rotation-name (string-upcase (symbol->string name)) deg)))
     ((circuit name size spec)
      (generate-lines*
       (generate-qiskit-circ-def name size)
@@ -495,7 +807,7 @@ from qiskit_aer import Aer, AerSimulator"))
         (format "~a = QuantumCircuit(~a, ~a)" final size size)
         (format "~a.initialize('~a', ~a.qubits)"
                 final (make-qbits-str size n) final)
-        (format "~a.append(~a, ~a.qubits)" final (generate-qiskit-name name) final)
+        (format "~a.append(~a, ~a.qubits)" final (generate-qiskit-gate-name gate) final)
         (format "simulator = AerSimulator()")
         (format "~a = transpile(~a, simulator, optimization_level=2)" final final)
         (format "job = Aer.get_backend('statevector_simulator').run(~a, shots=1)"
@@ -505,8 +817,36 @@ from qiskit_aer import Aer, AerSimulator"))
         (format "state = result.get_statevector()")
         (format "print(state)"))))))
 
+(define (generate-qiskit-defs circs)
+  (join (map generate-qiskit-def (collect-defs circs)) "\n\n"))
+
+(define (generate-qiskit-main gate n)
+  (let ((name (generate-qiskit-gate-name gate))
+        (size (gate-size gate)))
+    (let* ((name (gate-name gate))
+           (size (gate-size gate))
+           (final (generate-qiskit-name (gensym 'fg))))
+      (generate-lines*
+       (format "~a = QuantumCircuit(~a, ~a)" final size size)
+       (format "~a.initialize('~a', ~a.qubits)"
+               final (make-qbits-str size n) final)
+       (format "~a.append(~a, ~a.qubits)" final (generate-qiskit-gate-name gate) final)
+       (format "simulator = AerSimulator()")
+       (format "~a = transpile(~a, simulator, optimization_level=2)" final final)
+       (format "job = Aer.get_backend('statevector_simulator').run(~a, shots=1)"
+               final)
+       (format "result = job.result()")
+       (format "print(f'execution time: {result.time_taken}')")
+       (format "state = result.get_statevector()")
+       (format "print(state)")))))
+
 (define (generate-qiskit-prog prog)
-  (join (map generate-qiskit-elem prog) "\n\n"))
+  (match prog
+    (`(,circ ... (,gate ,n))
+     (generate-lines*
+      (generate-qiskit-defs (append circ `(,gate)))
+      ""
+      (generate-qiskit-main gate n)))))
 
 (define (generate-qiskit-source! prog port)
   (display
@@ -542,15 +882,21 @@ from qiskit_aer import Aer, AerSimulator"))
 
 (define ((generate-qasm-circ-spec name size) spec)
   (match spec
+    (deg #:when (number? deg)
+     (match name
+      (`,g #:when (memv g rotation-gates)
+       (format "~a ~a ~a" (generate-qasm-name g) deg (number->string size)))))
     (`(,gate ,qids ...)
      (match (gate-name gate)
        (`hadamard (format "H ~a" (join (map number->string qids) " ")))
        (`neg (format "X ~a" (join (map number->string qids) " ")))
+       (`,g #:when (memv g rotation-gates)
+        (format "~a ~a ~a" (generate-qasm-name g) (car (gate-spec gate)) (join (map number->string qids) " ")))
        (`,g #:when (memv g qasm-builtin) (format "~a ~a" g (join (map number->string qids) " ")))
        (`,g (format "~a ~a" (generate-qasm-name g) (join (map number->string qids) " ")))))))
 
 (define (generate-qasm-circ name size spec)
-  (map (generate-qasm-circ-spec (generate-qasm-name name) size) spec))
+  (map (generate-qasm-circ-spec name size) spec))
 
 (define (generate-qasm-unitary-matrix size mapping)
   (let ((sz (expt 2 size)))
@@ -745,8 +1091,13 @@ import qsimcirq")
         (generate-cirq-circ-append circ-name "cirq.CX" qids-name qids))
        (`swap
         (generate-cirq-circ-append circ-name "cirq.SWAP" qids-name qids))
+       (`,g #:when (memv g rotation-gates)
+        (generate-cirq-circ-append
+         circ-name
+         (format "cirq.~a~a" (generate-cirq-name g) (gate-spec gate))
+         qids-name qids))
        (`,g #:when (memv g cirq-builtin)
-            (generate-cirq-circ-append circ-name (format "cirq.~a" g) qids-name qids))
+        (generate-cirq-circ-append circ-name (format "cirq.~a" (generate-cirq-name g)) qids-name qids))
        (`,g
         (generate-cirq-circ-append circ-name (generate-cirq-name g) qids-name qids))))))
 
@@ -766,6 +1117,16 @@ import qsimcirq")
         return \"~a\""
    name name size array name))
 
+(define (generate-cirq-def gate)
+  (match gate
+    ((unitary _ _ _)
+     (generate-cirq-unitary-def gate))
+    ((circuit name 1 `(,deg))
+     #:when (memv name rotation-gates)
+     (format "~a = ~a(rads=~a)" (generate-qiskit-gate-name name deg) deg))
+    ((circuit _ _ _) "")
+    (_ (error 'generate-cirq-def "Unsupported circuit type: ~a" gate))))
+
 (define (generate-cirq-unitary-def gate)
   (match gate
     ((unitary name size mapping)
@@ -780,7 +1141,7 @@ import qsimcirq")
         (generate-cirq-class gate size mat))))))
 
 (define (generate-cirq-defs circs)
-  (join (map generate-cirq-unitary-def (filter unitary? circs)) "\n\n"))
+  (join (map generate-cirq-def (collect-defs circs)) "\n\n"))
 
 (define (generate-cirq-initialize circ-name qbits size val)
   (generate-lines*
@@ -795,6 +1156,10 @@ import qsimcirq")
 
 (define (generate-cirq-main-spec circ-name gate qbits)
   (match gate
+    ((circuit name 1 `(,deg))
+     #:when (memv name rotation-gates)
+     (let ((op-name (generate-qiskit-rotation-name name deg)))
+       (generate-cirq-circ-append circ-name op-name qbits (range 1))) "")
     ((circuit name size spec)
      (join (map (generate-cirq-circ-spec circ-name qbits) spec) "\n"))
     ((unitary name size _)
@@ -824,7 +1189,7 @@ import qsimcirq")
   (match prog
     (`(,circ ... (,gate ,n))
      (generate-lines*
-      (generate-cirq-defs circ)
+      (generate-cirq-defs (append circ `(,gate)))
       ""
       (generate-cirq-main gate n)))))
 
