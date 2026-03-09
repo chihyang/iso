@@ -99,12 +99,7 @@
 ;;; Deutsch Jozsa, balanced, Qiskit
 (define (qiskit-deutsch-jozsa-is-even f in-size out-size)
   (let* ((n (add1 in-size))
-         (uf (let* ((bvars (map (λ (id) (format "a~a" id))
-                                (range 0 (sub1 in-size))))
-                    (lvar (format "a~a" in-size))
-                    (fvars (append bvars `(#f ,lvar)))
-                    (tvars (append bvars `(#t ,lvar)))
-                    (sn-1 (/ (expt 2 n) 4)))
+         (uf (let ((sn-1 (/ (expt 2 n) 4)))
                (qcircuit 'uf n
                  (format
                   "np.kron(np.eye(~a), np.array([[1,0,0,0],[0,1,0,0],[0,0,0,1],[0,0,1,0]]))"
@@ -177,9 +172,10 @@
   (gen-had-case 'had-last-qubit)
   (gen-dj-case 'deutsch-jozsa-to-zero simplified-deutsch-jozsa-to-zero to-zero)
   (gen-dj-case 'deutsch-jozsa-is-even
-               (list iso-deutsch-jozsa-is-even qiskit-deutsch-jozsa-is-even
-                     simplified-deutsch-jozsa-to-zero
-                     simplified-deutsch-jozsa-to-zero)
+               (list iso-deutsch-jozsa-is-even
+                     qiskit-deutsch-jozsa-is-even
+                     simplified-deutsch-jozsa-is-even
+                     simplified-deutsch-jozsa-is-even)
                is-even)
   (gen-dj-case 'deutsch-jozsa-is-even-simplified simplified-deutsch-jozsa-is-even is-even)
   (parameterize [(supported-simulators `((iso    . ,gen-iso-case)
