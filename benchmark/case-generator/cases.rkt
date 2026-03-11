@@ -55,7 +55,7 @@
 ;;; General Deutsch-Jozsa
 (define (deutsch-jozsa-spec f in-size out-size)
   (let* ((n (+ in-size out-size))
-         (uf (to-unitary uf in-size out-size f))
+         (uf (to-permutation uf in-size out-size f))
          (circ (to-gate (deutch n)
                  (para hadamard n)
                  (uf (range 0 n))
@@ -114,7 +114,7 @@
 ;;; General Simon
 (define (simon-spec f in-size out-size)
   (let* ((n (+ in-size out-size))
-         (uf (to-unitary uf in-size out-size f))
+         (uf (to-permutation uf in-size out-size f))
          (circ (to-gate (simon n)
                  (para hadamard in-size)
                  (uf (range 0 n))

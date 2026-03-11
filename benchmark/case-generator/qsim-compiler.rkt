@@ -1,7 +1,7 @@
 #lang racket
 (require (for-syntax syntax/parse)
          racket/format)
-(provide define-gate define-unitary to-gate to-unitary
+(provide define-gate define-unitary to-gate to-permutation
          para casc n-casc
          scircuit qcircuit
          hadamard x cx mc
@@ -125,9 +125,9 @@
 (define-syntax (define-unitary stx)
   (syntax-parse stx
     [(_ name in-size out-size f)
-     #'(define name (to-unitary name in-size out-size f))]))
+     #'(define name (to-permutation name in-size out-size f))]))
 
-(define-syntax (to-unitary stx)
+(define-syntax (to-permutation stx)
   (syntax-parse stx
     [(_ name in-size out-size f)
      #'(make-unitary 'name (+ in-size out-size) (make-value-table f in-size out-size))]))
@@ -1151,10 +1151,10 @@ import qsimcirq")
     ((scircuit _ _ _)
      (error 'generate-qasm-scirc "Cirq doesn't support ISO circuit!"))))
 
-(define (generate-cirq-execution circ-name)
+(define (generate-cirq-execution circ-name qbits)
   (generate-lines*
    (format "qsim_simulator = qsimcirq.QSimSimulator()")
-   (format "qsim_results = qsim_simulator.simulate(~a)" circ-name)
+   (format "qsim_results = qsim_simulator.simulate(~a, qubit_order=~a)" circ-name qbits)
    (format "print(qsim_results)")))
 
 (define (generate-cirq-main gate initials)
@@ -1165,7 +1165,7 @@ import qsimcirq")
      (format "~a = cirq.Circuit()" name)
      (generate-cirq-initialize name qbits size initials)
      (generate-cirq-main-spec name gate qbits)
-     (generate-cirq-execution name))))
+     (generate-cirq-execution name qbits))))
 
 (define (generate-cirq-prog prog)
   (match prog
