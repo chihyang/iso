@@ -4,14 +4,16 @@
 (provide define-gate define-unitary to-gate to-unitary
          para casc n-casc
          scircuit qcircuit
-         hadamard x cx
+         hadamard x cx mc
+         rx ry rz ctrl
+         val->bits apply-gate apply-circ empty-circ
          to-iso to-iso/port
          to-qiskit to-qiskit/port
          to-qasm to-qasm/port
          to-cirq to-cirq/port)
 
 ;;; Spec of the case generator:
-;;; Prog      ::= Circ ... Main
+;;; Prog      ::= Main
 ;;; Main      ::= Circ Nat ; apply a circuit to the initial input
 ;;; Circ      ::= circuit | unitary | scircuit | qcircuit
 ;;; circuit   ::= (circuit Symbol Nat Spec ...)
@@ -75,6 +77,9 @@
 (define swap
   (make-circuit 'swap 2 '()))
 
+(define (mc size)
+  (make-circuit 'mc size '()))
+
 (define (rx deg)
   (make-circuit 'rx 1 `(,deg)))
 
@@ -83,6 +88,9 @@
 
 (define (rz deg)
   (make-circuit 'rz 1 `(,deg)))
+
+(define (ctrl gate)
+  (make-circuit 'ctrl (gate-size gate) `(,gate)))
 
 (define (rotation-deg deg)
   (- deg (* 2 pi (floor (/ deg (* 2 pi))))))
@@ -124,6 +132,20 @@
     [(_ name in-size out-size f)
      #'(make-unitary 'name (+ in-size out-size) (make-value-table f in-size out-size))]))
 
+(define (empty-circ) '())
+
+(define (apply-gate gate val)
+  (let ((size (gate-size gate)))
+    (if (or (< val 0) (>= val (expt 2 size)))
+        (error 'apply-gate "Invalid initial value: ~a, must between (0, 2^~a (~a))" val size (expt 2 size))
+        (list gate val))))
+
+(define (apply-circ gate . ids)
+  (apply-circ* gate ids))
+
+(define (apply-circ* gate ids)
+  (list (cons gate ids)))
+
 (define-syntax (para stx)
   (syntax-parse stx
     [(_ gate id ...)
@@ -152,9 +174,9 @@
      #'(para gate id ...)]
     [(_ ((~datum casc) gate ...))
      #'(casc gate ...)]
+    [(_ ((~datum unquote) g)) #'g]
     [(_ (gate id ...))
-     #'(list (cons gate (gate-input id ...)))]
-    [(_ g:id) #'g]))
+     #'(list (cons gate (gate-input id ...)))]))
 
 (define-syntax (gate-input stx)
   (syntax-parse stx
@@ -270,9 +292,13 @@
 (define (unitary-decompose mapping)
   (append* (map map-decompose (map-classify mapping))))
 
+(define (val->bits size val)
+  (map (λ (c) (- (char->integer c) (char->integer #\0)))
+       (string->list (make-qbits-str size val))))
+
 ;;; Decompose a unitary map to transpositions (two-cycles) in cyclic notation.
-;;; permutation->commands : List((Nat, Nat)) -> List(Spec)
-(define (permutation->commands transpositions)
+;;; permutation->gates : List((Nat, Nat)) -> List(Spec)
+(define (permutation->gates transpositions)
   (append*
    (map (λ (qids)
           (match (sort qids <)
@@ -629,7 +655,7 @@
 
 (define (generate-iso-prog prog)
   (match prog
-    (`(,circ ... (,gate ,n))
+    (`(,gate ,n)
      (generate-lines*
       (generate-iso-defs `(,gate))
       ""
@@ -761,7 +787,7 @@ from qiskit_aer import Aer, AerSimulator"))
       (generate-qiskit-circ-def name size)
       (generate-qiskit-qcirc name size spec)))
     ((scircuit name _ _)
-     (error 'generate-qiskit-elem "Unsupported circuit type: scircuit ~a" name))
+     (error 'generate-qiskit-def "Unsupported circuit type: scircuit ~a" name))
     ((circuit name _ _) #:when (memv name builtin-gates)
      (generate-qiskit-builtin name))
     ((circuit name 1 `(,deg)) #:when (memv name rotation-gates)
@@ -776,73 +802,29 @@ from qiskit_aer import Aer, AerSimulator"))
       (generate-qiskit-circ-def name size)
       (generate-qiskit-unitary name size mapping)))))
 
-(define (generate-qiskit-elem code)
-  (match code
-    ((qcircuit name size spec)
-     (generate-lines*
-      (generate-qiskit-circ-def name size)
-      (generate-qiskit-qcirc name size spec)))
-    ((scircuit name _ _)
-     (error 'generate-qiskit-elem "Unsupported circuit type: scircuit ~a" name))
-    ((circuit name _ _) #:when (memv name '(hadamard neg cx swap))
-                        (error 'generate-qiskit-elem "Cannot redefine ~a!" name))
-    ((circuit name 1 `(,deg)) #:when (memv name rotation-gates)
-     (let ((rotation-name (generate-qiskit-rotation-name name deg)))
-       (format "~a = ~aGate(~a)" rotation-name (string-upcase (symbol->string name)) deg)))
-    ((circuit name size spec)
-     (generate-lines*
-      (generate-qiskit-circ-def name size)
-      (generate-qiskit-circ name size spec)))
-    ((unitary name size mapping)
-     (generate-lines*
-      (generate-qiskit-circ-def name size)
-      (generate-qiskit-unitary name size mapping)))
-    (`,var #:when (symbol? var) (generate-qiskit-name var))
-    (`(,gate ,n)
-     #:when (integer? n)
-     (let* ((name (gate-name gate))
-            (size (gate-size gate))
-            (final (generate-qiskit-name (gensym 'fg))))
-       (generate-lines*
-        (format "~a = QuantumCircuit(~a, ~a)" final size size)
-        (format "~a.initialize('~a', ~a.qubits)"
-                final (make-qbits-str size n) final)
-        (format "~a.append(~a, ~a.qubits)" final (generate-qiskit-gate-name gate) final)
-        (format "simulator = AerSimulator()")
-        (format "~a = transpile(~a, simulator, optimization_level=2)" final final)
-        (format "job = Aer.get_backend('statevector_simulator').run(~a, shots=1)"
-                final)
-        (format "result = job.result()")
-        (format "print(f'execution time: {result.time_taken}')")
-        (format "state = result.get_statevector()")
-        (format "print(state)"))))))
-
 (define (generate-qiskit-defs circs)
   (join (map generate-qiskit-def (collect-defs circs)) "\n\n"))
 
 (define (generate-qiskit-main gate n)
-  (let ((name (generate-qiskit-gate-name gate))
-        (size (gate-size gate)))
-    (let* ((name (gate-name gate))
-           (size (gate-size gate))
-           (final (generate-qiskit-name (gensym 'fg))))
-      (generate-lines*
-       (format "~a = QuantumCircuit(~a, ~a)" final size size)
-       (format "~a.initialize('~a', ~a.qubits)"
-               final (make-qbits-str size n) final)
-       (format "~a.append(~a, ~a.qubits)" final (generate-qiskit-gate-name gate) final)
-       (format "simulator = AerSimulator()")
-       (format "~a = transpile(~a, simulator, optimization_level=2)" final final)
-       (format "job = Aer.get_backend('statevector_simulator').run(~a, shots=1)"
-               final)
-       (format "result = job.result()")
-       (format "print(f'execution time: {result.time_taken}')")
-       (format "state = result.get_statevector()")
-       (format "print(state)")))))
+  (let* ((size (gate-size gate))
+         (final (generate-qiskit-name (gensym 'fg))))
+    (generate-lines*
+     (format "~a = QuantumCircuit(~a, ~a)" final size size)
+     (format "~a.initialize('~a', ~a.qubits)"
+             final (make-qbits-str size n) final)
+     (format "~a.append(~a, ~a.qubits)" final (generate-qiskit-gate-name gate) final)
+     (format "simulator = AerSimulator()")
+     (format "~a = transpile(~a, simulator, optimization_level=2)" final final)
+     (format "job = Aer.get_backend('statevector_simulator').run(~a, shots=1)"
+             final)
+     (format "result = job.result()")
+     (format "print(f'execution time: {result.time_taken}')")
+     (format "state = result.get_statevector()")
+     (format "print(state)"))))
 
 (define (generate-qiskit-prog prog)
   (match prog
-    (`(,circ ... (,gate ,n))
+    (`(,gate ,n)
      (generate-lines*
       (generate-qiskit-defs `(,gate))
       ""
@@ -945,7 +927,7 @@ from qiskit_aer import Aer, AerSimulator"))
 
 (define (generate-qasm-prog prog source-mats)
   (match prog
-    (`(,_ ... (,gate ,n))
+    (`(,gate ,n)
      (generate-lines*
       (number->string (gate-size gate))
       (map generate-qasm-unitary-def source-mats (collect-unitary-defs prog))
@@ -964,8 +946,8 @@ from qiskit_aer import Aer, AerSimulator"))
 
 (define (collect-unitary-defs prog)
   (match prog
-    (`(,circ ... (,_ ,_))
-     (filter unitary? circ))))
+    (`(,circ ,_)
+     (filter unitary? (collect-defs `(,circ))))))
 
 (define (generate-qasm-unitary-defs! prog port)
   (match prog
@@ -974,7 +956,7 @@ from qiskit_aer import Aer, AerSimulator"))
 
 (define (generate-qasm-measurement prog)
   (match prog
-    (`(,_ ... (,gate ,_))
+    (`(,gate ,_)
      (join (map (λ (_) "0") (range (gate-size gate))) " "))))
 
 (define (generate-qasm-measurement! prog port)
@@ -1187,7 +1169,7 @@ import qsimcirq")
 
 (define (generate-cirq-prog prog)
   (match prog
-    (`(,circ ... (,gate ,n))
+    (`(,gate ,n)
      (generate-lines*
       (generate-cirq-defs `(,gate))
       ""

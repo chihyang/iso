@@ -1,6 +1,7 @@
 #lang racket
 (require "qsim-compiler.rkt" racket/cmdline)
 
+(define unused identity)
 (define working-directory (make-parameter (current-directory)))
 (define (create-if-not-exist dir)
   (unless (directory-exists? dir)
@@ -49,7 +50,7 @@
 (define (had-to-last-spec f in-size out-size)
   (let ((circ (to-gate (had-to-last in-size)
                 (para hadamard (range (sub1 in-size) in-size)))))
-    (list circ (list circ in-size))))
+    (apply-gate circ in-size)))
 
 ;;; General Deutsch-Jozsa
 (define (deutsch-jozsa-spec f in-size out-size)
@@ -59,7 +60,7 @@
                  (para hadamard n)
                  (uf (range 0 n))
                  (para hadamard in-size))))
-    (list uf circ (list circ (sub1 (expt 2 out-size))))))
+    (apply-gate circ (sub1 (expt 2 out-size)))))
 
 
 ;;; Simplified Deutsch Jozsa, constant 0
@@ -68,7 +69,7 @@
          (circ (to-gate (deutsch n)
                  (para hadamard n)
                  (para hadamard in-size))))
-    (list circ (list circ 1))))
+    (apply-gate circ 1)))
 
 ;;; Simplified Deutsch Jozsa, balanced
 (define (simplified-deutsch-jozsa-is-even f in-size out-size)
@@ -77,7 +78,7 @@
                  (para hadamard n)
                  (para cx (range (- n 2) n))
                  (para hadamard in-size))))
-    (list circ (list circ 1))))
+    (apply-gate circ 1)))
 
 ;;; Deutsch Jozsa, balanced, ISO
 (define (iso-deutsch-jozsa-is-even f in-size out-size)
@@ -94,7 +95,7 @@
                  (para hadamard n)
                  (uf (range 0 n))
                  (para hadamard in-size))))
-    (list uf circ (list circ 1))))
+    (apply-gate circ 1)))
 
 ;;; Deutsch Jozsa, balanced, Qiskit
 (define (qiskit-deutsch-jozsa-is-even f in-size out-size)
@@ -108,7 +109,7 @@
                  (para hadamard n)
                  (uf (range 0 n))
                  (para hadamard in-size))))
-    (list uf circ (list circ 1))))
+    (apply-gate circ 1)))
 
 ;;; General Simon
 (define (simon-spec f in-size out-size)
@@ -118,7 +119,82 @@
                  (para hadamard in-size)
                  (uf (range 0 n))
                  (para hadamard in-size))))
-    (list uf circ (list circ (sub1 (expt 2 out-size))))))
+    (apply-gate circ (sub1 (expt 2 out-size)))))
+
+;;; Grover's algorithm
+(define (mcz size)
+  (casc
+   (hadamard (sub1 size))
+   ((mc size) (range 0 size))
+   (hadamard (sub1 size))))
+
+(define (grover-wrap-x size w)
+  (let ((v (val->bits size w)))
+    (append*
+     (map (λ (v id)
+            (if (zero? v)
+                (apply-circ x id)
+                (empty-circ)))
+          v (range 0 size)))))
+
+;;; A = I - 2|w⟩⟨w|
+;;; where w is the expected number
+(define (grover-a size w)
+  (let ((wrap-seq (grover-wrap-x size w)))
+    (casc
+     ,wrap-seq
+     ,(mcz size)
+     ,(reverse wrap-seq))))
+
+;;; A = 2|s⟩⟨s| - I
+;;; where s is the all fused state
+(define (grover-b size)
+  (casc
+   (para hadamard (range 0 size))
+   ,(mcz size)
+   (para hadamard (range 0 size))))
+
+(define (grover-iteration A B times)
+  (cond
+    ((zero? times) '())
+    (else (casc ,A ,B ,(grover-iteration A B (sub1 times))))))
+
+(define (grover size w)
+  (let ((A (grover-a size w))
+        (B (grover-b size))
+        (times (floor (/ (* pi (sqrt (expt 2 size))) 4))))
+    (casc
+     (para hadamard size)
+     ,(grover-iteration A B times))))
+
+;;; Here, f is supposed to be a constant function that returns the expected
+;;; value from the database.
+(define (grover-spec f in-size out-size)
+  (let ((circ (to-gate (grover in-size)
+                ,(grover in-size (f 0)))))
+    (apply-gate circ 0)))
+
+;;; Quantum Fourier Transform
+(define (rotations head-id size)
+  (append*
+   (map (λ (k)
+          (apply-circ (ctrl (rz (/ (* 2 pi) (expt 2 (add1 (- k head-id))))))
+                      k head-id))
+        (range (add1 head-id) (+ head-id size)))))
+
+(define (qft in-size head-id)
+  (cond
+    ((eqv? in-size 0) (empty-circ))
+    (else
+     (casc
+      ,(apply-circ hadamard head-id)
+      ,(rotations head-id in-size)
+      ,(qft (sub1 in-size) (add1 head-id))))))
+
+(define (qft-spec f in-size out-size)
+  (let* ((circ (to-gate (qft in-size)
+                 ,(qft in-size 0))))
+    (apply-gate circ 0)))
 
 ;;; Generate cases
 (define (gen-one-benchmark case-generator algo-name simulator spec oracle f-out-size qubits)
@@ -147,8 +223,8 @@
 (define (gen-had-case tag)
   (define algo-name tag)
   (define spec had-to-last-spec)
-  (define oracle identity)
-  (define out-size identity)
+  (define oracle unused)
+  (define out-size unused)
   (define qubits (range 1 20))
   (gen-benchmarks algo-name spec oracle out-size qubits))
 
@@ -164,24 +240,42 @@
   (define algo-name tag)
   (define spec simon-spec)
   (define oracle (λ (in-size) (simon-f in-size (sub1 (expt 2 in-size)))))
-  (define out-size identity)
+  (define out-size unused)
   (define qubits (range 1 5))
+  (gen-benchmarks algo-name spec oracle out-size qubits))
+
+(define (gen-grover-case w tag)
+  (define algo-name tag)
+  (define spec (grover-spec w))
+  (define oracle (λ (in-size) (λ (_) (/ (expt 2 in-size) 2))))
+  (define out-size unused)
+  (define qubits (range 1 10))
+  (gen-benchmarks algo-name spec oracle out-size qubits))
+
+(define (gen-qft tag)
+  (define algo-name tag)
+  (define spec qft-spec)
+  (define oracle unused)
+  (define out-size unused)
+  (define qubits (range 1 20))
   (gen-benchmarks algo-name spec oracle out-size qubits))
 
 (define (gen-cases)
   (gen-had-case 'had-last-qubit)
-  (gen-dj-case 'deutsch-jozsa-to-zero simplified-deutsch-jozsa-to-zero to-zero)
   (gen-dj-case 'deutsch-jozsa-is-even
                (list iso-deutsch-jozsa-is-even
                      qiskit-deutsch-jozsa-is-even
                      simplified-deutsch-jozsa-is-even
                      simplified-deutsch-jozsa-is-even)
                is-even)
+  (gen-dj-case 'deutsch-jozsa-to-zero-simplified simplified-deutsch-jozsa-to-zero to-zero)
   (gen-dj-case 'deutsch-jozsa-is-even-simplified simplified-deutsch-jozsa-is-even is-even)
-  (parameterize [(supported-simulators `((iso    . ,gen-iso-case)
-                                         (qiskit . ,gen-qiskit-case)
-                                         (qsim   . ,gen-cirq-case)))]
-    (gen-simon-case 'simon)))
+  #;
+  (gen-simon-case 'simon)
+  #;
+  (gen-grover-case 'grover)
+  #;
+  (gen-qft 'qft))
 
 (command-line
  #:program "cases"
