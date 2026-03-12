@@ -1,11 +1,12 @@
 #lang racket
 (require (for-syntax syntax/parse)
          racket/format)
-(provide define-gate define-unitary to-gate to-permutation
+(require racket/trace)
+(provide define-gate define-permutation to-gate to-permutation
          para casc n-casc
          scircuit qcircuit
          hadamard x cx mc
-         rx ry rz ctrl
+         rx ry rz phase
          val->bits apply-gate apply-circ empty-circ
          to-iso to-iso/port
          to-qiskit to-qiskit/port
@@ -89,13 +90,16 @@
 (define (rz deg)
   (make-circuit 'rz 1 `(,deg)))
 
-(define (ctrl gate)
-  (make-circuit 'ctrl (gate-size gate) `(,gate)))
+(define (phase deg)
+  (make-circuit 'phase 1 `(,deg)))
+
+(define builtin-gates
+  '(hadamard neg cx swap))
+
+(define rotation-gates '(rx ry rz phase))
 
 (define (rotation-deg deg)
   (- deg (* 2 pi (floor (/ deg (* 2 pi))))))
-
-(define rotation-gates '(rx ry rz))
 
 (define (file-writer f name)
   (let ([src (open-output-file name)])
@@ -122,7 +126,7 @@
            (list (+ (arithmetic-shift x qnum-out) (bitwise-xor y (f x)))
                  (+ (arithmetic-shift x qnum-out) y))))))))
 
-(define-syntax (define-unitary stx)
+(define-syntax (define-permutation stx)
   (syntax-parse stx
     [(_ name in-size out-size f)
      #'(define name (to-permutation name in-size out-size f))]))
@@ -182,8 +186,6 @@
   (syntax-parse stx
     [(_ (range s e))
      #'(range s e)]
-    [(_ id)
-     #'(range 0 id)]
     [(_ id ...)
      #'(list id ...)]))
 
@@ -391,9 +393,6 @@
     (sort (set->list all-gates) gate-comp)))
 
 ;;; Compiler to Iso
-(define builtin-gates
-  '(hadamard neg cx swap))
-
 (define (generate-iso-had name)
   (format
    "~a :: (Unit + Unit) <-> (Unit + Unit)
@@ -473,11 +472,24 @@
      "~a :: (Unit + Unit) <-> (Unit + Unit)
 ~a =
 {
-  left unit  <-> (~a :+ ~a) * right unit;
-  right unit <-> (~a :+ ~a) * left unit
+  left unit  <-> (~a :+ ~a) * left unit;
+  right unit <-> (~a :+ ~a) * right unit
 }"
      name name
      (print-iso-scalar c) (print-iso-scalar (- s))
+     (print-iso-scalar c) (print-iso-scalar s))))
+
+(define (generate-iso-phase name deg)
+  (let ((c (cos deg))
+        (s (sin deg)))
+    (format
+     "~a :: (Unit + Unit) <-> (Unit + Unit)
+~a =
+{
+  left unit  <-> left unit;
+  right unit <-> (~a :+ ~a) * right unit
+}"
+     name name
      (print-iso-scalar c) (print-iso-scalar s))))
 
 (define (generate-iso-rotation-name name deg)
@@ -494,7 +506,8 @@
        (match name
          ('rx (generate-iso-rx name^ val))
          ('ry (generate-iso-ry name^ val))
-         ('rz (generate-iso-rz name^ val)))))))
+         ('rz (generate-iso-rz name^ val))
+         ('phase (generate-iso-phase name^ val)))))))
 
 ;;; Name converters.
 (define iso-keywords
@@ -700,7 +713,7 @@
 import numpy as np
 from qiskit import transpile
 from qiskit.circuit import QuantumCircuit
-from qiskit.circuit.library import UnitaryGate, RXGate, RYGate, RZGate, HGate, CXGate, XGate, SwapGate
+from qiskit.circuit.library import UnitaryGate, RXGate, RYGate, RZGate, HGate, CXGate, XGate, PhaseGate, SwapGate
 from qiskit.quantum_info import Statevector
 from qiskit_aer import Aer, AerSimulator"))
 
@@ -791,8 +804,11 @@ from qiskit_aer import Aer, AerSimulator"))
     ((circuit name _ _) #:when (memv name builtin-gates)
      (generate-qiskit-builtin name))
     ((circuit name 1 `(,deg)) #:when (memv name rotation-gates)
-     (let ((rotation-name (generate-qiskit-rotation-name name deg)))
-       (format "~a = ~aGate(~a)" rotation-name (string-upcase (symbol->string name)) deg)))
+     (let ((rotation-name (generate-qiskit-rotation-name name deg))
+           (lib-name (if (eqv? name 'phase)
+                         (symbol->string 'Phase)
+                         (string-upcase (symbol->string name)))))
+       (format "~a = ~aGate(~a)" rotation-name lib-name deg)))
     ((circuit name size spec)
      (generate-lines*
       (generate-qiskit-circ-def name size)
@@ -859,6 +875,15 @@ from qiskit_aer import Aer, AerSimulator"))
        (string-append "Qasm" str-sym)]
       [else str-sym])))
 
+(define (collect-qasm-defs prog)
+  (match prog
+    (`(,gate ,_)
+     (filter (λ (c)
+               (or (unitary? c)
+                   (and (circuit? c)
+                        (eqv? (circuit-name c) 'phase))))
+             (collect-defs `(,gate))))))
+
 (define (generate-qasm-name name)
   (string-upcase (safe-qasm-name name)))
 
@@ -872,13 +897,22 @@ from qiskit_aer import Aer, AerSimulator"))
      (match (gate-name gate)
        (`hadamard (format "H ~a" (join (map number->string qids) " ")))
        (`neg (format "X ~a" (join (map number->string qids) " ")))
-       (`,g #:when (memv g rotation-gates)
-        (format "~a ~a ~a" (generate-qasm-name g) (car (gate-spec gate)) (join (map number->string qids) " ")))
+       (`cx (format "CNOT ~a" (join (map number->string qids) " ")))
+       (`,g
+        #:when (memv g rotation-gates)
+        (if (eqv? g 'phase)
+            (format "~a ~a" (generate-qiskit-rotation-name g (car (gate-spec gate))) (join (map number->string qids) " "))
+            (format "~a ~a ~a" (generate-qasm-name g) (car (gate-spec gate)) (join (map number->string qids) " "))))
        (`,g #:when (memv g qasm-builtin) (format "~a ~a" g (join (map number->string qids) " ")))
        (`,g (format "~a ~a" (generate-qasm-name g) (join (map number->string qids) " ")))))))
 
 (define (generate-qasm-circ name size spec)
   (map (generate-qasm-circ-spec name size) spec))
+
+(define (generate-qasm-phase-matrix deg)
+  (let ((c (cos deg))
+        (s (sin deg)))
+    (list 1 0 0 (make-rectangular c s))))
 
 (define (generate-qasm-unitary-matrix size mapping)
   (let ((sz (expt 2 size)))
@@ -895,14 +929,20 @@ from qiskit_aer import Aer, AerSimulator"))
      (join (map number->string (generate-qasm-unitary-matrix size mapping)) " "))
     (_ (error 'generate-qasm-unitary "QASM only supports 1 or 2 qubits gates!"))))
 
+(define (generate-qasm-phase-file deg)
+  (join (map number->string (generate-qasm-phase-matrix deg)) " "))
+
 (define (generate-qasm-unitary-def source-name gate)
   (match gate
     ((unitary name size _)
      (let ((gate (generate-qasm-name name)))
        (match size
-         (1 (format "def1 ~a ~a.gate" gate source-name))
-         (2 (format "def2 ~a ~a.gate" gate source-name))
-         (_ (error 'generate-qasm-unitary "QASM only supports 1 or 2 qubits gates!")))))))
+         (1 (format "def1 ~a ~a" gate source-name))
+         (2 (format "def2 ~a ~a" gate source-name))
+         (_ (error 'generate-qasm-unitary "QASM only supports 1 or 2 qubits gates!")))))
+    ((circuit 'phase 1 `(,deg))
+     (let ((gate (generate-qiskit-rotation-name 'phase deg)))
+       (format "def1 ~a ~a" gate source-name)))))
 
 (define (generate-qasm-main gate)
   (match gate
@@ -930,7 +970,7 @@ from qiskit_aer import Aer, AerSimulator"))
     (`(,gate ,n)
      (generate-lines*
       (number->string (gate-size gate))
-      (map generate-qasm-unitary-def source-mats (collect-unitary-defs prog))
+      (map generate-qasm-unitary-def source-mats (collect-qasm-defs prog))
       (generate-qasm-initialize (gate-size gate) n)
       (generate-qasm-main gate)))))
 
@@ -942,17 +982,13 @@ from qiskit_aer import Aer, AerSimulator"))
 (define (generate-qasm-unitary-file! unitary-circ port)
   (match unitary-circ
     ((unitary name size mapping)
-     (display (generate-qasm-unitary-file size mapping) port))))
-
-(define (collect-unitary-defs prog)
-  (match prog
-    (`(,circ ,_)
-     (filter unitary? (collect-defs `(,circ))))))
+     (display (generate-qasm-unitary-file size mapping) port))
+    ((circuit 'phase 1 `(,deg))
+     (display (generate-qasm-phase-file deg) port))))
 
 (define (generate-qasm-unitary-defs! prog port)
-  (match prog
-    (map (λ (c) (generate-qasm-unitary-file! c port))
-         (collect-unitary-defs prog))))
+  (for-each (λ (c) (generate-qasm-unitary-file! c port))
+            (collect-qasm-defs prog)))
 
 (define (generate-qasm-measurement prog)
   (match prog
@@ -978,7 +1014,7 @@ from qiskit_aer import Aer, AerSimulator"))
   (display "unitary defs:\n" out-port)
   (generate-qasm-unitary-defs! prog out-port)
   (display "\nqasm:\n" out-port)
-  (generate-qasm-source! prog (collect-unitary-def-names prog "") out-port)
+  (generate-qasm-source! prog (collect-unitary-def-names prog "stdout") out-port)
   (display "\nmeasurement:\n" out-port)
   (generate-qasm-measurement! prog out-port)
   (display "\nsimulation:\n" out-port)
@@ -986,9 +1022,14 @@ from qiskit_aer import Aer, AerSimulator"))
 
 (define (collect-unitary-def-names prog source-name)
   (map (λ (c)
-          (build-path source-name
-                      (string-append (symbol->string (unitary-name c)) ".def")))
-       (collect-unitary-defs prog)))
+         (match c
+           ((unitary name _ _)
+            (build-path source-name
+                        (string-append (symbol->string (unitary-name c)) ".def")))
+           ((circuit 'phase 1 `(,deg))
+            (build-path source-name
+                        (string-append (generate-qiskit-rotation-name 'phase deg) ".def")))))
+       (collect-qasm-defs prog)))
 
 (define (to-qasm prog source-name)
   (let ((qasm-name (build-path (string-append source-name ".qasm")))
@@ -1004,7 +1045,7 @@ from qiskit_aer import Aer, AerSimulator"))
     ;; generate all unitary defines
     (unless (directory-exists? source-name)
       (make-directory source-name))
-    (let ((unitaries (map cons (collect-unitary-defs prog) mat-names)))
+    (let ((unitaries (map cons (collect-qasm-defs prog) mat-names)))
       (for-each
        (λ (u)
          (file-writer ((curry generate-qasm-unitary-file!) (car u)) (cdr u)))
@@ -1076,7 +1117,7 @@ import qsimcirq")
        (`,g #:when (memv g rotation-gates)
         (generate-cirq-circ-append
          circ-name
-         (format "cirq.~a~a" (generate-cirq-name g) (gate-spec gate))
+         (format "~a.on" (generate-qiskit-rotation-name g (car (gate-spec gate))))
          qids-name qids))
        (`,g #:when (memv g cirq-builtin)
         (generate-cirq-circ-append circ-name (format "cirq.~a" (generate-cirq-name g)) qids-name qids))
@@ -1099,13 +1140,26 @@ import qsimcirq")
         return \"~a\""
    name name size array name))
 
+(define (generate-cirq-phase-def gate)
+  (match gate
+    ((circuit 'phase 1 `(,deg))
+     (let* ((mat (gensym 'mat))
+            (name (generate-qiskit-rotation-name 'phase deg))
+            (class-name (string-append "Cls" name)))
+       (generate-lines*
+        (format "~a = np.asarray([[1,0],[0,np.exp(~a * 1j)]])" mat deg)
+        (generate-cirq-class class-name 1 mat)
+        (format "~a = ~a()" name class-name))))))
+
 (define (generate-cirq-def gate)
   (match gate
     ((unitary _ _ _)
      (generate-cirq-unitary-def gate))
     ((circuit name 1 `(,deg))
      #:when (memv name rotation-gates)
-     (format "~a = ~a(rads=~a)" (generate-qiskit-gate-name name deg) deg))
+     (if (eqv? name 'phase)
+         (generate-cirq-phase-def gate)
+         (format "~a = cirq.~a(rads=~a)" (generate-qiskit-rotation-name name deg) name deg)))
     ((circuit _ _ _) "")
     (_ (error 'generate-cirq-def "Unsupported circuit type: ~a" gate))))
 
@@ -1114,13 +1168,15 @@ import qsimcirq")
     ((unitary name size mapping)
      (let ((mat (gensym 'mat))
            (indices (gensym 'indices))
-           (gate (generate-cirq-name name)))
+           (name (generate-cirq-name name))
+           (class-name (string-append "Cls" name)))
        (generate-lines*
         (format "~a = np.zeros((~a, ~a))" mat (expt 2 size) (expt 2 size))
         (format "~a = [~a]" indices (join (map (λ (p) (format "(~a, ~a)" (car p) (cadr p))) mapping) ", "))
         (format "for i, j in ~a:\n~a~a[i, j] = 1" indices (new-python-indent) mat)
         ""
-        (generate-cirq-class gate size mat))))))
+        (generate-cirq-class name size mat)
+        (format "~a = ~a()" name class-name))))))
 
 (define (generate-cirq-defs circs)
   (join (map generate-cirq-def (collect-defs circs)) "\n\n"))

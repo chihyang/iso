@@ -57,9 +57,9 @@
   (let* ((n (+ in-size out-size))
          (uf (to-permutation uf in-size out-size f))
          (circ (to-gate (deutch n)
-                 (para hadamard n)
+                 (para hadamard (range 0 n))
                  (uf (range 0 n))
-                 (para hadamard in-size))))
+                 (para hadamard (range 0 in-size)))))
     (apply-gate circ (sub1 (expt 2 out-size)))))
 
 
@@ -67,17 +67,17 @@
 (define (simplified-deutsch-jozsa-to-zero f in-size out-size)
   (let* ((n (add1 in-size))
          (circ (to-gate (deutsch n)
-                 (para hadamard n)
-                 (para hadamard in-size))))
+                 (para hadamard (range 0 n))
+                 (para hadamard (range 0 in-size)))))
     (apply-gate circ 1)))
 
 ;;; Simplified Deutsch Jozsa, balanced
 (define (simplified-deutsch-jozsa-is-even f in-size out-size)
   (let* ((n (add1 in-size))
          (circ (to-gate (deutsch n)
-                 (para hadamard n)
+                 (para hadamard (range 0 n))
                  (para cx (range (- n 2) n))
-                 (para hadamard in-size))))
+                 (para hadamard (range 0 in-size)))))
     (apply-gate circ 1)))
 
 ;;; Deutsch Jozsa, balanced, ISO
@@ -92,9 +92,9 @@
                                  (,fvars (let ((,lvar (,x ,lvar)))
                                            ,(append bvars `(#f ,lvar))))))))
          (circ (to-gate (deutsch n)
-                 (para hadamard n)
+                 (para hadamard (range 0 n))
                  (uf (range 0 n))
-                 (para hadamard in-size))))
+                 (para hadamard (range 0 in-size)))))
     (apply-gate circ 1)))
 
 ;;; Deutsch Jozsa, balanced, Qiskit
@@ -106,9 +106,9 @@
                   "np.kron(np.eye(~a), np.array([[1,0,0,0],[0,1,0,0],[0,0,0,1],[0,0,1,0]]))"
                   sn-1))))
          (circ (to-gate (deutsch n)
-                 (para hadamard n)
+                 (para hadamard (range 0 n))
                  (uf (range 0 n))
-                 (para hadamard in-size))))
+                 (para hadamard (range 0 in-size)))))
     (apply-gate circ 1)))
 
 ;;; General Simon
@@ -116,9 +116,9 @@
   (let* ((n (+ in-size out-size))
          (uf (to-permutation uf in-size out-size f))
          (circ (to-gate (simon n)
-                 (para hadamard in-size)
+                 (para hadamard (range 0 in-size))
                  (uf (range 0 n))
-                 (para hadamard in-size))))
+                 (para hadamard (range 0 in-size)))))
     (apply-gate circ (sub1 (expt 2 out-size)))))
 
 ;;; Grover's algorithm
@@ -164,7 +164,7 @@
         (B (grover-b size))
         (times (floor (/ (* pi (sqrt (expt 2 size))) 4))))
     (casc
-     (para hadamard size)
+     (para hadamard (range 0 size))
      ,(grover-iteration A B times))))
 
 ;;; Here, f is supposed to be a constant function that returns the expected
@@ -175,11 +175,19 @@
     (apply-gate circ 0)))
 
 ;;; Quantum Fourier Transform
+(define (ctrl-rz k c-id rz-id)
+  (let ((deg (/ pi (expt 2 k))))
+    (casc
+     ((rz deg) rz-id)
+     (cx c-id rz-id)
+     ((rz (- deg)) rz-id)
+     (cx c-id rz-id)
+     ((phase deg) c-id))))
+
 (define (rotations head-id size)
   (append*
    (map (λ (k)
-          (apply-circ (ctrl (rz (/ (* 2 pi) (expt 2 (add1 (- k head-id))))))
-                      k head-id))
+          (ctrl-rz (add1 (- k head-id)) k head-id))
         (range (add1 head-id) (+ head-id size)))))
 
 (define (qft in-size head-id)
@@ -274,7 +282,6 @@
   (gen-simon-case 'simon)
   #;
   (gen-grover-case 'grover)
-  #;
   (gen-qft 'qft))
 
 (command-line
