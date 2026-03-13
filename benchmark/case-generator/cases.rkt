@@ -248,7 +248,7 @@
   (define algo-name tag)
   (define spec simon-spec)
   (define oracle (λ (in-size) (simon-f in-size (sub1 (expt 2 in-size)))))
-  (define out-size unused)
+  (define out-size identity)
   (define qubits (range 1 5))
   (gen-benchmarks algo-name spec oracle out-size qubits))
 

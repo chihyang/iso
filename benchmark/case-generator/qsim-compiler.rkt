@@ -567,7 +567,7 @@
       (`(,g . ,gs)
        (let ((bind (generate-iso-gate var g indent)))
          (string-append bind
-                        (foo var body gs (incre-iso-indent indent)))))))
+                        (foo var body gs indent))))))
   (let ((body (generate-iso-vals var (range size))))
     (foo var body spec indent)))
 
@@ -619,7 +619,7 @@
      (let ((lvar (format "~a" lvar)))
        (format "~alet ~a = ~a ~a in\n~a~a"
                indent lvar (generate-iso-gate-name gate) (recur spec)
-               (incre-iso-indent indent) (recur body))))
+               indent (recur body))))
     (`(,s) (recur s))
     (`(,a . ,d)
      (let ((l (recur a)))
@@ -887,27 +887,30 @@ from qiskit_aer import Aer, AerSimulator"))
 (define (generate-qasm-name name)
   (string-upcase (safe-qasm-name name)))
 
-(define ((generate-qasm-circ-spec name size) spec)
+(define (generate-qasm-qids qids id-map)
+  (join (map (λ (v) (number->string (dict-ref id-map v))) qids) " "))
+
+(define ((generate-qasm-circ-spec name size id-map) spec)
   (match spec
     (deg #:when (number? deg)
-     (match name
-      (`,g #:when (memv g rotation-gates)
-       (format "~a ~a ~a" (generate-qasm-name g) deg (number->string size)))))
+         (match name
+           (`,g #:when (memv g rotation-gates)
+                (format "~a ~a ~a" (generate-qasm-name g) deg (number->string size)))))
     (`(,gate ,qids ...)
      (match (gate-name gate)
-       (`hadamard (format "H ~a" (join (map number->string qids) " ")))
-       (`neg (format "X ~a" (join (map number->string qids) " ")))
-       (`cx (format "CNOT ~a" (join (map number->string qids) " ")))
+       (`hadamard (format "H ~a" (generate-qasm-qids qids id-map)))
+       (`neg (format "X ~a" (generate-qasm-qids qids id-map)))
+       (`cx (format "CNOT ~a" (generate-qasm-qids qids id-map)))
        (`,g
         #:when (memv g rotation-gates)
         (if (eqv? g 'phase)
-            (format "~a ~a" (generate-qiskit-rotation-name g (car (gate-spec gate))) (join (map number->string qids) " "))
-            (format "~a ~a ~a" (generate-qasm-name g) (car (gate-spec gate)) (join (map number->string qids) " "))))
-       (`,g #:when (memv g qasm-builtin) (format "~a ~a" g (join (map number->string qids) " ")))
-       (`,g (format "~a ~a" (generate-qasm-name g) (join (map number->string qids) " ")))))))
+            (format "~a ~a" (generate-qiskit-rotation-name g (car (gate-spec gate))) (generate-qasm-qids qids id-map))
+            (format "~a ~a ~a" (generate-qasm-name g) (car (gate-spec gate)) (generate-qasm-qids qids id-map))))
+       (`,g #:when (memv g qasm-builtin) (format "~a ~a" g (generate-qasm-qids qids id-map)))
+       (`,g (generate-qasm-circ g (gate-size gate) (map cons (range (gate-size gate) id-map)) (gate-spec spec)))))))
 
-(define (generate-qasm-circ name size spec)
-  (map (generate-qasm-circ-spec name size) spec))
+(define (generate-qasm-circ name size id-map spec)
+  (map (generate-qasm-circ-spec name size id-map) spec))
 
 (define (generate-qasm-phase-matrix deg)
   (let ((c (cos deg))
@@ -947,7 +950,7 @@ from qiskit_aer import Aer, AerSimulator"))
 (define (generate-qasm-main gate)
   (match gate
     ((circuit name size spec)
-     (generate-qasm-circ name size spec))
+     (generate-qasm-circ name size (map cons (range size) (range size)) spec))
     ((unitary name size _)
      (format "~a ~a" name (join (map number->string (range size)) " ")))
     ((qcircuit _ _ _)
@@ -1103,7 +1106,7 @@ import qsimcirq")
 (define ((generate-cirq-circ-spec circ-name qids-name) spec)
   (match spec
     (`(,(unitary name _ _) ,qids ...)
-     (generate-cirq-circ-append circ-name (format "~a().on" (generate-cirq-name name)) qids-name qids))
+     (generate-cirq-circ-append circ-name (format "~a.on" (generate-cirq-name name)) qids-name qids))
     (`(,gate ,qids ...)
      (match (gate-name gate)
        (`hadamard
@@ -1166,16 +1169,16 @@ import qsimcirq")
 (define (generate-cirq-unitary-def gate)
   (match gate
     ((unitary name size mapping)
-     (let ((mat (gensym 'mat))
-           (indices (gensym 'indices))
-           (name (generate-cirq-name name))
-           (class-name (string-append "Cls" name)))
+     (let* ((mat (gensym 'mat))
+            (indices (gensym 'indices))
+            (name (generate-cirq-name name))
+            (class-name (string-append "Cls" name)))
        (generate-lines*
         (format "~a = np.zeros((~a, ~a))" mat (expt 2 size) (expt 2 size))
         (format "~a = [~a]" indices (join (map (λ (p) (format "(~a, ~a)" (car p) (cadr p))) mapping) ", "))
         (format "for i, j in ~a:\n~a~a[i, j] = 1" indices (new-python-indent) mat)
         ""
-        (generate-cirq-class name size mat)
+        (generate-cirq-class class-name size mat)
         (format "~a = ~a()" name class-name))))))
 
 (define (generate-cirq-defs circs)
