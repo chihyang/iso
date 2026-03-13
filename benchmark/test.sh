@@ -30,11 +30,39 @@ function check_tools {
     check_tool "${FGG_EXE_PATH}/bin/sum_product.py"
 }
 
+function run_command {
+    local dir="${1}"
+    local isuffix="${2}"
+    local osuffix="${3}"
+    local cmd="${4}"
+    local result_dir="${5}"
+    local iopt="${6}"
+    local oopt="${7}"
+
+    if [ ! -d "${dir}" ]; then
+        echo "The directory ${dir} doesn't exist!"
+        return 1
+    fi
+
+    create_dir_if_needed "${result_dir}"
+    for file in $(find "${dir}" -type f -name "*${isuffix}" | sort -V); do
+        ofile="$(basename ${file} ${isuffix})${osuffix}"
+        echo "time ${cmd} ${iopt} \"${file}\" ${oopt} \"${result_dir}/${ofile}\""
+        ret=$?
+        if [ ${ret} -ne 0 ]; then
+            echo "Stop at ${file}, the error code is non-zero (${ret})"
+            break
+        fi
+    done
+}
+
 function run_benchmark {
     local suite_name="${1}"
     local do_python="${2}"
     local iso_suite_dir="${BENCHMARK_ROOT_DIR}/${suite_name}/iso"
-    local qiskit_suite_dir="${BENCHMARK_ROOT_DIR}/${suite_name}/python"
+    local qiskit_suite_dir="${BENCHMARK_ROOT_DIR}/${suite_name}/qiskit"
+    local qsim_suite_dir="${BENCHMARK_ROOT_DIR}/${suite_name}/qsim"
+    local qtorch_suite_dir="${BENCHMARK_ROOT_DIR}/${suite_name}/qtorch"
 
     local ppl_dir="${BENCHMARK_ROOT_DIR}/${suite_name}/ppl"
     local json_dir="${BENCHMARK_ROOT_DIR}/${suite_name}/json"
@@ -42,66 +70,40 @@ function run_benchmark {
     local qiskit_result_dir="${BENCHMARK_ROOT_DIR}/${suite_name}/qiskit-text"
     local iso_fgg_dir="${BENCHMARK_ROOT_DIR}/${suite_name}/iso-fgg"
     local iso_fgg_result_dir="${BENCHMARK_ROOT_DIR}/${suite_name}/iso-fgg-text"
+    local qsim_result_dir="${BENCHMARK_ROOT_DIR}/${suite_name}/qsim-text"
+    local qtorch_result_dir="${BENCHMARK_ROOT_DIR}/${suite_name}/qtorch-text"
 
-    create_dir_if_needed "${ppl_dir}"
-    create_dir_if_needed "${json_dir}"
-    create_dir_if_needed "${iso_result_dir}"
-    create_dir_if_needed "${qiskit_result_dir}"
-    create_dir_if_needed "${iso_fgg_dir}"
-    create_dir_if_needed "${iso_fgg_result_dir}"
+    run_command "${iso_suite_dir}" ".iso" ".ppl" \
+                "${ISO_EXE_PATH}/iso-exe perpl" "${ppl_dir}" \
+                "-o" ""
 
-    for file in $(find "${iso_suite_dir}" -type f -name "*.iso" | sort -V); do
-        ofile=$(basename ${file} .iso).ppl
-        echo "Compiling ${file} to ${ofile}"
-        time "${ISO_EXE_PATH}/iso-exe" perpl -o "${ppl_dir}/${ofile}" ${file}
-    done
+    run_command "${ppl_dir}" ".ppl" ".json" \
+                "${PERPL_EXE_PATH}/perplc" "${json_dir}" \
+                "-s" ">"
 
-    for file in $(find "${ppl_dir}" -type f -name "*.ppl" | sort -V); do
-        ofile=$(basename ${file} .ppl).json
-        echo "Compiling ${file} to ${ofile}"
-        time "${PERPL_EXE_PATH}/perplc" -s ${file} > "${json_dir}/${ofile}"
-    done
+    run_command "${json_dir}" ".json" "-iso.txt" \
+                "python ${FGG_EXE_PATH}/bin/sum_product.py" "${iso_result_dir}" \
+                "-d" ">"
 
-    for file in $(find "${json_dir}" -type f -name "*.json" | sort -V); do
-        ofile="$(basename ${file} .json)"-iso.txt
-        echo "Computing ${file}"
-        time python "${FGG_EXE_PATH}/bin/sum_product.py" -d ${file} > "${iso_result_dir}/${ofile}"
-        ret=$?
-        if [ ${ret} -ne 0 ]; then
-            echo "Stop at ${file}, the error code is non-zero (${ret})"
-            break
-        fi
-    done
+    run_command "${iso_suite_dir}" ".iso" "-iso-fgg.json" \
+                "${ISO_EXE_PATH}/iso-exe fgg" "${iso_fgg_dir}" \
+                "-c" "-o"
 
-    for file in $(find "${iso_suite_dir}" -type f -name "*.iso" | sort -V); do
-        ofile=$(basename ${file} .iso)-iso-fgg.json
-        echo "Compiling ${file} to ${ofile}"
-        time "${ISO_EXE_PATH}/iso-exe" fgg -o "${iso_fgg_dir}/${ofile}" -c ${file}
-    done
+    run_command "${iso_fgg_dir}" ".json" "-iso.txt" \
+                "python ${FGG_EXE_PATH}/bin/sum_product.py" "${iso_fgg_result_dir}" \
+                "-d" ">"
 
-    for file in $(find "${iso_fgg_dir}" -type f -name "*.json" | sort -V); do
-        ofile="$(basename ${file} .json)"-iso.txt
-        echo "Computing ${file}"
-        time python "${FGG_EXE_PATH}/bin/sum_product.py" -d ${file} > "${iso_fgg_result_dir}/${ofile}"
-        ret=$?
-        if [ ${ret} -ne 0 ]; then
-            echo "Stop at ${file}, the error code is non-zero (${ret})"
-            break
-        fi
-    done
+    run_command "${qiskit_suite_dir}" ".py" "-qiskit.txt" \
+                "python" "${qiskit_result_dir}" \
+                "" ">"
 
-    if [ "true" == "${do_python}" ]; then
-        for file in $(find "${qiskit_suite_dir}" -type f -name "*.py" | sort -V); do
-            ofile="$(basename ${file} .py)"-qiskit.txt
-            echo "Computing ${file}"
-            time python ${file} > "${qiskit_result_dir}/${ofile}"
-            ret=$?
-            if [ ${ret} -ne 0 ]; then
-                echo "Stop at ${file}, the error code is non-zero (${ret})"
-                break
-            fi
-        done
-    fi
+    run_command "${qsim_suite_dir}" ".py" "-qsim.txt" \
+                "python" "${qsim_result_dir}" \
+                "" ">"
+
+    run_command "${qtorch_suite_dir}" ".sim" "-qtorch.txt" \
+                "qtorch" "${qtorch_result_dir}" \
+                "" ">"
 }
 
 #### Run benchmarks
