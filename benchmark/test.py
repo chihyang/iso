@@ -28,6 +28,47 @@ def get_safe_memory_limit(ratio=0.95):
 def create_dir_if_needed(dir_name):
     Path(dir_name).mkdir(parents=True, exist_ok=True)
 
+def get_subdirs(d):
+    return set(sub for sub in os.listdir(d) if os.path.isdir(os.path.join(d, sub)))
+
+def discover_tags(prefix):
+    """
+    Identifies all TARGET directories and verifies they all
+    contain the exact same set of subdirectories (Tags).
+    """
+    all_entries = os.listdir('.')
+    target_dirs = sorted([d for d in all_entries if os.path.isdir(d) and d.startswith(prefix)])
+
+    if not target_dirs:
+        print(f"Error: No folders found starting with prefix: '{prefix}'")
+        sys.exit(1)
+
+    # Use first directory as the gold standard
+    master_target = target_dirs[0]
+    master_tags = get_subdirs(master_target)
+
+    if not master_tags:
+        print(f"Error: No subdirectories (tags) found in '{master_target}'.")
+        sys.exit(1)
+
+    # Verify consistency
+    mismatched = False
+    for td in target_dirs[1:]:
+        current_tags = get_subdirs(td)
+        if current_tags != master_tags:
+            mismatched = True
+            missing = master_tags - current_tags
+            extra = current_tags - master_tags
+            print(f"Structure Mismatch in '{td}':")
+            if missing: print(f"  - Missing: {missing}")
+            if extra:   print(f"  - Extra: {extra}")
+
+    if mismatched:
+        sys.exit(1)
+
+    print(f"Verification successful. Targets: {len(target_dirs)}, Tags: {len(master_tags)}")
+    return sorted(master_tags)
+
 
 def check_tool(tool_path):
     if not Path(tool_path).is_file():
@@ -220,12 +261,9 @@ def run_benchmark(suite_name, opts):
                 writer.writerow(row)
 
 def run_test(opts):
-    run_benchmark("had-last-qubit", opts)
-    run_benchmark("deutsch-jozsa-to-zero-simplified", opts)
-    run_benchmark("deutsch-jozsa-is-even-simplified", opts)
-    run_benchmark("deutsch-jozsa-is-even", opts)
-    run_benchmark("simon", opts)
-    run_benchmark("qft", opts)
+    benches = discover_tags(opts.benchmark_root)
+    for bench in benches:
+        run_benchmark(bench, opts)
 
 
 def main():

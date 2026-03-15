@@ -40,7 +40,7 @@
 (define (to-one n) 1)
 
 (define (is-even n)
-  (if (even? n) 0 1))
+  (if (even? n) 1 0))
 
 (define (simon-f size c)
   (λ (n)
@@ -51,6 +51,23 @@
   (let ((circ (to-gate (had-to-last in-size)
                 (para hadamard (range (sub1 in-size) in-size)))))
     (apply-gate circ in-size)))
+
+;;; Bell state
+(define (bell-cx in-size)
+  (cond
+    ((zero? in-size) (empty-circ))
+    ((zero? (sub1 in-size)) (apply-circ hadamard 0))
+    (else
+     (casc
+      ,(apply-circ hadamard 0)
+      ,(append* (map (λ (v) (apply-circ cx v (add1 v)))
+                     (range 0 (sub1 in-size))))))))
+
+(define (bell-state-spec f in-size out-size)
+  (let* ((n in-size)
+         (circ (to-gate (bell-state n)
+                  ,(bell-cx in-size))))
+    (apply-gate circ 0)))
 
 ;;; General Deutsch-Jozsa
 (define (deutsch-jozsa-spec f in-size out-size)
@@ -76,7 +93,9 @@
   (let* ((n (add1 in-size))
          (circ (to-gate (deutsch n)
                  (para hadamard (range 0 n))
+                 (para x (range (- n 2) (- n 1)))
                  (para cx (range (- n 2) n))
+                 (para x (range (- n 2) (- n 1)))
                  (para hadamard (range 0 in-size)))))
     (apply-gate circ 1)))
 
@@ -112,7 +131,7 @@
     (apply-gate circ 1)))
 
 ;;; General Simon
-(define (simon-spec f in-size out-size)
+(define (simon-decompose-spec f in-size out-size)
   (let* ((n (+ in-size out-size))
          (uf (to-permutation uf in-size out-size f))
          (circ (to-gate (simon n)
@@ -121,11 +140,20 @@
                  (para hadamard (range 0 in-size)))))
     (apply-gate circ (sub1 (expt 2 out-size)))))
 
+(define (simon-big-matrix-spec f in-size out-size)
+  (let* ((n (+ in-size out-size))
+         (uf (to-unitary uf in-size out-size f))
+         (circ (to-gate (simon n)
+                 (para hadamard (range 0 in-size))
+                 (uf (range 0 n))
+                 (para hadamard (range 0 in-size)))))
+    (apply-gate circ (sub1 (expt 2 out-size)))))
+
 ;;; Grover's algorithm
-(define (mcz size)
+(define (mc-rz size)
   (casc
    (hadamard (sub1 size))
-   ((mc size) (range 0 size))
+   ((mcx size) (range 0 size))
    (hadamard (sub1 size))))
 
 (define (grover-wrap-x size w)
@@ -143,7 +171,7 @@
   (let ((wrap-seq (grover-wrap-x size w)))
     (casc
      ,wrap-seq
-     ,(mcz size)
+     ,(mc-rz size)
      ,(reverse wrap-seq))))
 
 ;;; A = 2|s⟩⟨s| - I
@@ -151,7 +179,7 @@
 (define (grover-b size)
   (casc
    (para hadamard (range 0 size))
-   ,(mcz size)
+   ,(mc-rz size)
    (para hadamard (range 0 size))))
 
 (define (grover-iteration A B times)
@@ -204,6 +232,11 @@
                  ,(qft in-size 0))))
     (apply-gate circ 0)))
 
+;;; Decomposed MCX in an exponential way
+(define (mcx-spec f in-size out-size)
+  (let* ((circ (mcx in-size)))
+    (apply-gate circ 0)))
+
 ;;; Generate cases
 (define (gen-one-benchmark case-generator algo-name simulator spec oracle f-out-size qubits)
   (parameterize ((working-directory (build-path (working-directory)
@@ -228,36 +261,49 @@
    all-specs
    (map car (supported-simulators))))
 
+(define (gen-bell-state tag)
+  (define algo-name tag)
+  (define spec bell-state-spec)
+  (define oracle unused)
+  (define out-size unused)
+  (define qubits (range 1 41))
+  (gen-benchmarks algo-name spec oracle out-size qubits))
+
 (define (gen-had-case tag)
   (define algo-name tag)
   (define spec had-to-last-spec)
   (define oracle unused)
   (define out-size unused)
-  (define qubits (range 1 20))
+  (define qubits (range 1 41))
   (gen-benchmarks algo-name spec oracle out-size qubits))
 
-(define (gen-dj-case tag specs oracle^)
+(define (gen-dj-case tag specs oracle^ qubits)
   (define algo-name tag)
   (define spec specs)
   (define oracle (λ (_) oracle^))
   (define out-size (λ (_) 1))
-  (define qubits (range 1 20))
   (gen-benchmarks algo-name spec oracle out-size qubits))
 
-(define (gen-simon-case tag)
+(define (gen-simon-decompose-case tag qubits)
   (define algo-name tag)
-  (define spec simon-spec)
+  (define spec simon-decompose-spec)
   (define oracle (λ (in-size) (simon-f in-size (sub1 (expt 2 in-size)))))
   (define out-size identity)
-  (define qubits (range 1 5))
+  (gen-benchmarks algo-name spec oracle out-size qubits))
+
+(define (gen-simon-big-matrix-case tag qubits)
+  (define algo-name tag)
+  (define spec simon-big-matrix-spec)
+  (define oracle (λ (in-size) (simon-f in-size (sub1 (expt 2 in-size)))))
+  (define out-size identity)
   (gen-benchmarks algo-name spec oracle out-size qubits))
 
 (define (gen-grover-case w tag)
   (define algo-name tag)
-  (define spec (grover-spec w))
-  (define oracle (λ (in-size) (λ (_) (/ (expt 2 in-size) 2))))
+  (define spec grover-spec)
+  (define oracle (λ (in-size) (λ (_) w)))
   (define out-size unused)
-  (define qubits (range 1 10))
+  (define qubits (range 1 8))
   (gen-benchmarks algo-name spec oracle out-size qubits))
 
 (define (gen-qft tag)
@@ -268,21 +314,29 @@
   (define qubits (range 1 20))
   (gen-benchmarks algo-name spec oracle out-size qubits))
 
+(define (gen-mcx tag)
+  (define algo-name tag)
+  (define spec mcx-spec)
+  (define oracle unused)
+  (define out-size unused)
+  (define qubits (range 1 8))
+  (gen-benchmarks algo-name spec oracle out-size qubits))
+
 (define (gen-cases)
   (gen-had-case 'had-last-qubit)
-  (gen-dj-case 'deutsch-jozsa-is-even
-               (list iso-deutsch-jozsa-is-even
-                     qiskit-deutsch-jozsa-is-even
-                     simplified-deutsch-jozsa-is-even
-                     simplified-deutsch-jozsa-is-even)
-               is-even)
-  (gen-dj-case 'deutsch-jozsa-to-zero-simplified simplified-deutsch-jozsa-to-zero to-zero)
-  (gen-dj-case 'deutsch-jozsa-is-even-simplified simplified-deutsch-jozsa-is-even is-even)
+  (gen-bell-state 'bell-state)
+  (gen-dj-case 'deutsch-jozsa-is-even deutsch-jozsa-spec is-even (range 1 5))
+  (gen-dj-case 'deutsch-jozsa-to-zero-simplified simplified-deutsch-jozsa-to-zero to-zero (range 1 21))
+  (gen-dj-case 'deutsch-jozsa-is-even-simplified simplified-deutsch-jozsa-is-even is-even (range 1 21))
+  (parameterize [(supported-simulators `((iso    . ,gen-iso-case)
+                                         (qiskit . ,gen-qiskit-case)
+                                         (qsim   . ,gen-cirq-case)))]
+    (gen-simon-big-matrix-case 'simon (range 1 5)))
   #;
-  (gen-simon-case 'simon)
-  #;
-  (gen-grover-case 'grover)
-  (gen-qft 'qft))
+  (gen-simon-decompose-case 'simon-decompose (range 1 4))
+  (gen-grover-case 0 'grover)
+  (gen-qft 'qft)
+  (gen-mcx 'mcx))
 
 (command-line
  #:program "cases"

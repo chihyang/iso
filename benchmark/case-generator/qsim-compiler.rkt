@@ -3,9 +3,10 @@
          racket/format)
 (require racket/trace)
 (provide define-gate define-permutation to-gate to-permutation
+         to-unitary define-unitary
          para casc n-casc
          scircuit qcircuit
-         hadamard x cx mc
+         hadamard x cx mcx
          rx ry rz phase
          val->bits apply-gate apply-circ empty-circ
          to-iso to-iso/port
@@ -93,6 +94,11 @@
 (define (phase deg)
   (make-circuit 'phase 1 `(,deg)))
 
+(define (mcx size)
+  (make-circuit (string->symbol (format "bmc~a" size))
+                size
+                (decompose-mcx size (map cons (range size) (range size)))))
+
 (define builtin-gates
   '(hadamard neg cx swap))
 
@@ -126,6 +132,16 @@
            (list (+ (arithmetic-shift x qnum-out) (bitwise-xor y (f x)))
                  (+ (arithmetic-shift x qnum-out) y))))))))
 
+(define-syntax (define-unitary stx)
+  (syntax-parse stx
+    [(_ name in-size out-size f)
+     #'(define name (to-unitary name in-size out-size f))]))
+
+(define-syntax (to-unitary stx)
+  (syntax-parse stx
+    [(_ name in-size out-size f)
+     #'(make-unitary 'name (+ in-size out-size) (make-value-table f in-size out-size))]))
+
 (define-syntax (define-permutation stx)
   (syntax-parse stx
     [(_ name in-size out-size f)
@@ -134,7 +150,7 @@
 (define-syntax (to-permutation stx)
   (syntax-parse stx
     [(_ name in-size out-size f)
-     #'(make-unitary 'name (+ in-size out-size) (make-value-table f in-size out-size))]))
+     #'(make-circuit 'name (+ in-size out-size) (permutation->gates f in-size out-size))]))
 
 (define (empty-circ) '())
 
@@ -300,16 +316,119 @@
 
 ;;; Decompose a unitary map to transpositions (two-cycles) in cyclic notation.
 ;;; permutation->gates : List((Nat, Nat)) -> List(Spec)
-(define (permutation->gates transpositions)
-  (append*
-   (map (λ (qids)
-          (match (sort qids <)
-            (`(,a ,d) #:when (eqv? (add1 a) d)
-             (make-spec (swap a d)))
-            (`(,a ,d)
-             (make-spec (swap a d)))))
-        transpositions)))
+(define (permutation->gates f in-size out-size)
+  (let* ((size (+ in-size out-size))
+         (transpositions (unitary-decompose (make-value-table f in-size out-size)))
+         (bits (map (λ (v) (cons (val->bits size (car v)) (val->bits size (cadr v))))
+                    transpositions)))
+    (append*
+     (map (λ (t) (compile-cycle (decompose-cycle (car t) (cdr t) 0)))
+          bits))))
 
+;;; Given a unitary (a list of spec), make another controlled unitary
+(define (make-mc head-id spec rev)
+  (match spec
+    (`(,(circuit 'neg 1    '()) . ,_) #:when (equal? spec rev) spec)
+    (`(,(circuit 'neg 1    '()) . ,ids) `(,(mc 2) . ,(cons head-id ids)))
+    (`(,(circuit 'mc  size '()) . ,ids) `(,(mc (add1 size)) . ,(cons head-id ids)))))
+
+(define (distribute-mc head-id specs)
+  (let ((rev (reverse (if (even? (length specs))
+                          specs
+                          (list-set specs (floor (/ (length specs) 2)) #f)))))
+    (map ((curry make-mc) head-id) specs rev)))
+
+(define (pick-zeros bits head-id)
+  (match bits
+    ('() '())
+    (`(0 . ,bits^) (cons head-id (pick-zeros bits^ (add1 head-id))))
+    (`(1 . ,bits^) (pick-zeros bits^ (add1 head-id)))))
+
+(define (para-x bits head-id)
+  (map ((curry cons) x) ; x : the x gate
+       (split-list (pick-zeros bits head-id) 1)))
+
+(define (apply-mc mc ids)
+  (list (cons mc ids)))
+
+(define (wrap spec-1 spec)
+  (casc ,spec-1 ,spec ,(reverse spec-1)))
+
+;;; Decompose a transposition into a sequence of multicontrol gates and x gates
+;;; decompose-cycle : List(Bit) List(Bit) Nat -> List(Spec)
+(define (decompose-cycle bits1 bits2 head-id)
+  (match `(,bits1 ,bits2)
+    (`(,_ ,_) #:when (equal? bits1 bits2) '())
+    (`((0 . ,bits1^) (0 . ,bits2^))
+     (wrap
+      (apply-circ x head-id)
+      (distribute-mc head-id (decompose-cycle bits1^ bits2^ (add1 head-id)))))
+    (`((0 . ,bits1^) (1 . ,bits2^))
+     #:when (equal? bits1^ bits2^)
+     (wrap
+      (para-x bits1^ (add1 head-id))
+      (apply-mc (mc (length bits1)) (reverse (range head-id (+ head-id (length bits1)))))))
+    (`((0 . ,bits1^) (1 . ,bits2^))
+     (wrap
+      (decompose-cycle `(0 . ,bits1^) `(1 . ,bits1^) head-id)
+      (decompose-cycle `(1 . ,bits1^) `(1 . ,bits2^) head-id)))
+    (`((1 . ,bits1^) (0 . ,bits2^))
+     (decompose-cycle `(0 . ,bits2^) `(1 . ,bits1^) head-id))
+    (`((1 . ,bits1^) (1 . ,bits2^))
+     (distribute-mc head-id (decompose-cycle bits1^ bits2^ (add1 head-id))))))
+
+(define (compile-cycle specs)
+  (append* (map process-mcx specs)))
+
+(define (process-mcx spec)
+  (match spec
+    (`(,(circuit 'mc  size '()) . ,ids)
+     (decompose-mcx size (map cons (range size) ids)))
+    (_ (list spec))))
+
+;;; Decompose a multi-controlled phase gate into into one-qubit and two-qubit
+;;; gate sequences.
+(define (mcp deg size id-map)
+  (cond
+    ((eqv? size 2)
+     (casc
+      ,(apply-circ (rz (/ deg 2)) (dict-ref id-map 1))
+      ,(apply-circ cx (dict-ref id-map 0) (dict-ref id-map 1))
+      ,(apply-circ (rz (- (/ deg 2))) (dict-ref id-map 1))
+      ,(apply-circ cx (dict-ref id-map 0) (dict-ref id-map 1))
+      ,(apply-circ (phase (/ deg 2)) (dict-ref id-map 0))))
+    (else
+     (casc
+      ,(apply-circ (rz (/ deg 2)) (dict-ref id-map (sub1 size)))
+      ,(decompose-mcx size id-map)
+      ,(apply-circ (rz (- (/ deg 2))) (dict-ref id-map (sub1 size)))
+      ,(decompose-mcx size id-map)
+      ,(mcp deg (sub1 size) id-map)))))
+
+(define (mcz deg size id-map)
+  (casc
+   ,(apply-circ hadamard (dict-ref id-map (sub1 size)))
+   ,(mcp deg size id-map)
+   ,(apply-circ hadamard (dict-ref id-map (sub1 size)))))
+
+(define (decompose-mcx size id-map)
+  (cond
+    ((eqv? size 1) (apply-circ x (dict-ref id-map 0)))
+    ((eqv? size 2) (casc (cx (dict-ref id-map 0) (dict-ref id-map 1))))
+    (else
+     (let* ((id-1 (dict-ref id-map (- size 2)))
+            (id-2 (dict-ref id-map (- size 1)))
+            (mcz-map-1 (make-hash `((0 . ,id-1) (1 . ,id-2))))
+            (mcz-map-2 (dict-set id-map (- size 2) (dict-ref id-map (sub1 size))))
+            (deg (/ pi 2)))
+       (casc
+        ,(mcz deg 2 mcz-map-1)
+        ,(decompose-mcx (sub1 size) id-map)
+        ,(mcz (- deg) 2 mcz-map-1)
+        ,(decompose-mcx (sub1 size) id-map)
+        ,(mcz deg (sub1 size) mcz-map-2))))))
+
+;;; Helper functions for all
 (define (name-conflict name)
   (memv name (append builtin-gates rotation-gates)))
 
@@ -758,7 +877,7 @@ from qiskit_aer import Aer, AerSimulator"))
   (format "~a = QuantumCircuit(~a)" (generate-qiskit-name name) size))
 
 (define (generate-qiskit-circ-args size qids)
-  (join (map (λ (id) (number->string (- size id 1))) qids) ", "))
+  (join (map (λ (id) (number->string id)) qids) ", "))
 
 (define ((generate-qiskit-circ-spec name size) spec)
   (match spec
@@ -835,7 +954,7 @@ from qiskit_aer import Aer, AerSimulator"))
              final)
      (format "result = job.result()")
      (format "print(f'execution time: {result.time_taken}')")
-     (format "state = result.get_statevector()")
+     (format "state = result.get_statevector().reverse_qargs()")
      (format "print(state)"))))
 
 (define (generate-qiskit-prog prog)
@@ -907,7 +1026,7 @@ from qiskit_aer import Aer, AerSimulator"))
             (format "~a ~a" (generate-qiskit-rotation-name g (car (gate-spec gate))) (generate-qasm-qids qids id-map))
             (format "~a ~a ~a" (generate-qasm-name g) (car (gate-spec gate)) (generate-qasm-qids qids id-map))))
        (`,g #:when (memv g qasm-builtin) (format "~a ~a" g (generate-qasm-qids qids id-map)))
-       (`,g (generate-qasm-circ g (gate-size gate) (map cons (range (gate-size gate) id-map)) (gate-spec spec)))))))
+       (`,g (generate-qasm-circ g (gate-size gate) (map cons (range (gate-size gate)) qids) (gate-spec gate)))))))
 
 (define (generate-qasm-circ name size id-map spec)
   (map (generate-qasm-circ-spec name size id-map) spec))
@@ -990,7 +1109,9 @@ from qiskit_aer import Aer, AerSimulator"))
      (display (generate-qasm-phase-file deg) port))))
 
 (define (generate-qasm-unitary-defs! prog port)
-  (for-each (λ (c) (generate-qasm-unitary-file! c port))
+  (for-each (λ (c)
+              (generate-qasm-unitary-file! c port)
+              (display "\n"))
             (collect-qasm-defs prog)))
 
 (define (generate-qasm-measurement prog)
@@ -1125,7 +1246,7 @@ import qsimcirq")
        (`,g #:when (memv g cirq-builtin)
         (generate-cirq-circ-append circ-name (format "cirq.~a" (generate-cirq-name g)) qids-name qids))
        (`,g
-        (generate-cirq-circ-append circ-name (generate-cirq-name g) qids-name qids))))))
+        (join (map (generate-cirq-circ-spec circ-name qids-name) (gate-spec gate)) "\n"))))))
 
 (define (generate-cirq-class name size array)
   (format
