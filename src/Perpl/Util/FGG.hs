@@ -15,6 +15,9 @@ import Perpl.Util.Helpers
 import Perpl.Util.Tensor
 import Perpl.Util.JSON
 import Data.List (intercalate)
+import Crypto.Hash (hash, Digest, SHA256)
+import qualified Data.ByteArray.Encoding as Encoding
+import qualified Data.ByteString.Char8 as B
 import Debug.Trace (trace)
 
 -- Domain contains the size and a list of all values.
@@ -113,6 +116,16 @@ data FGG a = FGG {
   rules :: [Rule]                                        -- rules
 }
 
+-- | Converts a 'Show' string into a short, dense 12-character ID
+hashId :: String -> String
+hashId code =
+    let digest = hash (B.pack code) :: Digest SHA256
+        base64 = Encoding.convertToBase Encoding.Base64URLUnpadded digest :: B.ByteString
+    in B.unpack base64
+
+strToJson :: Show a => a -> String
+strToJson v = hashId (show v)
+
 weight_to_json :: Weight -> JSON
 weight_to_json (r :+ 0) = JSdouble r
 weight_to_json (r :+ i) = JSarray [JSdouble r, JSdouble i]
@@ -127,23 +140,23 @@ fgg_to_json si (FGG ds fs nts s rs) =
   JSobject
     [("grammar", JSobject
       [("terminals", mapToList fs $
-         \ (el, (d, mws)) -> (show el, JSobject [("type", JSarray [JSstring (show nl) | nl <- d])])),
+         \ (el, (d, mws)) -> (strToJson el, JSobject [("type", JSarray [JSstring (strToJson nl) | nl <- d])])),
        ("nonterminals", mapToList nts $
-         \ (el, d) -> (show el, JSobject [
-           ("type", JSarray [JSstring (show nl) | nl <- d])
+         \ (el, d) -> (strToJson el, JSobject [
+           ("type", JSarray [JSstring (strToJson nl) | nl <- d])
          ])),
-       ("start", JSstring (show s)),
+       ("start", JSstring (strToJson s)),
        ("rules", JSarray $ flip map rs $
           \ (Rule lhs (HGF ns es xs)) ->
             let m = Map.fromList (zip (fsts ns) [0..]) in
             JSobject [
-             ("lhs", JSstring (show lhs)),
+             ("lhs", JSstring (strToJson lhs)),
              ("rhs", JSobject [
-                 ("nodes", JSarray [JSobject [("label", JSstring (show d)), ("id", JSstring (show n))] | (n, d) <- ns]),
+                 ("nodes", JSarray [JSobject [("label", JSstring (strToJson d)), ("id", JSstring (show n))] | (n, d) <- ns]),
                  ("edges", JSarray $ flip map es $
                    \ (Edge atts el) -> JSobject [
                      ("attachments", JSarray [JSint (m Map.! n) | (n, d) <- atts]),
-                     ("label", JSstring (show el))
+                     ("label", JSstring (strToJson el))
                    ]),
                  ("externals", JSarray [JSint (m Map.! n) | (n, d) <- xs])
                ])
@@ -153,19 +166,19 @@ fgg_to_json si (FGG ds fs nts s rs) =
        ("domains", mapToList ds $
          \ (nl, Domain sz dom) ->
            if si
-           then (show nl, JSobject [
+           then (strToJson nl, JSobject [
                           ("class", JSstring "range"),
                           ("size", JSint sz)
                           ])
-           else (show nl, JSobject [
+           else (strToJson nl, JSobject [
                              ("class", JSstring "finite"),
                              ("values", JSarray $ [JSstring v | DValue v <- dom])
                              ])),
        ("factors",
           mapToList fs $
-           \ (el, (d, ws)) -> (show el, JSobject [
+           \ (el, (d, ws)) -> (strToJson el, JSobject [
              ("function", JSstring "finite"),
-               ("type", JSarray [JSstring (show nl) | nl <- d]),
+               ("type", JSarray [JSstring (strToJson nl) | nl <- d]),
                ("weights", weights_to_json weight_to_json ws)
              ]))
         ])

@@ -1,6 +1,6 @@
 cabal-version: 2.2
 
--- This file has been generated from package.yaml by hpack version 0.36.0.
+-- This file has been generated from package.yaml by hpack version 0.38.0.
 --
 -- see: https://github.com/sol/hpack
 
@@ -66,8 +66,10 @@ library
     , bytestring >=0.11.5.3
     , cmdargs >=0.10.22
     , containers >=0.6.7
+    , crypton >=0.34
     , flatparse >=0.5.0.2
     , matrix >=0.3.6.3
+    , memory >=0.18.0
     , mtl >=2.3.1
     , repline >=0.4.2.0
     , semirings >=0.6
@@ -88,9 +90,11 @@ executable iso-exe
     , bytestring >=0.11.5.3
     , cmdargs >=0.10.22
     , containers >=0.6.7
+    , crypton >=0.34
     , flatparse >=0.5.0.2
     , iso
     , matrix >=0.3.6.3
+    , memory >=0.18.0
     , mtl >=2.3.1
     , repline >=0.4.2.0
     , semirings >=0.6
@@ -112,9 +116,11 @@ test-suite iso-test
     , bytestring >=0.11.5.3
     , cmdargs >=0.10.22
     , containers >=0.6.7
+    , crypton >=0.34
     , flatparse >=0.5.0.2
     , iso
     , matrix >=0.3.6.3
+    , memory >=0.18.0
     , mtl >=2.3.1
     , repline >=0.4.2.0
     , semirings >=0.6
