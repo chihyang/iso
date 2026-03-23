@@ -128,7 +128,7 @@ strToJson v = hashId (show v)
 
 weight_to_json :: Weight -> JSON
 weight_to_json (r :+ 0) = JSdouble r
-weight_to_json (r :+ i) = JSarray [JSdouble r, JSdouble i]
+weight_to_json (r :+ i) = JSobject [("re", JSdouble r), ("im", JSdouble i)]
 
 {- fgg_to_json fgg
 
