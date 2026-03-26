@@ -117,7 +117,8 @@ WORKDIR /benchmark
 RUN ln -s /workspace/iso/benchmark/benchmark-meta-data /benchmark/benchmark-meta-data && \
     ln -s /workspace/iso/benchmark/benchmark_cli.py /benchmark/benchmark_cli.py && \
     ln -s /workspace/iso/benchmark/run_benchmark_small.sh /benchmark/run_benchmark_small.sh && \
-    ln -s /workspace/iso/benchmark/run_benchmark_full.sh /benchmark/run_benchmark_full.sh
+    ln -s /workspace/iso/benchmark/run_benchmark_full.sh /benchmark/run_benchmark_full.sh && \
+    ln -s /workspace/iso/benchmark/result_2026_03_14 /benchmark/result_2026_03_14
 ENV PATH="/benchmark/:${PATH}"
 
 CMD ["/bin/bash"]
