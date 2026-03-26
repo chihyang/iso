@@ -1097,7 +1097,7 @@ def run_generate_mode(opts: GenerateConfig) -> None:
     iso_dir = os.path.join(root, "iso")
 
     for tag in opts.variants:
-        benchmark_dir_name = f"{opts.prefix}-{tag}"
+        benchmark_dir_name = f"{iso_dir}/{opts.prefix}-{tag}"
         run_process(
             ["racket", "benchmark/case-generator/cases.rkt", "-d", benchmark_dir_name],
             cwd=iso_dir,
