@@ -66,7 +66,6 @@ RUN make
 
 WORKDIR /workspace/iso
 RUN git checkout oopsla && \
-    stack build && \
     stack install --local-bin-path /usr/local/bin
 
 ############################
