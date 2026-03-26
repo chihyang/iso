@@ -1,0 +1,507 @@
+\documentclass[acmsmall,screen]{acmart}
+\pagestyle{plain}
+
+\usepackage{tikz}
+\usetikzlibrary{matrix,fit,quantikz}
+\usepackage{pgfplots}
+\usepgfplotslibrary{groupplots,colorbrewer}
+\newcommand{\expand}{\mathop{\mathsf{expand}}}
+
+%%
+%% end of the preamble, start of the body of the document source.
+\begin{document}
+\begin{figure}
+\pgfplotsset{
+  small,
+  compat=1.5,
+  every tick label/.append style={font=\tiny},
+  label style={font=\footnotesize},
+  title style={font=\footnotesize},
+  ymode=log,
+  table/col sep=comma,
+  colormap/Paired-10,
+  % styles
+  fggi/.style={
+    color=Set1-A,
+    mark=*,
+    solid,
+    mark size=1.8pt,
+    mark options={draw=Paired-F},
+  },
+  fggp/.style={
+    color=Set1-B,
+    mark=square*,
+    solid,
+    mark size=1.8pt,
+    mark options={draw=Paired-B,rotate=45},
+  },
+  qiskit/.style={
+    color=Set1-C,
+    mark=Mercedes star,
+    solid,
+    mark size=1.8pt,
+  },
+  cirq/.style={
+    color=Set1-D,
+    mark=x,
+    solid,
+    mark size=1.8pt,
+  },
+  qtorch/.style={
+    color=Set1-E,
+    mark=star,
+    solid,
+    mark size=1.8pt,
+  },
+  gates/.style={
+    color=gray,
+    mark=none,
+    dotted,
+    semithick,
+  },
+}
+\begin{center}
+\begin{tikzpicture}
+  \begin{groupplot}[group style={group size=2 by 3, group name=b1},
+    group/horizontal sep=4em,
+    group/vertical sep=5em]
+    \nextgroupplot[
+    xlabel={Number of qubits},
+    ylabel={Running time (seconds)},
+    axis y line*=left,
+    title={Hadamard to the last qubit},
+    legend style={
+      at={(0.5,-0.1)},
+      anchor=north,legend columns=-1,
+      font=\footnotesize,
+      draw=none,
+      legend columns=2,
+      legend cell align={left},
+    },
+    legend to name=benchmark1,
+    mark repeat=8,
+    ]
+    \addplot[fggi] table[x=qubit-number, y=had-last-qubit-all_opt:iso-fgg-total] {benchmark/2026-03-14/had-last-qubit.csv};
+    \addplot[fggp, mark phase=3] table[x=qubit-number, y=had-last-qubit-all_opt:iso-perpl-fgg-total] {benchmark/2026-03-14/had-last-qubit.csv};
+    \addplot[qiskit] table[x=qubit-number, y=had-last-qubit-avg:qiskit-simulation] {benchmark/2026-03-14/had-last-qubit.csv};
+    \addplot[cirq] table[x=qubit-number, y=had-last-qubit-avg:qsim-simulation] {benchmark/2026-03-14/had-last-qubit.csv};
+    \addplot[qtorch] table[x=qubit-number, y=had-last-qubit-avg:qtorch-simulation-full] {benchmark/2026-03-14/had-last-qubit.csv};
+
+    \addlegendentry{FGG simulation with $\expand$ and $\bigl[\begin{smallmatrix}1&0\\0&1\end{smallmatrix}\bigr]$ opts};
+    \addlegendentry{FGG simulation with $\expand$ and $\bigl[\begin{smallmatrix}1&0\\0&1\end{smallmatrix}\bigr]$ opts, through PERPL};
+    \addlegendentry{Qiskit};
+    \addlegendentry{qsim};
+    \addlegendentry{qTorch};
+    \addlegendimage{gates};
+    \addlegendentry{Number of gates};
+
+    \nextgroupplot[
+    xlabel={Number of qubits},
+    axis y line*=left,
+    title={Deutsch-Jozsa with the even oracle},
+    mark repeat=4,
+    ]
+    \addplot[fggi] table[x=qubit-number, y=deutsch-jozsa-is-even-simplified-all_opt:iso-fgg-total] {benchmark/2026-03-14/deutsch-jozsa-is-even-simplified.csv};
+    \addplot[fggp, mark phase=3] table[x=qubit-number, y=deutsch-jozsa-is-even-simplified-all_opt:iso-perpl-fgg-total] {benchmark/2026-03-14/deutsch-jozsa-is-even-simplified.csv};
+    \addplot[qiskit] table[x=qubit-number, y=deutsch-jozsa-is-even-simplified-avg:qiskit-simulation] {benchmark/2026-03-14/deutsch-jozsa-is-even-simplified.csv};
+    \addplot[cirq] table[x=qubit-number, y=deutsch-jozsa-is-even-simplified-avg:qsim-simulation] {benchmark/2026-03-14/deutsch-jozsa-is-even-simplified.csv};
+    \addplot[qtorch] table[x=qubit-number, y=deutsch-jozsa-is-even-simplified-avg:qtorch-simulation-full] {benchmark/2026-03-14/deutsch-jozsa-is-even-simplified.csv};
+
+    \nextgroupplot[
+    xlabel={Number of qubits},
+    ylabel={Running time (seconds)},
+    axis y line*=left,
+    title={Simon's},
+    mark repeat=1,
+    ]
+    \addplot[fggi] table[x=qubit-number, y=simon-all_opt:iso-fgg-total] {benchmark/2026-03-14/simon.csv};
+    \addplot[fggp] table[x=qubit-number, y=simon-all_opt:iso-perpl-fgg-total] {benchmark/2026-03-14/simon.csv};
+    \addplot[qiskit] table[x=qubit-number, y=simon-avg:qiskit-simulation] {benchmark/2026-03-14/simon.csv};
+    \addplot[cirq] table[x=qubit-number, y=simon-avg:qsim-simulation] {benchmark/2026-03-14/simon.csv};
+    \addplot[qtorch] table[x=qubit-number, y=simon-avg:qtorch-simulation-full] {benchmark/2026-03-14/simon.csv};
+
+    \nextgroupplot[
+    xlabel={Number of qubits},
+    axis y line*=left,
+    title={Decomposed $C^{n}(X)$},
+    mark repeat=2,
+    ]
+    \addplot[fggi] table[x=qubit-number, y=mcx-all_opt:iso-fgg-total] {benchmark/2026-03-14/mcx.csv};
+    \addplot[fggp] table[x=qubit-number, y=mcx-all_opt:iso-perpl-fgg-total] {benchmark/2026-03-14/mcx.csv};
+    \addplot[qiskit] table[x=qubit-number, y=mcx-avg:qiskit-simulation] {benchmark/2026-03-14/mcx.csv};
+    \addplot[cirq] table[x=qubit-number, y=mcx-avg:qsim-simulation] {benchmark/2026-03-14/mcx.csv};
+    \addplot[qtorch] table[x=qubit-number, y=mcx-avg:qtorch-simulation-full] {benchmark/2026-03-14/mcx.csv};
+
+    \nextgroupplot[
+    xlabel={Number of qubits},
+    ylabel={Running time (seconds)},
+    axis y line*=left,
+    title={QFT},
+    mark repeat=2,
+    ]
+    \addplot[fggi] table[x=qubit-number, y=qft-all_opt:iso-fgg-total] {benchmark/2026-03-14/qft.csv};
+    \addplot[fggp] table[x=qubit-number, y=qft-all_opt:iso-perpl-fgg-total] {benchmark/2026-03-14/qft.csv};
+    \addplot[qiskit] table[x=qubit-number, y=qft-avg:qiskit-simulation] {benchmark/2026-03-14/qft.csv};
+    \addplot[cirq] table[x=qubit-number, y=qft-avg:qsim-simulation] {benchmark/2026-03-14/qft.csv};
+    \addplot[qtorch] table[x=qubit-number, y=qft-avg:qtorch-simulation-full] {benchmark/2026-03-14/qft.csv};
+
+    \nextgroupplot[
+    xlabel={Number of qubits},
+    axis y line*=left,
+    title={Grover},
+    mark repeat=2,
+    ]
+    \addplot[fggi] table[x=qubit-number, y=grover-all_opt:iso-fgg-total] {benchmark/2026-03-14/grover.csv};
+    \addplot[fggp] table[x=qubit-number, y=grover-all_opt:iso-perpl-fgg-total] {benchmark/2026-03-14/grover.csv};
+    \addplot[qiskit] table[x=qubit-number, y=grover-avg:qiskit-simulation] {benchmark/2026-03-14/grover.csv};
+    \addplot[cirq] table[x=qubit-number, y=grover-avg:qsim-simulation] {benchmark/2026-03-14/grover.csv};
+    \addplot[qtorch] table[x=qubit-number, y=grover-avg:qtorch-simulation-full] {benchmark/2026-03-14/grover.csv};
+  \end{groupplot}
+
+  \begin{axis}[
+    at={(b1 c1r1.south west)},
+    anchor=south west,
+    axis x line=none,
+    axis y line*=right,
+    ymode=log,
+    ]
+    \addplot[gates] table[x=qubit-number, y=gate-number] {benchmark/2026-03-14/had-last-qubit.csv};
+  \end{axis}
+
+  \begin{axis}[
+    at={(b1 c2r1.south west)},
+    anchor=south west,
+    axis x line=none,
+    axis y line*=right,
+    ymode=log,
+    ylabel={Number of gates},
+    ]
+    \addplot[gates] table[x=qubit-number, y=gate-number] {benchmark/2026-03-14/deutsch-jozsa-is-even-simplified.csv};
+  \end{axis}
+
+  \begin{axis}[
+    at={(b1 c1r2.south west)},
+    anchor=south west,
+    axis x line=none,
+    axis y line*=right,
+    ymode=log,
+    ]
+    \addplot[gates] table[x=qubit-number, y=gate-number] {benchmark/2026-03-14/simon.csv};
+  \end{axis}
+
+  \begin{axis}[
+    at={(b1 c2r2.south west)},
+    anchor=south west,
+    axis x line=none,
+    axis y line*=right,
+    ymode=log,
+    ylabel={Number of gates},
+    ]
+    \addplot[gates] table[x=qubit-number, y=gate-number] {benchmark/2026-03-14/mcx.csv};
+  \end{axis}
+
+  \begin{axis}[
+    at={(b1 c1r3.south west)},
+    anchor=south west,
+    axis x line=none,
+    axis y line*=right,
+    ymode=log,
+    ]
+    \addplot[gates] table[x=qubit-number, y=gate-number] {benchmark/2026-03-14/qft.csv};
+  \end{axis}
+
+  \begin{axis}[
+    at={(b1 c2r3.south west)},
+    anchor=south west,
+    axis x line=none,
+    axis y line*=right,
+    ymode=log,
+    ylabel={Number of gates},
+    ]
+    \addplot[gates] table[x=qubit-number, y=gate-number] {benchmark/2026-03-14/grover.csv};
+  \end{axis}
+
+  \path (b1 c1r3.south west) -- (b1 c2r3.south east) coordinate[midway] (lower_middle);
+  \node[anchor=north, yshift=-2.5em] at (lower_middle) {\ref{benchmark1}};
+\end{tikzpicture}
+\end{center}
+\caption{Simulation and compilation times of our FGG-based simulators, comparing different sets of optimizations.
+  For each plot, the $x$-axis shows the number of qubits, and the $y$-axis shows run time in seconds.}
+\label{fig:ablation}
+\end{figure}
+
+\newpage
+\pagestyle{plain}
+\begin{figure}
+\pgfplotsset{
+  small,
+  compat=1.5,
+  every tick label/.append style={font=\tiny},
+  label style={font=\footnotesize},
+  title style={font=\footnotesize},
+  ytick pos=left,
+  ymode=log,
+  table/col sep=comma,
+  clip marker paths=false,
+  colormap/BuGn-9,
+  cycle list/Set1-9,
+  % combine it with 'mark list*':
+  cycle multiindex* list={
+    mark list*\nextlist
+    Set1-9\nextlist
+  },
+  colormap/Paired-10,
+  % styles
+  fggi-all/.style={
+    color=Set1-A,
+    mark=*,
+    solid,
+    mark size=1.5pt,
+  },
+  fggi-exp/.style={
+    color=RdYlGn-B,
+    mark=halfcircle*,
+    solid,
+    mark size=1.5pt,
+    mark options={rotate=90},
+  },
+  fggi-id/.style={
+    color=RdYlGn-N,
+    mark=halfcircle*,
+    solid,
+    mark size=1.5pt,
+    mark options={rotate=-90},
+  },
+  fggi-comp/.style={
+    color=RdPu-I,
+    mark=o,
+    solid,
+    mark size=1.5pt,
+    mark options={draw=RdPu-I,fill=white,rotate=45},
+  },
+  fggp-all/.style={
+    color=Set1-B,
+    mark=square*,
+    solid,
+    mark size=1.5pt,
+    mark options={rotate=45},
+  },
+  fggp-exp/.style={
+    color=PuOr-B,
+    mark=halfsquare left*,
+    solid,
+    mark size=2pt,
+  },
+  fggp-id/.style={
+    color=PuOr-N,
+    mark=halfsquare right*,
+    solid,
+    mark size=2pt,
+  },
+  fggp-comp/.style={
+    color=YlGnBu-H,
+    mark=square,
+    solid,
+    mark size=1.5pt,
+    mark options={fill=white,rotate=45},
+  },
+}
+\newpage
+\begin{center}
+\begin{tikzpicture}
+  \begin{groupplot}[group style={group size=2 by 3, group name=b1},
+    group/horizontal sep=4em,
+    group/vertical sep=5em]
+    \nextgroupplot[
+    xlabel={Number of qubits},
+    ylabel={Running time (seconds)},
+    % axis y line*=left,
+    title={Hadamard to the last qubit},
+    legend style={
+      at={(0.5,-0.1)},
+      anchor=north,legend columns=-1,
+      font=\footnotesize,
+      draw=none,
+      legend columns=2,
+      legend cell align={left},
+    },
+    legend to name=benchmark2,
+    mark repeat=8,
+    ]
+    \addplot[fggi-all] table[x=qubit-number, y=had-last-qubit-all_opt:iso-fgg-simulation] {benchmark/2026-03-14/had-last-qubit.csv};
+    \addplot[fggp-all] table[x=qubit-number, y=had-last-qubit-all_opt:iso-simulation] {benchmark/2026-03-14/had-last-qubit.csv};
+    \addplot[fggi-exp] table[x=qubit-number, y=had-last-qubit-exp_opt:iso-simulation] {benchmark/2026-03-14/had-last-qubit.csv};
+    \addplot[fggp-exp] table[x=qubit-number, y=had-last-qubit-exp_opt:iso-simulation] {benchmark/2026-03-14/had-last-qubit.csv};
+    \addplot[fggi-id] table[x=qubit-number, y=had-last-qubit-no_opt:iso-fgg-simulation] {benchmark/2026-03-14/had-last-qubit.csv};
+    \addplot[fggp-id] table[x=qubit-number, y=had-last-qubit-no_opt:iso-simulation] {benchmark/2026-03-14/had-last-qubit.csv};
+    \addplot[fggi-comp] table[x=qubit-number, y=had-last-qubit-avg:iso-to-fgg] {benchmark/2026-03-14/had-last-qubit.csv};
+    \addplot[fggp-comp] table[x=qubit-number, y=had-last-qubit-avg:iso-perpl-fgg] {benchmark/2026-03-14/had-last-qubit.csv};
+    \addlegendentry{FGG solver with $\expand$ and $\bigl[\begin{smallmatrix}1&0\\0&1\end{smallmatrix}\bigr]$ opts};
+    \addlegendentry{FGG solver with $\expand$ and $\bigl[\begin{smallmatrix}1&0\\0&1\end{smallmatrix}\bigr]$ opts, through PERPL};
+    \addlegendentry{FGG solver with $\expand$ opt};
+    \addlegendentry{FGG solver with $\expand$ opt, through PERPL};
+    \addlegendentry{FGG solver without any opt};
+    \addlegendentry{FGG solver without any opt, through PERPL};
+    \addlegendentry{FGG compiled from ISO};
+    \addlegendentry{FGG compiled from ISO\@, through PERPL};
+    % \addlegendimage{gray, dashed, mark=+};
+    % \addlegendentry{Number of gates};
+
+    \nextgroupplot[
+    xlabel={Number of qubits},
+    % axis y line*=left,
+    title={Deutsch-Jozsa with the even oracle},
+    mark repeat=4,
+    ]
+    \addplot[fggi-all] table[x=qubit-number, y=deutsch-jozsa-is-even-simplified-all_opt:iso-fgg-simulation] {benchmark/2026-03-14/deutsch-jozsa-is-even-simplified.csv};
+    \addplot[fggp-all] table[x=qubit-number, y=deutsch-jozsa-is-even-simplified-all_opt:iso-simulation] {benchmark/2026-03-14/deutsch-jozsa-is-even-simplified.csv};
+    \addplot[fggi-exp] table[x=qubit-number, y=deutsch-jozsa-is-even-simplified-exp_opt:iso-fgg-simulation] {benchmark/2026-03-14/deutsch-jozsa-is-even-simplified.csv};
+    \addplot[fggp-exp] table[x=qubit-number, y=deutsch-jozsa-is-even-simplified-exp_opt:iso-simulation] {benchmark/2026-03-14/deutsch-jozsa-is-even-simplified.csv};
+    \addplot[fggi-id] table[x=qubit-number, y=deutsch-jozsa-is-even-simplified-no_opt:iso-fgg-simulation] {benchmark/2026-03-14/deutsch-jozsa-is-even-simplified.csv};
+    \addplot[fggp-id] table[x=qubit-number, y=deutsch-jozsa-is-even-simplified-no_opt:iso-simulation] {benchmark/2026-03-14/deutsch-jozsa-is-even-simplified.csv};
+    \addplot[fggi-comp] table[x=qubit-number, y=deutsch-jozsa-is-even-simplified-avg:iso-to-fgg] {benchmark/2026-03-14/deutsch-jozsa-is-even-simplified.csv};
+    \addplot[fggp-comp] table[x=qubit-number, y=deutsch-jozsa-is-even-simplified-avg:iso-perpl-fgg] {benchmark/2026-03-14/deutsch-jozsa-is-even-simplified.csv};
+
+    \nextgroupplot[
+    xlabel={Number of qubits},
+    ylabel={Running time (seconds)},
+    % axis y line*=left,
+    title={Simon's},
+    mark repeat=1,
+    ]
+    \addplot[fggi-all]  table[x=qubit-number, y=simon-all_opt:iso-fgg-simulation] {benchmark/2026-03-14/simon.csv};
+    \addplot[fggp-all]  table[x=qubit-number, y=simon-all_opt:iso-simulation] {benchmark/2026-03-14/simon.csv};
+    \addplot[fggi-exp]  table[x=qubit-number, y=simon-exp_opt:iso-fgg-simulation] {benchmark/2026-03-14/simon.csv};
+    \addplot[fggp-exp]  table[x=qubit-number, y=simon-exp_opt:iso-simulation] {benchmark/2026-03-14/simon.csv};
+    \addplot[fggi-id]   table[x=qubit-number, y=simon-no_opt:iso-fgg-simulation] {benchmark/2026-03-14/simon.csv};
+    \addplot[fggp-id]   table[x=qubit-number, y=simon-no_opt:iso-simulation] {benchmark/2026-03-14/simon.csv};
+    \addplot[fggi-comp] table[x=qubit-number, y=simon-avg:iso-to-fgg] {benchmark/2026-03-14/simon.csv};
+    \addplot[fggp-comp] table[x=qubit-number, y=simon-avg:iso-perpl-fgg] {benchmark/2026-03-14/simon.csv};
+
+    \nextgroupplot[
+    xlabel={Number of qubits},
+    % axis y line*=left,
+    title={Decomposed $C^{n}(X)$},
+    mark repeat=2,
+    ]
+    \addplot[fggi-all]  table[x=qubit-number, y=mcx-all_opt:iso-fgg-simulation] {benchmark/2026-03-14/mcx.csv};
+    \addplot[fggp-all]  table[x=qubit-number, y=mcx-all_opt:iso-simulation] {benchmark/2026-03-14/mcx.csv};
+    \addplot[fggi-exp]  table[x=qubit-number, y=mcx-exp_opt:iso-fgg-simulation] {benchmark/2026-03-14/mcx.csv};
+    \addplot[fggp-exp]  table[x=qubit-number, y=mcx-exp_opt:iso-simulation] {benchmark/2026-03-14/mcx.csv};
+    \addplot[fggi-id]   table[x=qubit-number, y=mcx-no_opt:iso-fgg-simulation] {benchmark/2026-03-14/mcx.csv};
+    \addplot[fggp-id]   table[x=qubit-number, y=mcx-no_opt:iso-simulation] {benchmark/2026-03-14/mcx.csv};
+    \addplot[fggi-comp] table[x=qubit-number, y=mcx-avg:iso-to-fgg] {benchmark/2026-03-14/mcx.csv};
+    \addplot[fggp-comp] table[x=qubit-number, y=mcx-avg:iso-perpl-fgg] {benchmark/2026-03-14/mcx.csv};
+
+    \nextgroupplot[
+    xlabel={Number of qubits},
+    ylabel={Running time (seconds)},
+    % axis y line*=left,
+    title={QFT},
+    mark repeat=2,
+    ]
+    \addplot[fggi-all]  table[x=qubit-number, y=qft-all_opt:iso-fgg-simulation] {benchmark/2026-03-14/qft.csv};
+    \addplot[fggp-all]  table[x=qubit-number, y=qft-all_opt:iso-simulation] {benchmark/2026-03-14/qft.csv};
+    \addplot[fggi-exp]  table[x=qubit-number, y=qft-exp_opt:iso-fgg-simulation] {benchmark/2026-03-14/qft.csv};
+    \addplot[fggp-exp]  table[x=qubit-number, y=qft-exp_opt:iso-simulation] {benchmark/2026-03-14/qft.csv};
+    \addplot[fggi-id]   table[x=qubit-number, y=qft-no_opt:iso-fgg-simulation] {benchmark/2026-03-14/qft.csv};
+    \addplot[fggp-id]   table[x=qubit-number, y=qft-no_opt:iso-simulation] {benchmark/2026-03-14/qft.csv};
+    \addplot[fggi-comp] table[x=qubit-number, y=qft-avg:iso-to-fgg] {benchmark/2026-03-14/qft.csv};
+    \addplot[fggp-comp] table[x=qubit-number, y=qft-avg:iso-perpl-fgg] {benchmark/2026-03-14/qft.csv};
+
+    \nextgroupplot[
+    xlabel={Number of qubits},
+    % axis y line*=left,
+    title={Grover},
+    mark repeat=2,
+    ]
+    \addplot[fggi-all]  table[x=qubit-number, y=grover-all_opt:iso-fgg-simulation] {benchmark/2026-03-14/grover.csv};
+    \addplot[fggp-all]  table[x=qubit-number, y=grover-all_opt:iso-simulation] {benchmark/2026-03-14/grover.csv};
+    \addplot[fggi-exp]  table[x=qubit-number, y=grover-exp_opt:iso-fgg-simulation] {benchmark/2026-03-14/grover.csv};
+    \addplot[fggp-exp]  table[x=qubit-number, y=grover-exp_opt:iso-simulation] {benchmark/2026-03-14/grover.csv};
+    \addplot[fggi-id]   table[x=qubit-number, y=grover-no_opt:iso-fgg-simulation] {benchmark/2026-03-14/grover.csv};
+    \addplot[fggp-id]   table[x=qubit-number, y=grover-no_opt:iso-simulation] {benchmark/2026-03-14/grover.csv};
+    \addplot[fggi-comp] table[x=qubit-number, y=grover-avg:iso-to-fgg] {benchmark/2026-03-14/grover.csv};
+    \addplot[fggp-comp] table[x=qubit-number, y=grover-avg:iso-perpl-fgg] {benchmark/2026-03-14/grover.csv};
+  \end{groupplot}
+
+  % \begin{axis}[
+  %   at={(b1 c1r1.south west)},
+  %   anchor=south west,
+  %   axis x line=none,
+  %   axis y line*=right,
+  %   ymode=log,
+  %   mark size=1.5pt,
+  %   mark repeat=4,
+  %   ]
+  %   \addplot[gray, dashed, mark=+] table[x=qubit-number, y=gate-number] {benchmark/2026-03-14/had-last-qubit.csv};
+  % \end{axis}
+
+  % \begin{axis}[
+  %   at={(b1 c2r1.south west)},
+  %   anchor=south west,
+  %   axis x line=none,
+  %   axis y line*=right,
+  %   ymode=log,
+  %   ylabel={Number of gates},
+  %   mark repeat=2,
+  %   ]
+  %   \addplot[gray, dashed, mark=+] table[x=qubit-number, y=gate-number] {benchmark/2026-03-14/deutsch-jozsa-is-even-simplified.csv};
+  % \end{axis}
+
+  % \begin{axis}[
+  %   at={(b1 c1r2.south west)},
+  %   anchor=south west,
+  %   axis x line=none,
+  %   axis y line*=right,
+  %   ymode=log,
+  %   ]
+  %   \addplot[gray, dashed, mark=+] table[x=qubit-number, y=gate-number] {benchmark/2026-03-14/simon.csv};
+  % \end{axis}
+
+  % \begin{axis}[
+  %   at={(b1 c2r2.south west)},
+  %   anchor=south west,
+  %   axis x line=none,
+  %   axis y line*=right,
+  %   ymode=log,
+  %   ylabel={Number of gates},
+  %   mark size=1.5pt,
+  %   mark repeat=2,
+  %   ]
+  %   \addplot[gray, dashed, mark=+] table[x=qubit-number, y=gate-number] {benchmark/2026-03-14/mcx.csv};
+  % \end{axis}
+
+  % \begin{axis}[
+  %   at={(b1 c1r3.south west)},
+  %   anchor=south west,
+  %   axis x line=none,
+  %   axis y line*=right,
+  %   ymode=log,
+  %   mark repeat=2,
+  %   ]
+  %   \addplot[gray, dashed, mark=+] table[x=qubit-number, y=gate-number] {benchmark/2026-03-14/qft.csv};
+  % \end{axis}
+
+  % \begin{axis}[
+  %   at={(b1 c2r3.south west)},
+  %   anchor=south west,
+  %   axis x line=none,
+  %   axis y line*=right,
+  %   ymode=log,
+  %   ylabel={Number of gates},
+  %   mark repeat=2,
+  %   ]
+  %   \addplot[gray, dashed, mark=+] table[x=qubit-number, y=gate-number] {benchmark/2026-03-14/grover.csv};
+  % \end{axis}
+
+  \path (b1 c1r3.south west) -- (b1 c2r3.south east) coordinate[midway] (lower_middle);
+  \node[anchor=north, yshift=-2.5em] at (lower_middle) {\ref{benchmark2}};
+\end{tikzpicture}
+\end{center}
+\caption{Simulation and compilation times of our FGG-based simulators, comparing different sets of optimizations.
+  For each plot, the $x$-axis shows the number of qubits, and the $y$-axis shows run time in seconds.}
+\label{fig:ablation}
+\end{figure}
+
+\end{document}
