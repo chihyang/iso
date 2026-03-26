@@ -1,7 +1,7 @@
 #!/usr/bin/bash
 
 # WARNING: this script is intended for running in docker!
-python /workspace/benchmark/benchmark_cli.py run \
+python /benchmark/benchmark_cli.py run \
        --root /workspace \
        --prefix benchmark_full \
        -o /benchmark/result/full \

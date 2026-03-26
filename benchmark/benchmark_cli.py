@@ -317,13 +317,6 @@ def validate_bench_config(opts: BenchmarkRunnerConfig) -> None:
     if not (fgg_root / "bin" / "sum_product.py").is_file():
         fail(f"missing tool: {fgg_root / 'bin' / 'sum_product.py'}")
 
-    csv_parent = csv_path if csv_path.suffix == "" else csv_path.parent
-    if str(csv_parent) and not csv_parent.exists():
-        # creation is handled later; this is a soft check to keep semantics clear
-        parent_parent = csv_parent.parent
-        if not parent_parent.exists():
-            fail(f"output parent directory does not exist: {parent_parent}")
-
     available = get_subdirs_in_native_order(str(benchmark_root))
     if not available:
         fail(f"no benchmark suites found in {benchmark_root}")
@@ -346,10 +339,6 @@ def validate_graph_config(opts: GraphConfig) -> None:
     matches = [path for path in search_root.iterdir() if path.is_dir() and path.name.startswith(opts.prefix)]
     if not matches:
         fail(f"no directories found in {search_root} with prefix '{opts.prefix}'")
-
-    out_parent = output_path if output_path.suffix == "" else output_path.parent
-    if str(out_parent) and not out_parent.exists() and not out_parent.parent.exists():
-        fail(f"output parent directory does not exist: {out_parent.parent}")
 
     if not opts.figure_name:
         fail("--figure_name cannot be empty")
