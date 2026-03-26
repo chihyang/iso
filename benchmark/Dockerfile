@@ -103,7 +103,7 @@ ENV PATH="/opt/venv/bin:/opt/racket/bin:${PATH}"
 
 RUN ln -s /workspace/iso/iso-exe /usr/local/bin/iso-exe && \
     ln -s /workspace/perpl/perplc /usr/local/bin/perplc && \
-    mv /workspace/fggs /workspace/perpl/ && \
+    mv /workspace/fggs /workspace/perpl/
 
 WORKDIR /workspace/perpl/fggs
 RUN git checkout oopsla_benchmark && \
@@ -111,5 +111,13 @@ RUN git checkout oopsla_benchmark && \
 
 WORKDIR /workspace/iso
 RUN git checkout oopsla
+
+# Copy benchmark
+WORKDIR /benchmark
+RUN ln -s /workspace/iso/benchmark/benchmark-meta-data /benchmark/benchmark-meta-data && \
+    ln -s /workspace/iso/benchmark/benchmark_cli.py /benchmark/benchmark_cli.py && \
+    ln -s /workspace/iso/benchmark/run_benchmark_small.sh /benchmark/run_benchmark_small.sh && \
+    ln -s /workspace/iso/benchmark/run_benchmark_full.sh /benchmark/run_benchmark_full.sh
+ENV PATH="/benchmark/:${PATH}"
 
 CMD ["/bin/bash"]

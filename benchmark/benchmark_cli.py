@@ -99,6 +99,26 @@ def create_dir_if_needed(dir_name: str) -> None:
     Path(dir_name).mkdir(parents=True, exist_ok=True)
 
 
+def rename_csv_files_to_old(base_dir: Path) -> int:
+    if not base_dir.exists() or not base_dir.is_dir():
+        return 0
+
+    renamed = 0
+    for csv_path in sorted(base_dir.rglob("*.csv")):
+        target = csv_path.with_suffix(f"{csv_path.suffix}.old")
+        if target.exists():
+            index = 1
+            while True:
+                candidate = csv_path.with_suffix(f"{csv_path.suffix}.old.{index}")
+                if not candidate.exists():
+                    target = candidate
+                    break
+                index += 1
+        csv_path.rename(target)
+        renamed += 1
+    return renamed
+
+
 def get_subdirs(directory: str) -> set[str]:
     return {
         sub
@@ -646,6 +666,18 @@ def run_single_suite(suite_name: str, opts: BenchmarkRunnerConfig) -> None:
 
 def run_bench_mode(opts: BenchmarkRunnerConfig) -> None:
     create_dir_if_needed(opts.csv_path)
+
+    if not opts.dry_run:
+        rename_roots = {
+            Path(opts.benchmark_root).resolve(),
+            Path(opts.csv_path).resolve(),
+        }
+        renamed_total = 0
+        for root in rename_roots:
+            renamed_total += rename_csv_files_to_old(root)
+        if renamed_total:
+            print(f"Renamed {renamed_total} existing CSV file(s) to .csv.old for bench run")
+
     log_dir = Path(opts.log_path).parent
     if str(log_dir) not in ("", "."):
         create_dir_if_needed(str(log_dir))
@@ -1116,6 +1148,11 @@ def run_full_mode(opts: RunBenchmarkConfig) -> None:
     if opts.dry_run:
         print("Skip graph generation during dry run")
     else:
+        graph_output_dir = Path(iso_dir) / opts.output_path
+        renamed = rename_csv_files_to_old(graph_output_dir)
+        if renamed:
+            print(f"Renamed {renamed} existing CSV file(s) to .csv.old under {graph_output_dir}")
+
         graph_opts = GraphConfig(
             prefix=opts.prefix,
             output_path=os.path.join(iso_dir, opts.output_path),
@@ -1154,7 +1191,7 @@ def build_parser() -> argparse.ArgumentParser:
                             "otherwise default to the first option in --variants.")
     add_common_run_flags(run_parser)
     run_parser.add_argument("--log", default="log", dest="log_path", help="Base log name")
-    run_parser.add_argument("-o", "--output", default="benchmark_result", dest="output_path", help="Graph CSV output directory")
+    run_parser.add_argument("-o", "--output_path", default="benchmark_result", dest="output_path", help="Graph CSV output directory")
     run_parser.add_argument("--meta_path", default="benchmark-meta-data", dest="metadata_csv_path",
                             help="Optional directory with extra metadata CSV files")
     run_parser.add_argument("--figure_name", default="benchmark.pdf",
