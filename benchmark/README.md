@@ -263,7 +263,7 @@ benchmark_cli.py run [-h] [--root ROOT] [--prefix PREFIX] [--variants VARIANTS [
   If `/{root}/iso/{prefix}-{variant}` already exists and there are existing CSV files in these folders, they will be renamed to `*.csv.old` to avoid interference with the current execution.
 * `--prefix {prefix}`: Prefix for generated benchmark directories (default: `benchmark-latest`).
 * `--variants {variant} ...`: Optimization variants (default: `['no_opt', 'exp_opt', 'all_opt']`).
-* `--primary_variant {primary_variant}`: Variant used by series 1, default to `all_opt` if it is in `--variants`, otherwise default to the first option passed to `--variants`. (default: `None`)
+* `--primary_variant {primary_variant}`: FGG optimization variant used by series 1, default to `all_opt` if it is in `--variants`, otherwise default to the first option passed to `--variants`. (default: `None`)
 *  `--case_limit {case_limit}`: Limit case count for each algorithm.
    Zero means no limit (default: 0).
 *  `-d`, `--dry_run`: Print commands without executing (default: `False`).
@@ -390,7 +390,7 @@ benchmark_cli.py graph [-h] --prefix PREFIX
 * `--meta_path {metadata_csv_path}`: Optional directory with extra metadata CSV files (default: `benchmark-meta-data`).
 * `--search_root {search_root}`: Directory whose children are searched (default: `.`).
 * `--variants {variant} ...`: Optimization variants (default: `['no_opt', 'exp_opt', 'all_opt']`).
-* `--primary_variant {primary_variant}`: Variant used by series 1, default to `all_opt` if it is in `--variants`, otherwise default to the first option passed to `--variants` (default: `None`).
+* `--primary_variant {primary_variant}`: FGG optimization variant used by series 1, default to `all_opt` if it is in `--variants`, otherwise default to the first option passed to `--variants` (default: `None`).
 * `--figure_name {figure_name}`: Benchmark PDF output name.
   The PDF will be put into `--output_path`. (default: `benchmark.pdf`).
 * `--experiments {experiment} ...`: Algorithm simulation data to aggregate.
