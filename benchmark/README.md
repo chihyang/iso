@@ -84,7 +84,7 @@ The result will be stored into `/benchmark/result/full`, including the following
 * `had-last-qubit.csv`
 * `deutsch-jozsa-is-even-simplified.csv`
 * `simon.csv`
-* `mcx.csv` 
+* `mcx.csv`
 * `qft.csv`
 * `grover.csv`
 
@@ -97,7 +97,7 @@ and a PDF figure file:
 
 The benchmark is organized as *variants*.
 Each variant corresponds to an optimization level of [fggs](https://github.com/chihyang/fggs/tree/oopsla_benchmark).
-Right now, there are three optimization levels: 
+Right now, there are three optimization levels:
 * *no_opt*
 * *exp_opt*
 * *all_opt*
@@ -126,7 +126,7 @@ This CSV has the following columns.
 | `{algorithm}-{variant}:iso-fgg-simulation`  | The solver run time from the FGG compiled from ISO                        |
 | `{algorithm}-{variant}:qiskit-simulation`   | The Qiskit simulation time                                                |
 | `{algorithm}-{variant}:qsim-simulation`     | The qsim simulation time                                                  |
-| `{algorithm}-{variant}:qtorch-simulation`   | The qtorch simulation time                                                |
+| `{algorithm}-{variant}:qtorch-simulation`   | The qTorch simulation time                                                |
 
 After all variants are performed, multiple CSV files for one algorithm are merged together.
 All columns listed above will be added.
@@ -174,8 +174,9 @@ For now, the following metadata for each algorithm is supported:
 ## Figures
 
 After aggregating data, the scripts will also generate two series of plots.
+
 In the first series, each subplot compares the simulation performance for one FGG variant, Qiskit, qsim, and qTorch.
-If the `--variant` option of the `benchmark_cli.py` is not set through the command line and `all_opt` variant is performed, `all_opt` will be used in this series of plots.
+If the `--variants` option of the `benchmark_cli.py` is not set through the command line and `all_opt` variant is performed, `all_opt` will be used in this series of plots.
 Otherwise, the first performed variant will be put into this series of graphs.
 (See the options `--variants` and `--primary_variant` for the benchmark CLI below.)
 
@@ -242,12 +243,12 @@ python /benchmark/benchmark_cli.py run \
        --experiments grover qft
 ```
 
-### Usage 
+### Usage
 
 ``` shell
-benchmark_cli.py run [-h] [--root ROOT] [--prefix PREFIX] [--variants VARIANTS [VARIANTS ...]] 
+benchmark_cli.py run [-h] [--root ROOT] [--prefix PREFIX] [--variants VARIANTS [VARIANTS ...]]
     [--primary_variant PRIMARY_VARIANT]
-    [--case_limit CASE_LIMIT] [-d] [-t <minutes>] [-m <gigabytes>] [--log LOG_PATH] [-o OUTPUT_PATH] 
+    [--case_limit CASE_LIMIT] [-d] [-t <minutes>] [-m <gigabytes>] [--log LOG_PATH] [-o OUTPUT_PATH]
     [--meta_path METADATA_CSV_PATH]
     [--figure_name FIGURE_NAME] [--experiments EXPERIMENTS [EXPERIMENTS ...]]
     [--exclude_experiments EXCLUDE_EXPERIMENTS [EXCLUDE_EXPERIMENTS ...]]
@@ -256,14 +257,14 @@ benchmark_cli.py run [-h] [--root ROOT] [--prefix PREFIX] [--variants VARIANTS [
 ### Options
 
 * `-h`, `--help`: Show this help message and exit.
-* `--root {root}`: Workspace root that contains `iso`, `perpl`, and `fggs` repositories (default: `/workspace`). 
+* `--root {root}`: Workspace root that contains `iso`, `perpl`, and `fggs` repositories (default: `/workspace`).
   All generated benchmark programs will be put into `/{root}/iso`, and the folders are named as `/{root}/iso/{prefix}-{variant}`.
   If `iso`, `perpl`, or `fggs` doesn't exist, report an error and exit.
   If `/{root}/iso/{prefix}-{variant}` already exists and there are existing CSV files in these folders, they will be renamed to `*.csv.old` to avoid interference with the current execution.
 * `--prefix {prefix}`: Prefix for generated benchmark directories (default: `benchmark-latest`).
 * `--variants {variant} ...`: Optimization variants (default: `['no_opt', 'exp_opt', 'all_opt']`).
 * `--primary_variant {primary_variant}`: Variant used by series 1, default to `all_opt` if it is in `--variants`, otherwise default to the first option passed to `--variants`. (default: `None`)
-*  `--case_limit {case_limit}`: Limit case count for each algorithm. 
+*  `--case_limit {case_limit}`: Limit case count for each algorithm.
    Zero means no limit (default: 0).
 *  `-d`, `--dry_run`: Print commands without executing (default: `False`).
 *  `-t {minutes}`, `--time_limit {minutes}`: Time limit per algorithm for each qubit number in minutes (default: `5`).
@@ -294,10 +295,10 @@ python benchmark_cli.py generate --variants exp_opt
 benchmark_cli.py generate [-h] [--root ROOT] [--prefix PREFIX] [--variants VARIANTS [VARIANTS ...]] [-d]
 ```
 
-### Options 
+### Options
 
 * `-h`, `--help`: Show this help message and exit.
-* `--root {root}`: Workspace root that contains `iso`, `perpl`, and `fggs` repositories (default: `/workspace`). 
+* `--root {root}`: Workspace root that contains `iso`, `perpl`, and `fggs` repositories (default: `/workspace`).
   All generated benchmark programs will be put into `/{root}/iso`, and the folders are named as `/{root}/iso/{prefix}-{variant}`.
 * `--prefix {prefix}`: Prefix for generated benchmark directories (default: `benchmark-latest`).
 * `--variants {variant} ...`: Optimization variants (default: `['no_opt', 'exp_opt', 'all_opt']`).
@@ -321,10 +322,10 @@ python benchmark_cli.py bench \
 
 After all simulations are performed, a file named as `/workspace/iso/benchmark-latest-exp_opt/qft-exp_opt-{current-date-time}.csv` will be generated.
 
-### Usage 
+### Usage
 
 ``` shell
-benchmark_cli.py bench [-h] --benchmark_root BENCHMARK_ROOT --csv_path CSV_PATH 
+benchmark_cli.py bench [-h] --benchmark_root BENCHMARK_ROOT --csv_path CSV_PATH
     [--case_limit CASE_LIMIT] [-d] [-t <minutes>] [-m <gigabytes>]
     [--tag TAG] [--log LOG_PATH] [--experiments EXPERIMENTS [EXPERIMENTS ...]]
     [--exclude_experiments EXCLUDE_EXPERIMENTS [EXCLUDE_EXPERIMENTS ...]]
@@ -335,7 +336,7 @@ benchmark_cli.py bench [-h] --benchmark_root BENCHMARK_ROOT --csv_path CSV_PATH
 * `-h`, `--help`: Show this help message and exit.
 * `--benchmark_root {benchmark_root}`: Root directory for one generated benchmark variant (required).
 * `--csv_path {csv_path}`: Output directory for benchmark CSV reports (required).
-* `--case_limit {case_limit}`: Limit case count for each algorithm. 
+* `--case_limit {case_limit}`: Limit case count for each algorithm.
    Zero means no limit (default: 0).
 * `-d`, `--dry_run`: Print commands without executing (default: `False`).
 * `-t {minutes}`, `--time_limit {minutes}`: Time limit per command in minutes (default: `5`).
@@ -370,14 +371,14 @@ python benchmark_cli.py graph \
 
 In the folder `/benchmark/result/example`, a CSV file `qft.csv` and a PDF `benchmark.pdf` will be generated.
 
-### Usage 
+### Usage
 
 ``` shell
 benchmark_cli.py graph [-h] --prefix PREFIX
     [-o OUTPUT_PATH] [--meta_path METADATA_CSV_PATH] [--search_root SEARCH_ROOT]
-    [--variants VARIANTS [VARIANTS ...]] [--primary_variant PRIMARY_VARIANT] 
+    [--variants VARIANTS [VARIANTS ...]] [--primary_variant PRIMARY_VARIANT]
     [--figure_name FIGURE_NAME]
-    [--experiments EXPERIMENTS [EXPERIMENTS ...]] 
+    [--experiments EXPERIMENTS [EXPERIMENTS ...]]
     [--exclude_experiments EXCLUDE_EXPERIMENTS [EXCLUDE_EXPERIMENTS ...]]
 ```
 
@@ -390,9 +391,9 @@ benchmark_cli.py graph [-h] --prefix PREFIX
 * `--search_root {search_root}`: Directory whose children are searched (default: `.`).
 * `--variants {variant} ...`: Optimization variants (default: `['no_opt', 'exp_opt', 'all_opt']`).
 * `--primary_variant {primary_variant}`: Variant used by series 1, default to `all_opt` if it is in `--variants`, otherwise default to the first option passed to `--variants` (default: `None`).
-* `--figure_name {figure_name}`: Benchmark PDF output name. 
+* `--figure_name {figure_name}`: Benchmark PDF output name.
   The PDF will be put into `--output_path`. (default: `benchmark.pdf`).
-* `--experiments {experiment} ...`: Algorithms to simulate.
-   By default, every generated algorithm will be simulated.
-* `--exclude_experiments {exclude_experiment} ...`: Algorithms not to simulate.
-   If specified, these algorithms will be excluded from the simulation list.
+* `--experiments {experiment} ...`: Algorithm simulation data to aggregate.
+   By default, all data under `{search_root}` will be aggregated.
+* `--exclude_experiments {exclude_experiment} ...`: Algorithm simulation data not to aggregate.
+   If specified, the data of these algorithms will be not be aggregated.
