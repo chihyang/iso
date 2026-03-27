@@ -1070,7 +1070,7 @@ def run_embedded_figure_generation(
     combined_path = Path(figure_name)
     if not combined_path.is_absolute():
         combined_path = data_dir / combined_path
-    combined_path.parent.mkdir(parents=True, exist_ok=True)
+    create_dir_if_needed(str(combined_path.parent))
 
     with PdfPages(combined_path) as pdf:
         for chunk in chunks:
