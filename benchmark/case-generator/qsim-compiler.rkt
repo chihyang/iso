@@ -948,9 +948,9 @@ from qiskit_aer import Aer, AerSimulator"))
      (format "~a.initialize('~a', ~a.qubits)"
              final (make-qbits-str size n) final)
      (format "~a.append(~a, ~a.qubits)" final (generate-qiskit-gate-name gate) final)
-     (format "simulator = AerSimulator()")
+     (format "simulator = Aer.get_backend('statevector_simulator')")
      (format "~a = transpile(~a, simulator, optimization_level=2)" final final)
-     (format "job = Aer.get_backend('statevector_simulator').run(~a, shots=1)"
+     (format "job = simulator.run(~a, shots=1)"
              final)
      (format "result = job.result()")
      (format "print(f'execution time: {result.time_taken}')")

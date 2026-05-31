@@ -101,6 +101,7 @@ Right now, there are three optimization levels:
 * *no_opt*
 * *exp_opt*
 * *all_opt*
+* *id_detect*
 
 For each variant, there are multiple algorithms.
 The following algorithms have been implemented:
@@ -162,6 +163,7 @@ and `{variant}` can be one of the following:
 * `no_opt`
 * `exp_opt`
 * `all_opt`
+* `id_detect`
 
 If a metadata table is provided, columns from that table will also be added to the aggregated CSV.
 For now, the following metadata for each algorithm is supported:
@@ -262,7 +264,7 @@ benchmark_cli.py run [-h] [--root ROOT] [--prefix PREFIX] [--variants VARIANTS [
   If `iso`, `perpl`, or `fggs` doesn't exist, report an error and exit.
   If `/{root}/iso/{prefix}-{variant}` already exists and there are existing CSV files in these folders, they will be renamed to `*.csv.old` to avoid interference with the current execution.
 * `--prefix {prefix}`: Prefix for generated benchmark directories (default: `benchmark-latest`).
-* `--variants {variant} ...`: Optimization variants (default: `['no_opt', 'exp_opt', 'all_opt']`).
+* `--variants {variant} ...`: Optimization variants (default: `['no_opt', 'exp_opt', 'id_detect', 'all_opt']`).
 * `--primary_variant {primary_variant}`: FGG optimization variant used by series 1, default to `all_opt` if it is in `--variants`, otherwise default to the first option passed to `--variants`. (default: `None`)
 *  `--case_limit {case_limit}`: Limit case count for each algorithm.
    Zero means no limit (default: 0).
@@ -301,7 +303,7 @@ benchmark_cli.py generate [-h] [--root ROOT] [--prefix PREFIX] [--variants VARIA
 * `--root {root}`: Workspace root that contains `iso`, `perpl`, and `fggs` repositories (default: `/workspace`).
   All generated benchmark programs will be put into `/{root}/iso`, and the folders are named as `/{root}/iso/{prefix}-{variant}`.
 * `--prefix {prefix}`: Prefix for generated benchmark directories (default: `benchmark-latest`).
-* `--variants {variant} ...`: Optimization variants (default: `['no_opt', 'exp_opt', 'all_opt']`).
+* `--variants {variant} ...`: Optimization variants (default: `['no_opt', 'exp_opt', 'id_detect', 'all_opt']`).
 * `-d`, `--dry_run`: Print commands without executing (default: `False`).
 
 ## `bench` mode
@@ -341,7 +343,7 @@ benchmark_cli.py bench [-h] --benchmark_root BENCHMARK_ROOT --csv_path CSV_PATH
 * `-d`, `--dry_run`: Print commands without executing (default: `False`).
 * `-t {minutes}`, `--time_limit {minutes}`: Time limit per command in minutes (default: `5`).
 * `-m {gigabytes}`, `--memory_limit {gigabytes}`: Memory limit per command in GB (default: `95%` of the total memory of the machine).
-* `--tag {tag}`: Tag used in benchmark CSV headers, which is supposed to be one of `all_opt`, `exp_opt`, and `no_opt`.
+* `--tag {tag}`: Tag used in benchmark CSV headers, which is supposed to be one of `all_opt`, `exp_opt`, `id_detect`, and `no_opt`.
   But it is not enforced.
   You can also use different tags from the recommended ones.
 * `--log {log_path}`: Base log name (default: log).
@@ -389,7 +391,7 @@ benchmark_cli.py graph [-h] --prefix PREFIX
 * `-o {output_path}`, `--output_path {output_path}`: Graph CSV output directory (default: `.`).
 * `--meta_path {metadata_csv_path}`: Optional directory with extra metadata CSV files (default: `benchmark-meta-data`).
 * `--search_root {search_root}`: Directory whose children are searched (default: `.`).
-* `--variants {variant} ...`: Optimization variants (default: `['no_opt', 'exp_opt', 'all_opt']`).
+* `--variants {variant} ...`: Optimization variants (default: `['no_opt', 'exp_opt', 'id_detect', 'all_opt']`).
 * `--primary_variant {primary_variant}`: FGG optimization variant used by series 1, default to `all_opt` if it is in `--variants`, otherwise default to the first option passed to `--variants` (default: `None`).
 * `--figure_name {figure_name}`: Benchmark PDF output name.
   The PDF will be put into `--output_path`. (default: `benchmark.pdf`).
