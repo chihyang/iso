@@ -1453,16 +1453,12 @@ import qsimcirq")
     (generate-cirq-def/port port def)))
 
 (define (generate-cirq-initialize/port port circ-name qbits size val)
-  (generate-lines*/port
-   port
-   (format "~a = cirq.LineQubit.range(~a)" qbits size)
-   (let ((bit-str (string->list (make-qbits-str size val))))
-     (join (map (λ (v)
-                  (format "~a.append(cirq.X(~a[~a]))" circ-name qbits (cdr v)))
-                (filter
-                 (λ (v) (eqv? (car v) #\1))
-                 (map cons bit-str (range (length bit-str)))))
-           "\n"))))
+  (fprintf port "~a = cirq.LineQubit.range(~a)\n" qbits size)
+  (let ((bit-str (string->list (make-qbits-str size val))))
+    (for ((q bit-str)
+          (i (length bit-str)))
+      (when (eqv? q #\1)
+        (fprintf port "~a.append(cirq.X(~a[~a]))\n" circ-name qbits i)))))
 
 (define (generate-cirq-execution/port port circ-name qbits)
   (generate-lines*/port
