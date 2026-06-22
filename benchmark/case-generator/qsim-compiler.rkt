@@ -12,6 +12,7 @@
          to-iso to-iso/port
          to-qiskit to-qiskit/port
          to-qasm to-qasm/port
+         to-quimb to-quimb/port
          to-cirq to-cirq/port)
 
 ;;; Spec of the case generator:
@@ -209,6 +210,18 @@
   (append* (make-list m spec)))
 
 ;;; Compiler to other languages
+(define join/port
+  (λ (port lst separator)
+    (cond
+      ((null? lst) (void))
+      (else
+       (write-string (car lst) port)
+       (write-string separator port)
+       (join/port port (cdr lst) separator)))))
+
+(define (generate-lines*/port port str . strs)
+  (join/port port (flatten (cons str strs)) "\n"))
+
 (define join
   (λ (lst separater)
     (string-append*
@@ -216,9 +229,6 @@
 
 (define (generate-lines* str . strs)
   (join (cons str (flatten strs)) "\n"))
-
-(define (generate-lines strs)
-  (join strs "\n"))
 
 (define (new-safe-char char)
   (cond
@@ -1355,6 +1365,146 @@ import qsimcirq")
       ""
       (generate-cirq-main gate n)))))
 
+(define (generate-cirq-circ-append/port port circ-name op-name qids-name qids)
+  (fprintf port
+           "~a.append(~a(~a))\n"
+           circ-name
+           op-name
+           (join (map (λ (id) (format "~a[~a]" qids-name (number->string id))) qids) ", ")))
+
+(define (generate-cirq-circ-spec/port port circ-name qids-name spec)
+  (match spec
+    (`(,(unitary name _ _) ,qids ...)
+     (generate-cirq-circ-append/port port circ-name (format "~a.on" (generate-cirq-name name)) qids-name qids))
+    (`(,gate ,qids ...)
+     (match (gate-name gate)
+       (`hadamard
+        (generate-cirq-circ-append/port port circ-name "cirq.H" qids-name qids))
+       (`neg
+        (generate-cirq-circ-append/port port circ-name "cirq.X" qids-name qids))
+       (`cx
+        (generate-cirq-circ-append/port port circ-name "cirq.CX" qids-name qids))
+       (`swap
+        (generate-cirq-circ-append/port port circ-name "cirq.SWAP" qids-name qids))
+       (`,g #:when (memv g rotation-gates)
+        (generate-cirq-circ-append/port
+         port
+         circ-name
+         (format "~a.on" (generate-qiskit-rotation-name g (car (gate-spec gate))))
+         qids-name qids))
+       (`,g #:when (memv g cirq-builtin)
+        (generate-cirq-circ-append/port port circ-name (format "cirq.~a" (generate-cirq-name g)) qids-name qids))
+       (`,g
+        (generate-cirq-circ-spec*/port port circ-name qids-name (gate-spec gate)))))))
+
+(define (generate-cirq-circ-spec*/port port circ-name qids-name specs)
+  (if (null? specs)
+      (void)
+      (begin
+        (generate-cirq-circ-spec/port port circ-name qids-name (car specs))
+        (generate-cirq-circ-spec*/port port circ-name qids-name (cdr specs)))))
+
+(define (generate-cirq-unitary-def/port port gate)
+  (match gate
+    ((unitary name size mapping)
+     (let* ((mat (gensym 'mat))
+            (indices (gensym 'indices))
+            (name (generate-cirq-name name))
+            (class-name (string-append "Cls" name)))
+       (generate-lines*/port
+        port
+        (format "~a = np.zeros((~a, ~a))" mat (expt 2 size) (expt 2 size))
+        (format "~a = [~a]" indices (join (map (λ (p) (format "(~a, ~a)" (car p) (cadr p))) mapping) ", "))
+        (format "for i, j in ~a:\n~a~a[i, j] = 1" indices (new-python-indent) mat)
+        ""
+        (generate-cirq-class class-name size mat)
+        (format "~a = ~a()" name class-name))))))
+
+(define (generate-cirq-phase-def/port port gate)
+  (match gate
+    ((circuit 'phase 1 `(,deg))
+     (let* ((mat (gensym 'mat))
+            (name (generate-qiskit-rotation-name 'phase deg))
+            (class-name (string-append "Cls" name)))
+       (generate-lines*/port
+        port
+        (format "~a = np.asarray([[1,0],[0,np.exp(~a * 1j)]])" mat deg)
+        (generate-cirq-class class-name 1 mat)
+        ""
+        (format "~a = ~a()" name class-name))))))
+
+(define (generate-cirq-def/port port gate)
+  (match gate
+    ((unitary _ _ _)
+     (generate-cirq-unitary-def/port port gate))
+    ((circuit name 1 `(,deg))
+     #:when (memv name rotation-gates)
+     (if (eqv? name 'phase)
+         (generate-cirq-phase-def/port port gate)
+         (fprintf port
+                  "~a = cirq.~a(rads=~a)\n"
+                  (generate-qiskit-rotation-name name deg)
+                  name deg)))
+    ((circuit _ _ _) (write-string "" port))
+    (_ (error 'generate-cirq-def "Unsupported circuit type: ~a" gate))))
+
+(define (generate-cirq-defs/port port circs)
+  (for ((def (collect-defs circs)))
+    (generate-cirq-def/port port def)))
+
+(define (generate-cirq-initialize/port port circ-name qbits size val)
+  (generate-lines*/port
+   port
+   (format "~a = cirq.LineQubit.range(~a)" qbits size)
+   (let ((bit-str (string->list (make-qbits-str size val))))
+     (join (map (λ (v)
+                  (format "~a.append(cirq.X(~a[~a]))" circ-name qbits (cdr v)))
+                (filter
+                 (λ (v) (eqv? (car v) #\1))
+                 (map cons bit-str (range (length bit-str)))))
+           "\n"))))
+
+(define (generate-cirq-execution/port port circ-name qbits)
+  (generate-lines*/port
+   port
+   (format "qsim_simulator = qsimcirq.QSimSimulator()")
+   (format "qsim_results = qsim_simulator.simulate(~a, qubit_order=~a)" circ-name qbits)
+   (format "print(qsim_results)")))
+
+(define (generate-cirq-main-spec/port port circ-name gate qbits)
+  (match gate
+    ((circuit name 1 `(,deg))
+     #:when (memv name rotation-gates)
+     (let ((op-name (generate-qiskit-rotation-name name deg)))
+       (generate-cirq-circ-append/port port circ-name op-name qbits (range 1))))
+    ((circuit name size spec)
+     (generate-cirq-circ-spec*/port port circ-name qbits spec))
+    ((unitary name size _)
+     (generate-cirq-circ-append/port port circ-name (format "~a().on" (generate-cirq-name name)) qbits (range size)))
+    ((qcircuit _ _ _)
+     (error 'generate-qasm-scirc "Cirq doesn't support Qiskit circuit!"))
+    ((scircuit _ _ _)
+     (error 'generate-qasm-scirc "Cirq doesn't support ISO circuit!"))))
+
+(define (generate-cirq-main/port port gate initials)
+  (let* ((name (generate-cirq-name (gensym (gate-name gate))))
+         (size (gate-size gate))
+         (qbits (gensym 'q)))
+    (generate-lines*/port port (format "~a = cirq.Circuit()" name))
+    (generate-cirq-initialize/port port name qbits size initials)
+    (generate-cirq-main-spec/port port name gate qbits)
+    (generate-cirq-execution/port port name qbits)))
+
+(define (generate-cirq-prog/port port prog)
+  (match prog
+    (`(,gate ,n)
+     (generate-cirq-defs/port port `(,gate))
+     (generate-cirq-main/port port gate n))))
+
+(define (generate-cirq-source!/port prog port)
+  (generate-lines*/port port (generate-cirq-header))
+  (generate-cirq-prog/port port prog))
+
 (define (generate-cirq-source! prog port)
   (display
    (generate-lines*
@@ -1363,9 +1513,173 @@ import qsimcirq")
    port))
 
 (define (to-cirq/port prog out-port)
-  (generate-cirq-source! prog out-port))
+  (generate-cirq-source!/port prog out-port))
 
 (define (to-cirq prog source-name)
   (when (file-exists? source-name)
     (delete-file source-name))
   (file-writer ((curry to-cirq/port) prog) source-name))
+
+;;; compiler to quimb
+(define quimb-builtin
+  '(CNOT SWAP H X Y Z))
+
+(define quimb-keywords
+  '(False class from or None continue global pass True
+    def if raise and del import return as elif
+    in try assert else is while async except
+    lambda with await finally nonlocal yield break
+    for not))
+
+(define (generate-quimb-header)
+  "### Install Quimb, if needed
+
+\"\"\"
+!pip install quimb autoray cotengra
+\"\"\"
+
+import numpy as np
+import quimb as qu
+import quimb.tensor as qtn")
+
+(define (safe-quimb-name name)
+  (let ([str-sym (raw-safe name)])
+    (cond
+      [(memv str-sym quimb-keywords)
+       =>
+       (λ (_) (string-append "Qtn" str-sym))]
+      [else str-sym])))
+
+(define (generate-quimb-name name)
+  (string-titlecase (safe-quimb-name name)))
+
+(define (generate-quimb-circ-append/port port circ-name op-name qids-name qids)
+  (fprintf port
+           "~a.apply_gate(~a, ~a)\n"
+           circ-name
+           op-name
+           (join (map (λ (id) (format "~a" (number->string id))) qids) ", ")))
+
+(define (generate-quimb-unitary-def/port port gate)
+  (match gate
+    ((unitary name size mapping)
+     (let* ((mat (gensym 'mat))
+            (indices (gensym 'indices))
+            (name (generate-quimb-name name)))
+       (generate-lines*/port
+        port
+        (format "~a = np.zeros((~a, ~a))" name (expt 2 size) (expt 2 size))
+        (format "~a = [~a]" indices (join (map (λ (p) (format "(~a, ~a)" (car p) (cadr p))) mapping) ", "))
+        (format "for i, j in ~a:\n~a~a[i, j] = 1" indices (new-python-indent) name))))))
+
+(define (generate-quimb-phase-def/port port gate)
+  (match gate
+    ((circuit 'phase 1 `(,deg))
+     (let* ((name (generate-qiskit-rotation-name 'phase deg)))
+       (generate-lines*/port port (format "~a = qu.phase_gate(~a)" name deg))))))
+
+(define (generate-quimb-def/port port gate)
+  (match gate
+    ((unitary _ _ _)
+     (generate-quimb-unitary-def/port port gate))
+    ((circuit name 1 `(,deg))
+     #:when (memv name rotation-gates)
+     (if (eqv? name 'phase)
+         (generate-quimb-phase-def/port port gate)
+         (fprintf port
+                  "~a = qu.~a(~a)\n"
+                  (generate-qiskit-rotation-name name deg)
+                  (generate-iso-name name) deg)))
+    ((circuit _ _ _) (fprintf port "\n"))
+    (_ (error 'generate-quimb-def "Unsupported circuit type: ~a" gate))))
+
+(define (generate-quimb-defs/port port circs)
+  (for ((def (collect-defs circs)))
+    (generate-quimb-def/port port def)))
+
+(define (generate-quimb-initialize/port port circ-name qbits size val)
+  (let ((bit-str (string->list (make-qbits-str size val))))
+    (for ((q bit-str)
+          (i (length bit-str)))
+      (when (eqv? q #\1)
+        (generate-quimb-circ-append/port port circ-name "'X'" qbits `(,i))))))
+
+(define (generate-quimb-circ-spec/port port circ-name qids-name spec)
+  (match spec
+    (`(,(unitary name _ _) ,qids ...)
+     (generate-quimb-circ-append/port port circ-name (generate-quimb-name name) qids-name qids))
+    (`(,gate ,qids ...)
+     (match (gate-name gate)
+       (`hadamard
+        (generate-quimb-circ-append/port port circ-name "'H'" qids-name qids))
+       (`neg
+        (generate-quimb-circ-append/port port circ-name "'X'" qids-name qids))
+       (`cx
+        (generate-quimb-circ-append/port port circ-name "'CX'" qids-name qids))
+       (`swap
+        (generate-quimb-circ-append/port port circ-name "'SWAP'" qids-name qids))
+       (`,g #:when (memv g rotation-gates)
+        (generate-quimb-circ-append/port
+         port
+         circ-name
+         (generate-qiskit-rotation-name g (car (gate-spec gate)))
+         qids-name qids))
+       (`,g #:when (memv g quimb-builtin)
+        (generate-quimb-circ-append/port port circ-name (format "'~a'" (generate-quimb-name g)) qids-name qids))
+       (`,g
+        (generate-quimb-circ-spec*/port port circ-name qids-name (gate-spec gate)))))))
+
+(define (generate-quimb-circ-spec*/port port circ-name qids-name specs)
+  (if (null? specs)
+      (void)
+      (begin
+        (generate-quimb-circ-spec/port port circ-name qids-name (car specs))
+        (generate-quimb-circ-spec*/port port circ-name qids-name (cdr specs)))))
+
+(define (generate-quimb-main-spec/port port circ-name gate qbits)
+  (match gate
+    ((circuit name 1 `(,deg))
+     #:when (memv name rotation-gates)
+     (let ((op-name (generate-qiskit-rotation-name name deg)))
+       (generate-quimb-circ-append/port port circ-name op-name qbits (range 1))))
+    ((circuit name size spec)
+     (generate-quimb-circ-spec*/port port circ-name qbits spec))
+    ((unitary name size _)
+     (generate-quimb-circ-append/port port circ-name (generate-quimb-name name) qbits (range size)))
+    ((qcircuit _ _ _)
+     (error 'generate-qasm-scirc "Quimb doesn't support Qiskit circuit!"))
+    ((scircuit _ _ _)
+     (error 'generate-qasm-scirc "Quimb doesn't support ISO circuit!"))))
+
+(define (generate-quimb-execution/port port circ-name qbits)
+  (generate-lines*/port
+   port
+   (format "quimb_results = ~a.to_dense(simplify_sequence='ADCRS', optimize='auto-hq', dtype='complex64')" circ-name)
+   (format "print(quimb_results)")))
+
+(define (generate-quimb-main/port port gate initials)
+  (let* ((name (generate-quimb-name (gensym (gate-name gate))))
+         (size (gate-size gate))
+         (qbits (gensym 'q)))
+    (generate-lines*/port port (format "~a = qtn.Circuit(~a)" name size) "\n")
+    (generate-quimb-initialize/port port name qbits size initials)
+    (generate-quimb-main-spec/port port name gate qbits)
+    (generate-quimb-execution/port port name qbits)))
+
+(define (generate-quimb-prog/port port prog)
+  (match prog
+    (`(,gate ,n)
+     (generate-quimb-defs/port port `(,gate))
+     (generate-quimb-main/port port gate n))))
+
+(define (generate-quimb-source! prog port)
+  (generate-lines*/port port (generate-quimb-header))
+  (generate-quimb-prog/port port prog))
+
+(define (to-quimb/port prog out-port)
+  (generate-quimb-source! prog out-port))
+
+(define (to-quimb prog source-name)
+  (when (file-exists? source-name)
+    (delete-file source-name))
+  (file-writer ((curry to-quimb/port) prog) source-name))

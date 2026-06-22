@@ -512,6 +512,7 @@ def run_single_suite(suite_name: str, opts: BenchmarkRunnerConfig) -> None:
     qiskit_suite_dir = suite_root / "qiskit"
     qsim_suite_dir = suite_root / "qsim"
     qtorch_suite_dir = suite_root / "qtorch"
+    quimb_suite_dir = suite_root / "quimb"
 
     ppl_dir = suite_root / "ppl"
     json_dir = suite_root / "json"
@@ -521,6 +522,7 @@ def run_single_suite(suite_name: str, opts: BenchmarkRunnerConfig) -> None:
     iso_fgg_result_dir = suite_root / "iso-fgg-text"
     qsim_result_dir = suite_root / "qsim-text"
     qtorch_result_dir = suite_root / "qtorch-text"
+    quimb_result_dir = suite_root / "quimb-text"
 
     tqdm.write(f"Running benchmark {suite_name}")
     logger.info("Running benchmark %s", suite_name)
@@ -535,6 +537,7 @@ def run_single_suite(suite_name: str, opts: BenchmarkRunnerConfig) -> None:
         f"{row_tag}:qiskit-simulation",
         f"{row_tag}:qsim-simulation",
         f"{row_tag}:qtorch-simulation",
+        f"{row_tag}:quimb-simulation",
     ]
 
     iso_to_perpl = run_command(
@@ -633,6 +636,18 @@ def run_single_suite(suite_name: str, opts: BenchmarkRunnerConfig) -> None:
         opts,
     )
 
+    quimb_simulation = run_command(
+        quimb_suite_dir,
+        ".py",
+        "-quimb.txt",
+        ["python"],
+        quimb_result_dir,
+        "",
+        ">",
+        tags[6],
+        opts,
+    )
+
     if not opts.dry_run:
         create_dir_if_needed(opts.csv_path)
         output_csv = Path(opts.csv_path) / f"{suite_name}-{opts.tag}-{time.strftime('%Y-%m-%d_%H-%M-%S')}.csv"
@@ -648,6 +663,7 @@ def run_single_suite(suite_name: str, opts: BenchmarkRunnerConfig) -> None:
                 qiskit_simulation,
                 qsim_simulation,
                 qtorch_simulation,
+                quimb_simulation,
                 fillvalue="",
             ):
                 writer.writerow(row)
@@ -791,6 +807,7 @@ def run_graph_mode(opts: GraphConfig) -> None:
             "qiskit-simulation",
             "qsim-simulation",
             "qtorch-simulation",
+            "quimb-simulation",
             "iso-to-perpl",
             "perpl-to-fgg",
             "iso-to-fgg",
@@ -868,6 +885,7 @@ def _plot_build_fig1_series(primary_variant: str) -> List[Tuple[str, str, str]]:
         ("Qiskit", "{name}-avg:qiskit-simulation", "tab:green"),
         ("qsim", "{name}-avg:qsim-simulation", "tab:blue"),
         ("qTorch", "{name}-avg:qtorch-simulation-full", "tab:purple"),
+        ("quimb", "{name}-avg:quimb-simulation-full", "tab:purple"),
     ]
 
 PLOT_VARIANT_COLOR_PAIRS: List[Tuple[str, str]] = [

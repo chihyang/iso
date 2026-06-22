@@ -24,12 +24,16 @@
 (define (gen-cirq-case tag gen-spec f in-size out-size)
   (to-cirq (gen-spec f in-size out-size) (build-path (working-directory) (format "~a-~a-~a.py" tag in-size out-size))))
 
+(define (gen-quimb-case tag gen-spec f in-size out-size)
+  (to-quimb (gen-spec f in-size out-size) (build-path (working-directory) (format "~a-~a-~a.py" tag in-size out-size))))
+
 (define supported-simulators
   (make-parameter
    `((iso    . ,gen-iso-case)
      (qiskit . ,gen-qiskit-case)
      (qtorch . ,gen-qasm-case)
-     (qsim   . ,gen-cirq-case))))
+     (qsim   . ,gen-cirq-case)
+     (quimb  . ,gen-quimb-case))))
 
 ;;; Oracles
 (define (not n)
@@ -330,7 +334,8 @@
   (gen-dj-case 'deutsch-jozsa-is-even-simplified simplified-deutsch-jozsa-is-even is-even (range 1 21))
   (parameterize [(supported-simulators `((iso    . ,gen-iso-case)
                                          (qiskit . ,gen-qiskit-case)
-                                         (qsim   . ,gen-cirq-case)))]
+                                         (qsim   . ,gen-cirq-case)
+                                         (quimb  . ,gen-quimb-case)))]
     (gen-simon-big-matrix-case 'simon (range 1 5)))
   #;
   (gen-simon-decompose-case 'simon-decompose (range 1 4))
