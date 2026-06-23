@@ -885,7 +885,7 @@ def _plot_build_fig1_series(primary_variant: str) -> List[Tuple[str, str, str]]:
         ("Qiskit", "{name}-avg:qiskit-simulation", "tab:green"),
         ("qsim", "{name}-avg:qsim-simulation", "tab:blue"),
         ("qTorch", "{name}-avg:qtorch-simulation-full", "tab:purple"),
-        ("quimb", "{name}-avg:quimb-simulation-full", "tab:purple"),
+        ("quimb", "{name}-avg:quimb-simulation", "tab:olive"),
     ]
 
 PLOT_VARIANT_COLOR_PAIRS: List[Tuple[str, str]] = [
