@@ -46,7 +46,7 @@
 (define (is-even n)
   (if (even? n) 1 0))
 
-(define (simon-f size c)
+(define (simon-f c)
   (λ (n)
     (min n (bitwise-xor n c))))
 
@@ -291,14 +291,14 @@
 (define (gen-simon-decompose-case tag qubits)
   (define algo-name tag)
   (define spec simon-decompose-spec)
-  (define oracle (λ (in-size) (simon-f in-size (sub1 (expt 2 in-size)))))
+  (define oracle (λ (in-size) (λ (n) ((simon-f (sub1 (expt 2 in-size))) n))))
   (define out-size identity)
   (gen-benchmarks algo-name spec oracle out-size qubits))
 
 (define (gen-simon-big-matrix-case tag qubits)
   (define algo-name tag)
   (define spec simon-big-matrix-spec)
-  (define oracle (λ (in-size) (simon-f in-size (sub1 (expt 2 in-size)))))
+  (define oracle (λ (in-size) (λ (n) ((simon-f (sub1 (expt 2 in-size))) n))))
   (define out-size identity)
   (gen-benchmarks algo-name spec oracle out-size qubits))
 
