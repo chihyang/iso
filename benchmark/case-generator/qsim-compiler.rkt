@@ -1021,10 +1021,6 @@ from qiskit_aer import Aer, AerSimulator"))
 
 (define ((generate-qasm-circ-spec name size id-map) spec)
   (match spec
-    (deg #:when (number? deg)
-         (match name
-           (`,g #:when (memv g rotation-gates)
-                (format "~a ~a ~a" (generate-qasm-name g) deg (number->string size)))))
     (`(,gate ,qids ...)
      #:when (circuit? gate)
      (match (gate-name gate)
@@ -1040,7 +1036,7 @@ from qiskit_aer import Aer, AerSimulator"))
        (`,g (generate-qasm-circ g (gate-size gate) (map cons (range (gate-size gate)) qids) (gate-spec gate)))))
     (`(,gate ,qids ...)
      #:when (unitary? gate)
-     (let ((name (generate-qasm-name name)))
+     (let ((name (generate-qasm-name (gate-name gate))))
        (format "~a ~a" name (generate-qasm-qids qids id-map))))
     (`(,gate ,_ ...)
      (error 'generate-qasm-circ-spec "Unsupported application of gate ~a" (gate-name gate)))))
@@ -1120,6 +1116,87 @@ from qiskit_aer import Aer, AerSimulator"))
    (generate-qasm-prog prog source-mats)
    port))
 
+(define (generate-qasm-unitary-def/port port source-name gate)
+  (match gate
+    ((unitary name size _)
+     (let ((gate (generate-qasm-name name)))
+       (match size
+         (1 (fprintf port "def1 ~a ~a\n" gate source-name))
+         (2 (fprintf port "def2 ~a ~a\n" gate source-name))
+         (_ (error 'generate-qasm-unitary "QASM only supports 1 or 2 qubits gates!")))))
+    ((circuit 'phase 1 `(,deg))
+     (let ((gate (generate-qiskit-rotation-name 'phase deg)))
+       (fprintf port "def1 ~a ~a\n" gate source-name)))))
+
+(define (generate-qasm-initialize/port port size val)
+  (let ((bit-str (string->list (make-qbits-str size val))))
+    (for ((q bit-str)
+          (i (length bit-str)))
+      (when (eqv? q #\1)
+        (fprintf port "X ~a\n" i)))))
+
+(define (generate-qasm-circ-spec/port port name size id-map spec)
+  (match spec
+    (`(,gate ,qids ...)
+     #:when (circuit? gate)
+     (match (gate-name gate)
+       (`hadamard (fprintf port "H ~a\n" (generate-qasm-qids qids id-map)))
+       (`neg (fprintf port "X ~a\n" (generate-qasm-qids qids id-map)))
+       (`cx (fprintf port "CNOT ~a\n" (generate-qasm-qids qids id-map)))
+       (`,g
+        #:when (memv g rotation-gates)
+        (if (eqv? g 'phase)
+            (fprintf port "~a ~a\n"
+                     (generate-qiskit-rotation-name g (car (gate-spec gate)))
+                     (generate-qasm-qids qids id-map))
+            (fprintf port "~a ~a ~a\n"
+                     (generate-qasm-name g)
+                     (car (gate-spec gate))
+                     (generate-qasm-qids qids id-map))))
+       (`,g #:when (memv g qasm-builtin)
+            (fprintf port "~a ~a\n" g (generate-qasm-qids qids id-map)))
+       (`,g
+        (generate-qasm-circ-spec*/port
+         port g (gate-size gate) (map cons (range (gate-size gate)) qids) (gate-spec gate)))))
+    (`(,gate ,qids ...)
+     #:when (unitary? gate)
+     (let ((name (generate-qasm-name (gate-name gate))))
+       (fprintf port "~a ~a\n" name (generate-qasm-qids qids id-map))))
+    (`(,gate ,_ ...)
+     (error 'generate-qasm-circ-spec "Unsupported application of gate ~a" (gate-name gate)))))
+
+(define (generate-qasm-circ-spec*/port port name size id-map specs)
+  (if (null? specs)
+      (void)
+      (begin
+        (generate-qasm-circ-spec/port port name size id-map (car specs))
+        (generate-qasm-circ-spec*/port port name size id-map (cdr specs)))))
+
+(define (generate-qasm-main/port port gate)
+  (match gate
+    ((circuit name size spec)
+     (generate-qasm-circ-spec*/port port name size (map cons (range size) (range size)) spec))
+    ((unitary name size _)
+     (fprintf port "~a ~a\n" name (join (map number->string (range size)) " ")))
+    ((qcircuit _ _ _)
+     (error 'generate-qasm-scirc "QASM doesn't support Qiskit circuit!"))
+    ((scircuit _ _ _)
+     (error 'generate-qasm-scirc "QASM doesn't support ISO circuit!"))
+    (`,var #:when (symbol? var)
+     (fprintf port "~a\n" (generate-qasm-name var)))))
+
+(define (generate-qasm-prog/port port prog qasm-defs)
+  (match prog
+    (`(,gate ,n)
+     (generate-lines*/port port (number->string (gate-size gate)))
+     (for ((def qasm-defs))
+       (generate-qasm-unitary-def/port port (car def) (cdr def)))
+     (generate-qasm-initialize/port port (gate-size gate) n)
+     (generate-qasm-main/port port gate))))
+
+(define (generate-qasm-source!/port prog qasm-defs port)
+  (generate-qasm-prog/port port prog qasm-defs))
+
 (define (generate-qasm-unitary-file! unitary-circ port)
   (match unitary-circ
     ((unitary name size mapping)
@@ -1159,7 +1236,7 @@ from qiskit_aer import Aer, AerSimulator"))
     (display "unitary defs:\n" out-port)
     (generate-qasm-unitary-defs! source-mats out-port)
     (display "\nqasm:\n" out-port)
-    (generate-qasm-source! prog source-mats out-port)
+    (generate-qasm-source!/port prog source-mats out-port)
     (display "\nmeasurement:\n" out-port)
     (generate-qasm-measurement! prog out-port)
     (display "\nsimulation:\n" out-port)
