@@ -332,12 +332,13 @@
   (gen-dj-case 'deutsch-jozsa-is-even deutsch-jozsa-spec is-even (range 1 5))
   (gen-dj-case 'deutsch-jozsa-to-zero-simplified simplified-deutsch-jozsa-to-zero to-zero (range 1 21))
   (gen-dj-case 'deutsch-jozsa-is-even-simplified simplified-deutsch-jozsa-is-even is-even (range 1 21))
+  (parameterize [(supported-simulators `((qtorch . ,gen-qasm-case)))]
+    (gen-simon-big-matrix-case 'simon (range 1 2)))
   (parameterize [(supported-simulators `((iso    . ,gen-iso-case)
                                          (qiskit . ,gen-qiskit-case)
                                          (qsim   . ,gen-cirq-case)
                                          (quimb  . ,gen-quimb-case)))]
     (gen-simon-big-matrix-case 'simon (range 1 5)))
-  #;
   (gen-simon-decompose-case 'simon-decompose (range 1 4))
   (gen-grover-case 0 'grover)
   (gen-qft 'qft)

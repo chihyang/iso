@@ -809,8 +809,142 @@
    (generate-iso-prog prog)
    port))
 
+(define (generate-iso-circ-type/port port name size)
+  (fprintf port "~a :: ~a\n" (generate-iso-name name) (generate-iso-type size)))
+
+(define (generate-iso-builtin/port port name)
+  (generate-lines*/port port (generate-iso-builtin name)))
+
+(define (generate-iso-rotation/port port name deg)
+  (generate-lines*/port port (generate-iso-rotation name deg)))
+
+(define (generate-iso-scirc-side/port port indent spec)
+  (define recur (((curry generate-iso-scirc-side/port) port) indent))
+  (match spec
+    (`,x #:when (symbol? x) (fprintf port "~a" (symbol->string x)))
+    (`,x #:when (string? x) (fprintf port "~a" x))
+    (#t (fprintf port "left unit"))
+    (#f (fprintf port "right unit"))
+    ('() (fprintf port "unit"))
+    (`(let ((,lvar (,gate ,spec))) ,body)
+     (let ((lvar (format "~a" lvar)))
+       (fprintf port "~alet ~a = ~a" indent lvar (generate-iso-gate-name gate))
+       (recur spec)
+       (fprintf port " in\n~a" indent)
+       (recur body)))
+    (`(,s) (recur s))
+    (`(,a . ,d)
+     (fprintf "<")
+     (recur a)
+     (fprintf ",")
+     (recur d)
+     (fprintf ">"))))
+
+(define (generate-iso-scirc-pair/port port lhs rhs indent)
+  (fprintf port indent)
+  (generate-iso-scirc-side/port port indent lhs)
+  (fprintf port " <->\n~a" indent)
+  (generate-iso-scirc-side/port port indent rhs))
+
+(define (generate-iso-scirc-body/port port size specs)
+  (let ((started #f))
+    (for ((spec specs))
+      (when started
+        (fprintf port ";\n"))
+      (generate-iso-scirc-pair/port port (car spec) (cadr spec) (new-iso-indent))
+      (when (not started)
+        (set! started #t)))))
+
+(define (generate-iso-lhs/port port var size)
+  (fprintf port "~a" (generate-iso-vals var (range size))))
+
+(define (generate-iso-rhs/port port var size spec indent)
+  (define (foo var body spec indent)
+    (match spec
+      (`() (fprintf port "~a~a" indent body))
+      (`(,g . ,gs)
+       (let ((bind (generate-iso-gate var g indent)))
+         (fprintf port "~a" bind)
+         (foo var body gs indent)))))
+  (let ((body (generate-iso-vals var (range size))))
+    (foo var body spec indent)))
+
+(define (generate-iso-unitary-mapping/port port size mapping indent)
+  (match mapping
+    (`(,l ,r)
+     (let ((lstr (make-iso-qbits size l))
+           (rstr (make-iso-qbits size r)))
+       (fprintf port "~a~a <-> ~a" indent lstr rstr)))))
+
+(define (generate-iso-circ-body/port port size spec)
+  (let ((var (gensym "var")))
+    (fprintf port (new-iso-indent))
+    (generate-iso-lhs/port port var size)
+    (fprintf port " <->\n")
+    (generate-iso-rhs/port port var size spec (new-iso-indent))
+    (fprintf port "\n")))
+
+(define (generate-iso-unitary-body/port port size mapping)
+  (let ((started #f))
+    (for ((m mapping))
+      (when started
+        (fprintf port ";\n"))
+      (generate-iso-unitary-mapping/port port size m (new-iso-indent))
+      (when (not started)
+        (set! started #t)))))
+
+(define (generate-iso-scirc/port port name size spec)
+  (fprintf port "~a = {\n" (generate-iso-name name))
+  (generate-iso-scirc-body/port port size spec)
+  (fprintf port "\n}\n"))
+
+(define (generate-iso-circ/port port name size spec)
+  (fprintf port "~a = {\n" (generate-iso-name name))
+  (generate-iso-circ-body/port port size spec)
+  (fprintf port "\n}\n"))
+
+(define (generate-iso-unitary/port port name size mapping)
+  (fprintf port "~a = {\n" (generate-iso-name name))
+  (generate-iso-unitary-body/port port size mapping)
+  (fprintf port "\n}\n"))
+
+(define (generate-iso-def/port port gate)
+  (match gate
+    ((scircuit name size spec)
+     (generate-iso-circ-type/port port name size)
+     (generate-iso-scirc/port port name size spec))
+    ((circuit name _ _) #:when (memv name builtin-gates)
+     (generate-iso-builtin/port port name))
+    ((circuit name 1 spec) #:when (memv name rotation-gates)
+     (generate-iso-rotation/port port name spec))
+    ((circuit name size spec)
+     (generate-iso-circ-type/port port name size)
+     (generate-iso-circ/port port name size spec))
+    ((unitary name size mapping)
+     (generate-iso-circ-type/port port name size)
+     (generate-iso-unitary/port port name size mapping))
+    (_ (error 'generate-iso-def "Unsupported gate type: ~a" gate))))
+
+(define (generate-iso-defs/port port circs)
+  (for ((circ (collect-defs circs)))
+    (generate-iso-def/port port circ)))
+
+(define (generate-iso-main/port port gate n)
+  (let ((name (generate-iso-gate-name gate))
+        (size (gate-size gate)))
+    (fprintf port "(~a ~a)\n" name (make-iso-qbits size n))))
+
+(define (generate-iso-prog/port port prog)
+  (match prog
+    (`(,gate ,n)
+     (generate-iso-defs/port port `(,gate))
+     (generate-iso-main/port port gate n))))
+
+(define (generate-iso-source!/port prog port)
+  (generate-iso-prog/port port prog))
+
 (define (to-iso/port prog out-port)
-  (generate-iso-source! prog out-port))
+  (generate-iso-source!/port prog out-port))
 
 (define (to-iso prog source-name)
   (when (file-exists? source-name)
