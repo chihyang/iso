@@ -426,7 +426,7 @@ def run_command(
     if opts.case_limit > 0:
         files = files[: opts.case_limit]
 
-    short_tag = textwrap.shorten(tag, width=15)
+    short_tag = tag[-15::]
     time_data: List[float] = []
 
     if not files and opts.dry_run:
