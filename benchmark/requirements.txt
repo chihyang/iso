@@ -52,7 +52,7 @@ mypy==1.19.1
 mypy_extensions==1.1.0
 natsort==8.4.0
 networkx==3.6.1
-numpy==2.3.5
+numpy==2.4.6
 opt_einsum==3.4.0
 packaging==26.0
 pandas==2.3.3
