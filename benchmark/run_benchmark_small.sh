@@ -7,4 +7,4 @@ python /benchmark/benchmark_cli.py run \
        --case_limit 5 \
        -o /benchmark/result/small \
        --meta_path /benchmark/benchmark-meta-data/ \
-       --experiments grover qft
+       --experiments qft

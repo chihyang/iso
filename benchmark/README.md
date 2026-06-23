@@ -53,7 +53,6 @@ cd /benchmark/ && bash run_benchmark_small.sh
 
 The command above runs a small benchmark using the following quantum algorithms:
 * QFT on `n` qubits, up to 5 qubits
-* Grover's algorithm, up to 5 qubits
 
 The command above takes about 5 minutes.
 
