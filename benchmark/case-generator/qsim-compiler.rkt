@@ -982,8 +982,115 @@ from qiskit_aer import Aer, AerSimulator"))
     (generate-qiskit-prog prog))
    port))
 
+(define (generate-qiskit-circ-def/port port name size)
+  (fprintf port "~a = QuantumCircuit(~a)\n" (generate-qiskit-name name) size))
+
+(define (generate-qiskit-qcirc/port port name size spec)
+  (let ((um (gensym 'um))
+        (mat (gensym 'mat)))
+    (generate-lines*/port
+     port
+     (format "~a = ~a" mat spec)
+     (format "~a = UnitaryGate(~a)" um mat)
+     (format "~a.append(~a, [~a])"
+             (generate-qiskit-name name)
+             um
+             (join (map number->string (range size)) ", ")))))
+
+(define (generate-qiskit-builtin/port port name)
+  (match name
+    ('hadamard
+     (fprintf port "~a = ~aGate()\n" (generate-qiskit-name name) 'H))
+    ('neg
+     (fprintf port "~a = ~aGate()\n" (generate-qiskit-name name) 'X))
+    ('cx
+     (fprintf port "~a = ~aGate()\n" (generate-qiskit-name name) 'CX))
+    ('swap
+     (fprintf port "~a = ~aGate()\n" (generate-qiskit-name name) 'Swap))))
+
+(define (generate-qiskit-circ-spec/port port name size spec)
+  (match spec
+    (`(,gate ,qids ...)
+     (match (gate-name gate)
+       (`,g (fprintf
+             port
+             "~a.append(~a, [~a])\n" name (generate-qiskit-gate-name gate)
+             (generate-qiskit-circ-args size qids)))))))
+
+(define (generate-qiskit-circ/port port name size specs)
+  (for ((spec specs))
+    (generate-qiskit-circ-spec/port port (generate-qiskit-name name) size spec)))
+
+(define (generate-qiskit-unitary/port port name size mapping)
+  (let ((mat (gensym 'mat))
+        (indices (gensym 'indices))
+        (ug (gensym 'ug))
+        (gate (generate-qiskit-name name)))
+    (generate-lines*/port
+     port
+     (format "~a = np.zeros((~a, ~a))" mat (expt 2 size) (expt 2 size))
+     (format "~a = [~a]" indices (join (map (λ (p) (format "(~a, ~a)" (car p) (cadr p))) mapping) ", "))
+     (format "for i, j in ~a:\n~a~a[i, j] = 1" indices (new-python-indent) mat)
+     (format "~a = UnitaryGate(~a)" ug mat)
+     (format "~a.append(~a, [~a])" gate ug (join (map number->string (range size)) ", ")))))
+
+(define (generate-qiskit-def/port port gate)
+  (match gate
+    ((qcircuit name size spec)
+     (generate-qiskit-circ-def/port port name size)
+     (generate-qiskit-qcirc/port port name size spec))
+    ((scircuit name _ _)
+     (error 'generate-qiskit-def "Unsupported circuit type: scircuit ~a" name))
+    ((circuit name _ _)
+     #:when (memv name builtin-gates)
+     (generate-qiskit-builtin/port port name))
+    ((circuit name 1 `(,deg)) #:when (memv name rotation-gates)
+     (let ((rotation-name (generate-qiskit-rotation-name name deg))
+           (lib-name (if (eqv? name 'phase)
+                         (symbol->string 'Phase)
+                         (string-upcase (symbol->string name)))))
+       (fprintf port "~a = ~aGate(~a)\n" rotation-name lib-name deg)))
+    ((circuit name size spec)
+     (generate-qiskit-circ-def/port port name size)
+     (generate-qiskit-circ/port port name size spec))
+    ((unitary name size mapping)
+     (generate-qiskit-circ-def/port port name size)
+     (generate-qiskit-unitary/port port name size mapping))))
+
+(define (generate-qiskit-defs/port port circs)
+  (for ((def (collect-defs circs)))
+    (generate-qiskit-def/port port def)))
+
+(define (generate-qiskit-main/port port gate n)
+  (let* ((size (gate-size gate))
+         (final (generate-qiskit-name (gensym 'fg))))
+    (generate-lines*/port
+     port
+     (format "~a = QuantumCircuit(~a, ~a)" final size size)
+     (format "~a.initialize('~a', ~a.qubits)"
+             final (make-qbits-str size n) final)
+     (format "~a.append(~a, ~a.qubits)" final (generate-qiskit-gate-name gate) final)
+     (format "simulator = Aer.get_backend('statevector_simulator')")
+     (format "~a = transpile(~a, simulator, optimization_level=2)" final final)
+     (format "job = simulator.run(~a, shots=1)"
+             final)
+     (format "result = job.result()")
+     (format "print(f'execution time: {result.time_taken}')")
+     (format "state = result.get_statevector().reverse_qargs()")
+     (format "print(state)"))))
+
+(define (generate-qiskit-prog/port port prog)
+  (match prog
+    (`(,gate ,n)
+     (generate-qiskit-defs/port port `(,gate))
+     (generate-qiskit-main/port port gate n))))
+
+(define (generate-qiskit-source!/port prog port)
+  (generate-lines*/port port (generate-qiskit-header))
+  (generate-qiskit-prog/port port prog))
+
 (define (to-qiskit/port prog out-port)
-  (generate-qiskit-source! prog out-port))
+  (generate-qiskit-source!/port prog out-port))
 
 (define (to-qiskit prog source-name)
   (when (file-exists? source-name)
