@@ -1166,11 +1166,8 @@ from qiskit_aer import Aer, AerSimulator"))
      (error 'generate-qasm-circ-spec "Unsupported application of gate ~a" (gate-name gate)))))
 
 (define (generate-qasm-circ-spec*/port port name size id-map specs)
-  (if (null? specs)
-      (void)
-      (begin
-        (generate-qasm-circ-spec/port port name size id-map (car specs))
-        (generate-qasm-circ-spec*/port port name size id-map (cdr specs)))))
+  (for ((spec specs))
+    (generate-qasm-circ-spec/port port name size id-map spec)))
 
 (define (generate-qasm-main/port port gate)
   (match gate
@@ -1273,7 +1270,7 @@ from qiskit_aer import Aer, AerSimulator"))
        (file-writer ((curry generate-qasm-unitary-file!) (cdr u)) (car u)))
      mat-defs)
     ;; generate the qasm
-    (file-writer ((curry generate-qasm-source!) prog mat-defs) qasm-name)
+    (file-writer ((curry generate-qasm-source!/port) prog mat-defs) qasm-name)
     ;; generate the measurement
     (file-writer ((curry generate-qasm-measurement!) prog) meas-name)
     ;; generate the instruction
@@ -1486,11 +1483,8 @@ import qsimcirq")
         (generate-cirq-circ-spec*/port port circ-name qids-name (gate-spec gate)))))))
 
 (define (generate-cirq-circ-spec*/port port circ-name qids-name specs)
-  (if (null? specs)
-      (void)
-      (begin
-        (generate-cirq-circ-spec/port port circ-name qids-name (car specs))
-        (generate-cirq-circ-spec*/port port circ-name qids-name (cdr specs)))))
+  (for ((spec specs))
+    (generate-cirq-circ-spec/port port circ-name qids-name spec)))
 
 (define (generate-cirq-unitary-def/port port gate)
   (match gate
@@ -1714,11 +1708,8 @@ import quimb.tensor as qtn")
         (generate-quimb-circ-spec*/port port circ-name qids-name (gate-spec gate)))))))
 
 (define (generate-quimb-circ-spec*/port port circ-name qids-name specs)
-  (if (null? specs)
-      (void)
-      (begin
-        (generate-quimb-circ-spec/port port circ-name qids-name (car specs))
-        (generate-quimb-circ-spec*/port port circ-name qids-name (cdr specs)))))
+  (for ((spec specs))
+    (generate-quimb-circ-spec/port port circ-name qids-name spec)))
 
 (define (generate-quimb-main-spec/port port circ-name gate qbits)
   (match gate
