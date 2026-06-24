@@ -643,7 +643,7 @@ def run_single_suite(suite_name: str, opts: BenchmarkRunnerConfig) -> None:
         quimb_result_dir,
         "",
         ">",
-        tags[6],
+        tags[8],
         opts,
     )
 
