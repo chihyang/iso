@@ -241,6 +241,24 @@
   (let* ((circ (mcx in-size)))
     (apply-gate circ 0)))
 
+;;; Parallel two circuits
+(define (had-to-last-simplified-dj-to-zero-spec f in-size out-size)
+  (let* ((n (* in-size 2))
+         (circ (to-gate (had-to-last-dj-to-zero n)
+                 (para hadamard (range (sub1 in-size) n))
+                 (para hadamard (range in-size (sub1 n))))))
+    (apply-gate circ in-size)))
+
+(define (had-to-last-simplified-dj-is-even-spec f in-size out-size)
+  (let* ((n (* in-size 2))
+         (circ (to-gate (deutsch n)
+                 (para hadamard (range (sub1 in-size) n))
+                 (para x (range (- n 2) (- n 1)))
+                 (para cx (range (- n 2) n))
+                 (para x (range (- n 2) (- n 1)))
+                 (para hadamard (range in-size in-size)))))
+    (apply-gate circ 1)))
+
 ;;; Generate cases
 (define (gen-one-benchmark case-generator algo-name simulator spec oracle f-out-size qubits)
   (parameterize ((working-directory (build-path (working-directory)
@@ -326,6 +344,22 @@
   (define qubits (range 1 8))
   (gen-benchmarks algo-name spec oracle out-size qubits))
 
+(define (gen-had-to-last-dj-to-zero tag)
+  (define algo-name tag)
+  (define spec had-to-last-simplified-dj-to-zero-spec)
+  (define oracle unused)
+  (define out-size unused)
+  (define qubits (range 1 20))
+  (gen-benchmarks algo-name spec oracle out-size qubits))
+
+(define (gen-had-to-last-dj-is-even tag)
+  (define algo-name tag)
+  (define spec had-to-last-simplified-dj-is-even-spec)
+  (define oracle unused)
+  (define out-size unused)
+  (define qubits (range 1 20))
+  (gen-benchmarks algo-name spec oracle out-size qubits))
+
 (define (gen-cases)
   (gen-had-case 'had-last-qubit)
   (gen-bell-state 'bell-state)
@@ -342,7 +376,9 @@
   (gen-simon-decompose-case 'simon-decompose (range 1 4))
   (gen-grover-case 0 'grover)
   (gen-qft 'qft)
-  (gen-mcx 'mcx))
+  (gen-mcx 'mcx)
+  (gen-had-to-last-dj-to-zero 'had-last-dj-zero)
+  (gen-had-to-last-dj-is-even 'had-last-dj-even))
 
 (command-line
  #:program "cases"
