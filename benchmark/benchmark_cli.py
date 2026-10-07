@@ -48,6 +48,7 @@ class BenchmarkRunnerConfig:
     log_path: str = "log"
     experiments: Optional[List[str]] = None
     exclude_experiments: Optional[List[str]] = None
+    run_comparison_simulators: bool = True
 
 
 @dataclass
@@ -599,53 +600,58 @@ def run_single_suite(suite_name: str, opts: BenchmarkRunnerConfig) -> None:
         opts,
     )
 
-    qiskit_simulation = run_command(
-        qiskit_suite_dir,
-        ".py",
-        "-qiskit.txt",
-        ["python"],
-        qiskit_result_dir,
-        "",
-        ">",
-        tags[5],
-        opts,
-    )
+    qiskit_simulation: List[float] = []
+    qsim_simulation: List[float] = []
+    qtorch_simulation: List[float] = []
+    quimb_simulation: List[float] = []
+    if opts.run_comparison_simulators:
+        qiskit_simulation = run_command(
+            qiskit_suite_dir,
+            ".py",
+            "-qiskit.txt",
+            ["python"],
+            qiskit_result_dir,
+            "",
+            ">",
+            tags[5],
+            opts,
+        )
 
-    qsim_simulation = run_command(
-        qsim_suite_dir,
-        ".py",
-        "-qsim.txt",
-        ["python"],
-        qsim_result_dir,
-        "",
-        ">",
-        tags[6],
-        opts,
-    )
+        qsim_simulation = run_command(
+            qsim_suite_dir,
+            ".py",
+            "-qsim.txt",
+            ["python"],
+            qsim_result_dir,
+            "",
+            ">",
+            tags[6],
+            opts,
+        )
 
-    qtorch_simulation = run_command(
-        qtorch_suite_dir,
-        ".sim",
-        "-qtorch.txt",
-        ["qtorch"],
-        qtorch_result_dir,
-        "",
-        ">",
-        tags[7],
-        opts,
-    )
+        qtorch_simulation = run_command(
+            qtorch_suite_dir,
+            ".sim",
+            "-qtorch.txt",
+            ["qtorch"],
+            qtorch_result_dir,
+            "",
+            ">",
+            tags[7],
+            opts,
+        )
 
-    quimb_simulation = run_command(
-        quimb_suite_dir,
-        ".py",
-        "-quimb.txt",
-        ["python"],
-        quimb_result_dir,
-        "",
-        ">",
-        tags[8],
-        opts,
-    )
+        quimb_simulation = run_command(
+            quimb_suite_dir,
+            ".py",
+            "-quimb.txt",
+            ["python"],
+            quimb_result_dir,
+            "",
+            ">",
+            tags[8],
+            opts,
+        )
 
     if not opts.dry_run:
         create_dir_if_needed(opts.csv_path)
@@ -1127,7 +1133,7 @@ def run_full_mode(opts: RunBenchmarkConfig) -> None:
     iso_dir = os.path.join(root, "iso")
     fggs_dir = os.path.join(root, "perpl", "fggs")
 
-    for tag in opts.variants:
+    for variant_index, tag in enumerate(opts.variants):
         benchmark_dir_name = f"{opts.prefix}-{tag}"
         benchmark_root = os.path.join(iso_dir, benchmark_dir_name)
 
@@ -1136,6 +1142,7 @@ def run_full_mode(opts: RunBenchmarkConfig) -> None:
         run_process(["git", "checkout", tag], cwd=fggs_dir, dry_run=opts.dry_run)
         run_generate_mode(GenerateConfig(root=opts.root, prefix=opts.prefix, variants=[tag], dry_run=opts.dry_run))
 
+        run_comparison = (variant_index == 0)
         bench_opts = BenchmarkRunnerConfig(
             benchmark_root=benchmark_root,
             csv_path=benchmark_root,
@@ -1147,6 +1154,7 @@ def run_full_mode(opts: RunBenchmarkConfig) -> None:
             log_path=os.path.join(benchmark_root, f"{opts.log_path}-{tag}"),
             experiments=opts.experiments,
             exclude_experiments=opts.exclude_experiments,
+            run_comparison_simulators=run_comparison,
         )
         validate_bench_config(bench_opts)
         run_bench_mode(bench_opts)

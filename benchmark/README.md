@@ -127,8 +127,10 @@ This CSV has the following columns.
 | `{algorithm}-{variant}:qiskit-simulation`   | The Qiskit simulation time                                                |
 | `{algorithm}-{variant}:qsim-simulation`     | The qsim simulation time                                                  |
 | `{algorithm}-{variant}:qtorch-simulation`   | The qTorch simulation time                                                |
+| `{algorithm}-{variant}:quimb-simulation`    | The quimb simulation time                                                 |
 
 After all variants are performed, multiple CSV files for one algorithm are merged together.
+In a full `run`, Qiskit, qsim, qTorch, and quimb are only executed once.
 All columns listed above will be added.
 In addition, the following columns will be added.
 
@@ -140,10 +142,11 @@ In addition, the following columns will be added.
 | `{algorithm}-avg:perpl-to-fgg`              | The average compilation time from PERPL to FGG                            |
 | `{algorithm}-avg:iso-to-fgg`                | The average compilation time from ISO to FGG                              |
 | `{algorithm}-avg:iso-perpl-fgg`             | The average compilation time from ISO to FGG through PERPL                |
-| `{algorithm}-avg:qiskit-simulation`         | The average Qiskit simulation time of all performed variants              |
-| `{algorithm}-avg:qsim-simulation`           | The average qsim simulation time of all performed variants                |
-| `{algorithm}-avg:qtorch-simulation`         | The average qTorch simulation time of all performed variants              |
-| `{algorithm}-avg:qtorch-simulation-full`    | The average qTorch simulation time multiplied by the number of basis states |
+| `{algorithm}-avg:qiskit-simulation`         | The Qiskit simulation time                                                |
+| `{algorithm}-avg:qsim-simulation`           | The qsim simulation time                                                  |
+| `{algorithm}-avg:qtorch-simulation`         | The qTorch simulation time                                                |
+| `{algorithm}-avg:qtorch-simulation-full`    | The qTorch simulation time multiplied by the number of basis states       |
+| `{algorithm}-avg:quimb-simulation`          | The quimb simulation time                                                 |
 
 Where `{algorithm}` can be one of the following:
 
