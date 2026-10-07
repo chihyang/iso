@@ -14,7 +14,6 @@ import qualified Data.Map as Map
 import Perpl.Util.Helpers
 import Perpl.Util.Tensor
 import Perpl.Util.JSON
-import Data.List (intercalate)
 import Crypto.Hash (hash, Digest, SHA256)
 import qualified Data.ByteArray.Encoding as Encoding
 import qualified Data.ByteString.Char8 as B
@@ -123,8 +122,10 @@ hashId code =
         base64 = Encoding.convertToBase Encoding.Base64URLUnpadded digest :: B.ByteString
     in B.unpack base64
 
-strToJson :: Show a => a -> String
-strToJson v = hashId (show v)
+-- | If the first bool option is true, use string hash, otherwise just show the string.
+strToJson :: Show a => Bool -> a -> String
+strToJson True v = hashId (show v)
+strToJson False v = show v
 
 weight_to_json :: Weight -> JSON
 weight_to_json (r :+ 0) = JSdouble r
@@ -136,27 +137,30 @@ weight_to_json (r :+ i) = JSobject [("re", JSdouble r), ("im", JSdouble i)]
 
 fgg_to_json :: TensorLike a => Bool -> FGG a -> JSON
 fgg_to_json si (FGG ds fs nts s rs) =
-  let mapToList = \ ds f -> JSobject $ map f (Map.toList ds) in
+  let mapToList = \ ds f -> JSobject $ map f (Map.toList ds)
+      strFn :: Show a => a -> String
+      strFn = strToJson si
+  in
   JSobject
     [("grammar", JSobject
       [("terminals", mapToList fs $
-         \ (el, (d, mws)) -> (strToJson el, JSobject [("type", JSarray [JSstring (strToJson nl) | nl <- d])])),
+         \ (el, (d, mws)) -> (strFn el, JSobject [("type", JSarray [JSstring (strFn nl) | nl <- d])])),
        ("nonterminals", mapToList nts $
-         \ (el, d) -> (strToJson el, JSobject [
-           ("type", JSarray [JSstring (strToJson nl) | nl <- d])
+         \ (el, d) -> (strFn el, JSobject [
+           ("type", JSarray [JSstring (strFn nl) | nl <- d])
          ])),
-       ("start", JSstring (strToJson s)),
+       ("start", JSstring (strFn s)),
        ("rules", JSarray $ flip map rs $
           \ (Rule lhs (HGF ns es xs)) ->
             let m = Map.fromList (zip (fsts ns) [0..]) in
             JSobject [
-             ("lhs", JSstring (strToJson lhs)),
+             ("lhs", JSstring (strFn lhs)),
              ("rhs", JSobject [
-                 ("nodes", JSarray [JSobject [("label", JSstring (strToJson d)), ("id", JSstring (show n))] | (n, d) <- ns]),
+                 ("nodes", JSarray [JSobject [("label", JSstring (strFn d)), ("id", JSstring (show n))] | (n, d) <- ns]),
                  ("edges", JSarray $ flip map es $
                    \ (Edge atts el) -> JSobject [
                      ("attachments", JSarray [JSint (m Map.! n) | (n, d) <- atts]),
-                     ("label", JSstring (strToJson el))
+                     ("label", JSstring (strFn el))
                    ]),
                  ("externals", JSarray [JSint (m Map.! n) | (n, d) <- xs])
                ])
@@ -166,19 +170,19 @@ fgg_to_json si (FGG ds fs nts s rs) =
        ("domains", mapToList ds $
          \ (nl, Domain sz dom) ->
            if si
-           then (strToJson nl, JSobject [
+           then (strFn nl, JSobject [
                           ("class", JSstring "range"),
                           ("size", JSint sz)
                           ])
-           else (strToJson nl, JSobject [
+           else (strFn nl, JSobject [
                              ("class", JSstring "finite"),
                              ("values", JSarray $ [JSstring v | DValue v <- dom])
                              ])),
        ("factors",
           mapToList fs $
-           \ (el, (d, ws)) -> (strToJson el, JSobject [
+           \ (el, (d, ws)) -> (strFn el, JSobject [
              ("function", JSstring "finite"),
-               ("type", JSarray [JSstring (strToJson nl) | nl <- d]),
+               ("type", JSarray [JSstring (strFn nl) | nl <- d]),
                ("weights", weights_to_json weight_to_json ws)
              ]))
         ])

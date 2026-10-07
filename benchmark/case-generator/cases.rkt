@@ -77,7 +77,7 @@
 (define (deutsch-jozsa-spec f in-size out-size)
   (let* ((n (+ in-size out-size))
          (uf (to-permutation uf in-size out-size f))
-         (circ (to-gate (deutch n)
+         (circ (to-gate (deutsch n)
                  (para hadamard (range 0 n))
                  (uf (range 0 n))
                  (para hadamard (range 0 in-size)))))
