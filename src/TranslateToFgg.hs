@@ -15,9 +15,55 @@ import Perpl.Util.Indices (PatternedTensor)
 import Perpl.Util.JSON
 import Perpl.Util.RuleM
 import Perpl.Util.Tensor (TensorLike)
+import qualified Data.Map.Strict as Map
 import Debug.Trace (trace)
 
 type ResultT = ExceptT String RuleM
+type TermEnv = Map.Map String Term
+
+{--
+Operations on name environment.
+--}
+newEnv :: TermEnv
+newEnv = Map.empty
+
+extendEnv :: TermEnv -> String -> Term -> TermEnv
+extendEnv table name tm = Map.insert name tm table
+
+lookupEnv :: TermEnv -> String -> Term
+lookupEnv env name =
+  if Map.member name env
+  then env Map.! name
+  else TmVar name
+
+-- inline let expressions
+tmInlinePat :: TermEnv -> Pattern -> Term -> Term -> Term
+tmInlinePat env (PtSingleVar var) rhs body = tmInline (extendEnv env var rhs) body
+tmInlinePat env (PtMultiVar [var]) rhs body = tmInline (extendEnv env var rhs) body
+tmInlinePat env (PtMultiVar (var:vars)) (TmPair lTm rTm) body =
+  tmInlinePat (extendEnv env var lTm) (PtMultiVar vars) rTm body
+tmInlinePat env (PtMultiVar (var:vars)) (TmAnn (TmPair lTm rTm) _) body =
+  tmInlinePat (extendEnv env var lTm) (PtMultiVar vars) rTm body
+tmInlinePat env pat@(PtMultiVar (var:vars)) rhs body =
+  TmLet pat rhs (tmInline env body)
+
+tmInline :: TermEnv -> Term -> Term
+tmInline _ TmUnit = TmUnit
+tmInline _ (TmInt n) = TmInt n
+tmInline _ TmEmpty = TmEmpty
+tmInline env (TmCons tm1 tm2) = TmCons (tmInline env tm1) (tmInline env tm2)
+tmInline env (TmVar v) = lookupEnv env v
+tmInline env (TmPair tm1 tm2) = TmPair (tmInline env tm1) (tmInline env tm2)
+tmInline env (TmLInj tm1) = TmLInj (tmInline env tm1)
+tmInline env (TmRInj tm2) = TmRInj (tmInline env tm2)
+tmInline env (TmIsoApp iso tm) = TmIsoApp iso (tmInline env tm)
+tmInline env (TmLet pat rhs body) =
+  let rhs' = tmInline env rhs
+  in tmInlinePat env pat rhs' body
+tmInline env (TmSuc tm) = TmSuc (tmInline env tm)
+tmInline env (TmScale s tm) = TmScale s (tmInline env tm)
+tmInline env (TmPlus tms) = TmPlus (map (tmInline env) tms)
+tmInline env (TmAnn tm ty) = TmAnn (tmInline env tm) ty
 
 moduleName :: String
 moduleName = "Translate To FGG: "
@@ -168,13 +214,14 @@ cls2Hgf info (v, e) (vTy, eTy) =
   do
     vTm <- val2Tm v
     eTm <- exp2Tm e
+    let eTmInlined = tmInline newEnv eTm
     varsNs1 <- term2Fgg info vTm vTy
-    varsNs2 <- term2Fgg info eTm eTy
+    varsNs2 <- term2Fgg info eTmInlined eTy
     let varsNs = varsNs1 ++ varsNs2
         [tyNs1, tyNs2] = newOutTmNodes [vTy, eTy]
         ns = varsNs ++ [tyNs1, tyNs2]
         e1 = termEdge (varsNs1 ++ [tyNs1]) vTm
-        e2 = termEdge (varsNs2 ++ [tyNs2]) eTm
+        e2 = termEdge (varsNs2 ++ [tyNs2]) eTmInlined
     mkHGF ns [e1, e2] [tyNs1, tyNs2] []
 
 pattern2fgg :: Info -> Pattern -> BaseType -> ResultT [Node]
