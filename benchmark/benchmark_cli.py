@@ -33,8 +33,8 @@ from typing import Any, Dict, List, NoReturn, Optional, Sequence, TextIO, Tuple,
 
 
 logger = logging.getLogger(__name__)
-default_variants = ["no_opt", "exp_opt", "id_detect", "all_opt"]
-default_primary_variant = "all_opt"
+default_variants = ["no_opt", "ein_opt", "id_detect", "allein_opt"]
+default_primary_variant = "allein_opt"
 
 @dataclass
 class BenchmarkRunnerConfig:
