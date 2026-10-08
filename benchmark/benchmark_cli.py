@@ -1230,6 +1230,7 @@ def build_parser() -> argparse.ArgumentParser:
     generate_parser.add_argument("--root", default="/workspace", help="Workspace root that contains iso")
     generate_parser.add_argument("--prefix", default="benchmark-latest", help="Prefix for generated benchmark directories")
     generate_parser.add_argument("--variants", nargs="+", default=default_variants, help="Optimization variants")
+    generate_parser.add_argument("--experiments", nargs="+", default=None, help="Experiment names to include")
     generate_parser.add_argument("-d", "--dry_run", action="store_true", help="Print commands without executing")
 
     bench_parser = subparsers.add_parser("bench", help="Run benchmark execution only",
@@ -1291,7 +1292,7 @@ def main() -> None:
             root=args.root,
             prefix=args.prefix,
             variants=args.variants,
-            opts=args.experiments,
+            experiments=args.experiments,
             dry_run=args.dry_run,
         )
         validate_generate_config(generate_config)
