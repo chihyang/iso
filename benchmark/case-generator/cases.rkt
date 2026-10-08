@@ -84,6 +84,27 @@
                         ,(bell-cx in-size))))
     (apply-gate circ 0)))
 
+;;; had increases, bell keeps the same
+(define (had-last-fixed-bell-state-spec f in-size out-size)
+  (let* ((bell-size 10)
+         (n (+ bell-size in-size))
+         (gate (to-gate (bell-state bell-size)
+                 ,(bell-cx bell-size)))
+         (circ (to-gate (hlf-bell n)
+                 ,(apply-circ hadamard (sub1 in-size))
+                 (para gate (range in-size n)))))
+    (apply-gate circ (* in-size (expt 2 bell-size)))))
+
+;;; had increases, bell keeps the same
+(define (had-last-bell-state-spec f in-size out-size)
+  (let* ((n (* 2 in-size))
+         (gate (to-gate (bell-state in-size)
+                        ,(bell-cx in-size)))
+         (circ (to-gate (hl-bell n)
+                        ,(apply-circ hadamard (sub1 in-size))
+                        (para gate (range in-size n)))))
+    (apply-gate circ (* in-size (expt 2 in-size)))))
+
 ;;; parallel bell spec
 (define (parallel-bell-state-spec f in-size out-size)
   (let* ((n (* 2 in-size))
@@ -336,7 +357,11 @@
     ((cons a d)
      (cons (inv-gate a) (symmetry-gates d)))))
 
-(define (gen-one-qubit-circuit depth)
+(define (gen-one-circuit depth)
+  (let ((gates (randomize-1 depth)))
+    (map gate->circuit gates)))
+
+(define (gen-one-symmetry-circuit depth)
   (let ((gates (randomize-1 depth)))
     (map gate->circuit (append* (map list gates (symmetry-gates gates))))))
 
@@ -346,7 +371,17 @@
                  (casc
                   ,(append*
                     (map (λ (i)
-                           (append* (map (λ (g) (apply-circ g i)) (gen-one-qubit-circuit out-size))))
+                           (append* (map (λ (g) (apply-circ g i)) (gen-one-symmetry-circuit out-size))))
+                         (range in-size)))))))
+    (apply-gate circ 0)))
+
+;;; Random
+(define (random-spec f in-size out-size)
+  (let ((circ (to-gate (random-circ in-size)
+                 (casc
+                  ,(append*
+                    (map (λ (i)
+                           (append* (map (λ (g) (apply-circ g i)) (gen-one-circuit out-size))))
                          (range in-size)))))))
     (apply-gate circ 0)))
 
@@ -407,6 +442,22 @@
 (define (gen-had-bell-state tag gen-benchmarks)
   (define algo-name tag)
   (define spec had-bell-state-spec)
+  (define oracle unused)
+  (define out-size unused)
+  (define qubits (range 1 41))
+  (gen-benchmarks algo-name spec oracle out-size qubits))
+
+(define (gen-had-last-fixed-bell-state tag gen-benchmarks)
+  (define algo-name tag)
+  (define spec had-last-fixed-bell-state-spec)
+  (define oracle unused)
+  (define out-size unused)
+  (define qubits (range 1 41))
+  (gen-benchmarks algo-name spec oracle out-size qubits))
+
+(define (gen-had-last-bell-state tag gen-benchmarks)
+  (define algo-name tag)
+  (define spec had-last-bell-state-spec)
   (define oracle unused)
   (define out-size unused)
   (define qubits (range 1 41))
@@ -506,12 +557,25 @@
   (define qubits (range 1 10))
   (gen-benchmarks algo-name spec oracle out-size qubits))
 
+(define (gen-random tag gen-benchmarks)
+  (random-seed 0)
+  (define algo-name tag)
+  (define spec random-spec)
+  (define oracle unused)
+  (define out-size (λ (in) (* in in)))
+  (define qubits (range 1 10))
+  (gen-benchmarks algo-name spec oracle out-size qubits))
+
 (define (had-last-qubit-case gen-benchmarks)
   (gen-had-case 'had-last-qubit gen-benchmarks))
 (define (bell-state-case gen-benchmarks)
   (gen-bell-state 'bell-state gen-benchmarks))
 (define (had-bell-state-case gen-benchmarks)
   (gen-had-bell-state 'had-bell-state gen-benchmarks))
+(define (had-last-fixed-bell-state-case gen-benchmarks)
+  (gen-had-last-fixed-bell-state 'had-last-fixed-bell-state-spec gen-benchmarks))
+(define (had-last-bell-state-case gen-benchmarks)
+  (gen-had-last-bell-state 'had-last-bell-state-spec gen-benchmarks))
 (define (parallel-bell-state-case gen-benchmarks)
   (gen-parallel-bell-state 'parallel-bell-state gen-benchmarks))
 (define (cascade-bell-state-case gen-benchmarks)
@@ -544,11 +608,15 @@
   (gen-had-to-last-dj-is-even 'had-last-dj-even gen-benchmarks))
 (define (random-symmetry-case gen-benchmarks)
   (gen-random-symmetry 'random-symmetry gen-benchmarks))
+(define (random-case gen-benchmarks)
+  (gen-random 'random gen-benchmarks))
 
 (define benchmarks
   `((had-last-qubit . ,had-last-qubit-case)
     (bell-state . ,bell-state-case)
     (had-bell-state . ,had-bell-state-case)
+    (had-last-fixed-bell-state . ,had-last-fixed-bell-state-case)
+    (had-last-bell-state . ,had-last-bell-state-case)
     (parallel-bell-state . ,parallel-bell-state-case)
     (cascade-bell-state . ,cascade-bell-state-case)
     (deutsch-jozsa-is-even . ,deutsch-jozsa-is-even-case)
@@ -561,7 +629,8 @@
     (mcx . ,mcx-case)
     (had-last-dj-zero . ,had-last-dj-zero-case)
     (had-last-dj-even . ,had-last-dj-even-case)
-    (random-symmetry . ,random-symmetry-case)))
+    (random-symmetry . ,random-symmetry-case)
+    (random . ,random-case)))
 
 (define (gen-cases cases)
   (for-each
