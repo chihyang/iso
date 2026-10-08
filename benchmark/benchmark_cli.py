@@ -1126,9 +1126,9 @@ def run_generate_mode(opts: GenerateConfig) -> None:
 
     for tag in opts.variants:
         benchmark_dir_name = f"{iso_dir}/{opts.prefix}-{tag}"
-        experiments_opts = ["++bench " + e for e in opts.experiments]
+        experiments_opts = [s for e in opts.experiments for s in ["++bench", e]]
         run_process(
-            ["racket", "benchmark/case-generator/cases.rkt", "-d", benchmark_dir_name] ++ experiments_opts,
+            ["racket", "benchmark/case-generator/cases.rkt", "-d", benchmark_dir_name] + experiments_opts,
             cwd=iso_dir,
             dry_run=opts.dry_run,
         )
@@ -1151,7 +1151,7 @@ def run_full_mode(opts: RunBenchmarkConfig) -> None:
                 root=opts.root,
                 prefix=opts.prefix,
                 variants=[tag],
-                experiments=opt.experiments,
+                experiments=opts.experiments,
                 dry_run=opts.dry_run))
 
         run_comparison = (variant_index == 0)
