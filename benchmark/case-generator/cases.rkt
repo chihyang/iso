@@ -674,7 +674,7 @@
   (command-mode 'meta)
   (working-directory dest)]
  #:multi
- [("++bench")
+ [("+b" "++bench")
   specified-bench
   "Specify the benchmarks that you want to generate"
   (verify-bench! (string->symbol specified-bench))
