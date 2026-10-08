@@ -9,6 +9,7 @@
          hadamard x cx mcx
          rx ry rz phase
          val->bits apply-gate apply-circ empty-circ
+         count-gates
          to-iso to-iso/port
          to-qiskit to-qiskit/port
          to-qasm to-qasm/port
@@ -1999,3 +2000,35 @@ import quimb.tensor as qtn")
   (when (file-exists? source-name)
     (delete-file source-name))
   (file-writer ((curry to-quimb/port) prog) source-name))
+
+(define (count-spec spec)
+  (match spec
+    (`(,(unitary name _ _) ,qids ...) 1)
+    (`(,gate ,qids ...)
+     (match (gate-name gate)
+       (`,g #:when (memv g rotation-gates) 1)
+       (`,g #:when (memv g builtin-gates) 1)
+       (`,g (count-circ-spec (gate-spec gate)))))))
+
+(define (count-circ-spec specs)
+  (foldl (λ (spec c) (+ (count-spec spec) c)) 0 specs))
+
+(define (count-gate gate)
+  (match gate
+    ((circuit name 1 `(,deg)) 1)
+    ((circuit name size spec)
+     (count-circ-spec spec))
+    ((unitary name size _) 1)
+    ((qcircuit _ _ _) 1)
+    ((scircuit _ _ spec)
+     (error 'count-gates "Counting gate size for scircuit is not supported!"))))
+
+(define (count-initilize size val)
+  (let ((bit-str (string->list (make-qbits-str size val))))
+    (count (λ (e) (eq? e #\1)) bit-str)))
+
+(define (count-gates prog)
+  (match prog
+    (`(,gate ,n)
+     (let ((size (gate-size gate)))
+       (cons size (+ (count-initilize size n) (count-gate gate)))))))

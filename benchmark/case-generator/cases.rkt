@@ -27,13 +27,16 @@
 (define (gen-quimb-case tag gen-spec f in-size out-size)
   (to-quimb (gen-spec f in-size out-size) (build-path (working-directory) (format "~a-~a-~a.py" tag in-size out-size))))
 
+(define (count-case tag gen-spec f in-size out-size)
+  (count-gates (gen-spec f in-size out-size)))
+
 (define supported-simulators
   (make-parameter
-   `((iso    . ,gen-iso-case)
-     (qiskit . ,gen-qiskit-case)
-     (qtorch . ,gen-qasm-case)
-     (qsim   . ,gen-cirq-case)
-     (quimb  . ,gen-quimb-case))))
+      `((iso    . ,gen-iso-case)
+        (qiskit . ,gen-qiskit-case)
+        (qtorch . ,gen-qasm-case)
+        (qsim   . ,gen-cirq-case)
+        (quimb  . ,gen-quimb-case))))
 
 ;;; Oracles
 (define (not n)
@@ -79,6 +82,26 @@
          (circ (to-gate (bell-state n)
                         ,(apply-circ hadamard 0)
                         ,(bell-cx in-size))))
+    (apply-gate circ 0)))
+
+;;; parallel bell spec
+(define (parallel-bell-state-spec f in-size out-size)
+  (let* ((n (* 2 in-size))
+         (gate (to-gate (bell-state in-size)
+                        ,(bell-cx in-size)))
+         (circ (to-gate (paralle-bell-state n)
+                        (para gate (range 0 in-size))
+                        (para gate (range in-size n)))))
+    (apply-gate circ 0)))
+
+;;; cascade bell spec
+(define (cascade-bell-state-spec f in-size out-size)
+  (let* ((n in-size)
+         (gate (to-gate (bell-state in-size)
+                        ,(bell-cx in-size)))
+         (circ (to-gate (paralle-bell-state n)
+                        (para gate (range 0 in-size))
+                        (para gate (range 0 in-size)))))
     (apply-gate circ 0)))
 
 ;;; General Deutsch-Jozsa
@@ -351,7 +374,29 @@
    all-specs
    (map car (supported-simulators))))
 
-(define (gen-bell-state tag)
+(define (count-one-benchmark algo-name spec oracle f-out-size qubits)
+  (map (λ (in-size)
+         (count-case algo-name spec (oracle in-size) in-size (f-out-size in-size)))
+       qubits))
+
+(define (count-benchmarks algo-name specs oracle out-size qubits)
+  (define spec
+    (cond
+      ((list? specs) (cdr specs))
+      ((procedure? specs) specs)
+      (else (error 'gen-benchmarks "Invalid case spec: must be a list of procedures or one procedure."))))
+  (let* ((out-meta (build-path (working-directory) (format "~a.csv" algo-name)))
+         (port (open-output-file out-meta #:exists 'replace)))
+    (fprintf port "qubit-number,gate-number")
+    (newline port)
+    (for-each
+     (λ (v)
+       (fprintf port "~a,~a" (car v) (cdr v))
+       (newline port))
+     (count-one-benchmark algo-name spec oracle out-size qubits))
+    (close-output-port port)))
+
+(define (gen-bell-state tag gen-benchmarks)
   (define algo-name tag)
   (define spec bell-state-spec)
   (define oracle unused)
@@ -359,7 +404,7 @@
   (define qubits (range 1 41))
   (gen-benchmarks algo-name spec oracle out-size qubits))
 
-(define (gen-had-bell-state tag)
+(define (gen-had-bell-state tag gen-benchmarks)
   (define algo-name tag)
   (define spec had-bell-state-spec)
   (define oracle unused)
@@ -367,7 +412,23 @@
   (define qubits (range 1 41))
   (gen-benchmarks algo-name spec oracle out-size qubits))
 
-(define (gen-had-case tag)
+(define (gen-parallel-bell-state tag gen-benchmarks)
+  (define algo-name tag)
+  (define spec parallel-bell-state-spec)
+  (define oracle unused)
+  (define out-size unused)
+  (define qubits (range 1 41))
+  (gen-benchmarks algo-name spec oracle out-size qubits))
+
+(define (gen-cascade-bell-state tag gen-benchmarks)
+  (define algo-name tag)
+  (define spec cascade-bell-state-spec)
+  (define oracle unused)
+  (define out-size unused)
+  (define qubits (range 1 41))
+  (gen-benchmarks algo-name spec oracle out-size qubits))
+
+(define (gen-had-case tag gen-benchmarks)
   (define algo-name tag)
   (define spec had-to-last-spec)
   (define oracle unused)
@@ -375,28 +436,28 @@
   (define qubits (range 1 41))
   (gen-benchmarks algo-name spec oracle out-size qubits))
 
-(define (gen-dj-case tag specs oracle^ qubits)
+(define (gen-dj-case tag specs oracle^ qubits gen-benchmarks)
   (define algo-name tag)
   (define spec specs)
   (define oracle (λ (_) oracle^))
   (define out-size (λ (_) 1))
   (gen-benchmarks algo-name spec oracle out-size qubits))
 
-(define (gen-simon-decompose-case tag qubits)
+(define (gen-simon-decompose-case tag qubits gen-benchmarks)
   (define algo-name tag)
   (define spec simon-decompose-spec)
   (define oracle (λ (in-size) (λ (n) ((simon-f (sub1 (expt 2 in-size))) n))))
   (define out-size identity)
   (gen-benchmarks algo-name spec oracle out-size qubits))
 
-(define (gen-simon-big-matrix-case tag qubits)
+(define (gen-simon-big-matrix-case tag qubits gen-benchmarks)
   (define algo-name tag)
   (define spec simon-big-matrix-spec)
   (define oracle (λ (in-size) (λ (n) ((simon-f (sub1 (expt 2 in-size))) n))))
   (define out-size identity)
   (gen-benchmarks algo-name spec oracle out-size qubits))
 
-(define (gen-grover-case w tag)
+(define (gen-grover-case w tag gen-benchmarks)
   (define algo-name tag)
   (define spec grover-spec)
   (define oracle (λ (in-size) (λ (_) w)))
@@ -404,7 +465,7 @@
   (define qubits (range 1 8))
   (gen-benchmarks algo-name spec oracle out-size qubits))
 
-(define (gen-qft tag)
+(define (gen-qft tag gen-benchmarks)
   (define algo-name tag)
   (define spec qft-spec)
   (define oracle unused)
@@ -412,7 +473,7 @@
   (define qubits (range 1 20))
   (gen-benchmarks algo-name spec oracle out-size qubits))
 
-(define (gen-mcx tag)
+(define (gen-mcx tag gen-benchmarks)
   (define algo-name tag)
   (define spec mcx-spec)
   (define oracle unused)
@@ -420,7 +481,7 @@
   (define qubits (range 1 8))
   (gen-benchmarks algo-name spec oracle out-size qubits))
 
-(define (gen-had-to-last-dj-to-zero tag)
+(define (gen-had-to-last-dj-to-zero tag gen-benchmarks)
   (define algo-name tag)
   (define spec had-to-last-simplified-dj-to-zero-spec)
   (define oracle unused)
@@ -428,7 +489,7 @@
   (define qubits (range 1 20))
   (gen-benchmarks algo-name spec oracle out-size qubits))
 
-(define (gen-had-to-last-dj-is-even tag)
+(define (gen-had-to-last-dj-is-even tag gen-benchmarks)
   (define algo-name tag)
   (define spec had-to-last-simplified-dj-is-even-spec)
   (define oracle unused)
@@ -436,7 +497,7 @@
   (define qubits (range 1 20))
   (gen-benchmarks algo-name spec oracle out-size qubits))
 
-(define (gen-random-symmetry tag)
+(define (gen-random-symmetry tag gen-benchmarks)
   (random-seed 0)
   (define algo-name tag)
   (define spec random-symmetry-spec)
@@ -445,45 +506,51 @@
   (define qubits (range 1 10))
   (gen-benchmarks algo-name spec oracle out-size qubits))
 
-(define (had-last-qubit-case)
-  (gen-had-case 'had-last-qubit))
-(define (bell-state-case)
-  (gen-bell-state 'bell-state))
-(define (had-bell-state-case)
-  (gen-had-bell-state 'had-bell-state))
-(define (deutsch-jozsa-is-even-case)
-  (gen-dj-case 'deutsch-jozsa-is-even deutsch-jozsa-spec is-even (range 1 5)))
-(define (deutsch-jozsa-to-zero-simplified-case)
-  (gen-dj-case 'deutsch-jozsa-to-zero-simplified simplified-deutsch-jozsa-to-zero to-zero (range 1 21)))
-(define (deutsch-jozsa-is-even-simplified-case)
-  (gen-dj-case 'deutsch-jozsa-is-even-simplified simplified-deutsch-jozsa-is-even is-even (range 1 21)))
-(define (simon-case)
+(define (had-last-qubit-case gen-benchmarks)
+  (gen-had-case 'had-last-qubit gen-benchmarks))
+(define (bell-state-case gen-benchmarks)
+  (gen-bell-state 'bell-state gen-benchmarks))
+(define (had-bell-state-case gen-benchmarks)
+  (gen-had-bell-state 'had-bell-state gen-benchmarks))
+(define (parallel-bell-state-case gen-benchmarks)
+  (gen-parallel-bell-state 'parallel-bell-state gen-benchmarks))
+(define (cascade-bell-state-case gen-benchmarks)
+  (gen-cascade-bell-state 'cascade-bell-state gen-benchmarks))
+(define (deutsch-jozsa-is-even-case gen-benchmarks)
+  (gen-dj-case 'deutsch-jozsa-is-even deutsch-jozsa-spec is-even (range 1 5) gen-benchmarks))
+(define (deutsch-jozsa-to-zero-simplified-case gen-benchmarks)
+  (gen-dj-case 'deutsch-jozsa-to-zero-simplified simplified-deutsch-jozsa-to-zero to-zero (range 1 21) gen-benchmarks))
+(define (deutsch-jozsa-is-even-simplified-case gen-benchmarks)
+  (gen-dj-case 'deutsch-jozsa-is-even-simplified simplified-deutsch-jozsa-is-even is-even (range 1 21) gen-benchmarks))
+(define (simon-case gen-benchmarks)
   (parameterize [(supported-simulators `((qtorch . ,gen-qasm-case)))]
-    (gen-simon-big-matrix-case 'simon (range 1 2)))
+    (gen-simon-big-matrix-case 'simon (range 1 2) gen-benchmarks))
   (parameterize [(supported-simulators `((iso    . ,gen-iso-case)
                                          (qiskit . ,gen-qiskit-case)
                                          (qsim   . ,gen-cirq-case)
                                          (quimb  . ,gen-quimb-case)))]
-    (gen-simon-big-matrix-case 'simon (range 1 5))))
-(define (simon-decompose-case)
-  (gen-simon-decompose-case 'simon-decompose (range 1 4)))
-(define (grover-case)
-  (gen-grover-case 0 'grover))
-(define (qft-case)
-  (gen-qft 'qft))
-(define (mcx-case)
-  (gen-mcx 'mcx))
-(define (had-last-dj-zero-case)
-  (gen-had-to-last-dj-to-zero 'had-last-dj-zero))
-(define (had-last-dj-even-case)
-  (gen-had-to-last-dj-is-even 'had-last-dj-even))
-(define (random-symmetry-case)
-  (gen-random-symmetry 'random-symmetry))
+    (gen-simon-big-matrix-case 'simon (range 1 5) gen-benchmarks)))
+(define (simon-decompose-case gen-benchmarks)
+  (gen-simon-decompose-case 'simon-decompose (range 1 4) gen-benchmarks))
+(define (grover-case gen-benchmarks)
+  (gen-grover-case 0 'grover gen-benchmarks))
+(define (qft-case gen-benchmarks)
+  (gen-qft 'qft gen-benchmarks))
+(define (mcx-case gen-benchmarks)
+  (gen-mcx 'mcx gen-benchmarks))
+(define (had-last-dj-zero-case gen-benchmarks)
+  (gen-had-to-last-dj-to-zero 'had-last-dj-zero gen-benchmarks))
+(define (had-last-dj-even-case gen-benchmarks)
+  (gen-had-to-last-dj-is-even 'had-last-dj-even gen-benchmarks))
+(define (random-symmetry-case gen-benchmarks)
+  (gen-random-symmetry 'random-symmetry gen-benchmarks))
 
 (define benchmarks
   `((had-last-qubit . ,had-last-qubit-case)
     (bell-state . ,bell-state-case)
     (had-bell-state . ,had-bell-state-case)
+    (parallel-bell-state . ,parallel-bell-state-case)
+    (cascade-bell-state . ,cascade-bell-state-case)
     (deutsch-jozsa-is-even . ,deutsch-jozsa-is-even-case)
     (deutsch-jozsa-to-zero-simplified . ,deutsch-jozsa-to-zero-simplified-case)
     (deutsch-jozsa-is-even-simplified . ,deutsch-jozsa-is-even-simplified-case)
@@ -498,8 +565,14 @@
 
 (define (gen-cases cases)
   (for-each
-   (λ (tag) ((dict-ref benchmarks tag)))
+   (λ (tag) ((dict-ref benchmarks tag) gen-benchmarks))
    cases))
+
+(define (count-bench)
+  (create-if-not-exist (working-directory))
+  (for-each
+   (λ (bench) ((cdr bench) count-benchmarks))
+   benchmarks))
 
 (define (verify-bench! c)
   (unless (dict-has-key? benchmarks c)
@@ -507,19 +580,30 @@
            "The specified benchmark ~a doesn't exist, available:\n~a"
            c (dict-keys benchmarks))))
 
-(define list-bench (make-parameter #f))
+(define command-mode (make-parameter 'gen))
 (define picked-benches (make-parameter '()))
 
 (define (main)
-  (if (list-bench)
-    (printf "Available benchmarks are: \n~a\n" (dict-keys benchmarks))
-    (gen-cases (picked-benches))))
+  (match (command-mode)
+    ['gen (gen-cases (picked-benches))]
+    ['list (printf "Available benchmarks are: \n~a\n" (dict-keys benchmarks))]
+    ['meta (count-bench)]))
 
 (command-line
  #:program "cases"
  #:once-any
- [("-d" "--dest") dest "Target directory" (working-directory dest)]
- [("-l" "--list") "List all available benchmarks" (list-bench #t)]
+ [("-d" "--dest")
+  dest "Target directory"
+  (command-mode 'gen)
+  (working-directory dest)]
+ [("-l" "--list")
+  "List all available benchmarks"
+  (command-mode 'list)]
+ [("-m" "--metadata")
+  dest
+  "Generate CSVs containing qubit-number,gate-number for all benchmarks and put them into the specified directory"
+  (command-mode 'meta)
+  (working-directory dest)]
  #:multi
  [("++bench")
   specified-bench
