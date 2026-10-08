@@ -69,6 +69,7 @@ class GenerateConfig:
     root: str = "/workspace"
     prefix: str = "benchmark-latest"
     variants: List[str] = field(default_factory=lambda: default_variants)
+    experiments: Optional[List[str]] = None
     dry_run: bool = False
 
 
@@ -381,7 +382,11 @@ def validate_run_config(opts: RunBenchmarkConfig) -> None:
 
     # run mode relies on generation mode prerequisites
     validate_generate_config(
-        GenerateConfig(root=opts.root, prefix=opts.prefix, variants=opts.variants, dry_run=opts.dry_run)
+        GenerateConfig(root=opts.root,
+                       prefix=opts.prefix,
+                       variants=opts.variants,
+                       experiments=opts.experiments,
+                       dry_run=opts.dry_run)
     )
 
 def discover_suites(
@@ -1121,8 +1126,9 @@ def run_generate_mode(opts: GenerateConfig) -> None:
 
     for tag in opts.variants:
         benchmark_dir_name = f"{iso_dir}/{opts.prefix}-{tag}"
+        experiments_opts = ["++bench " + e for e in opts.experiments]
         run_process(
-            ["racket", "benchmark/case-generator/cases.rkt", "-d", benchmark_dir_name],
+            ["racket", "benchmark/case-generator/cases.rkt", "-d", benchmark_dir_name] ++ experiments_opts,
             cwd=iso_dir,
             dry_run=opts.dry_run,
         )
@@ -1140,7 +1146,13 @@ def run_full_mode(opts: RunBenchmarkConfig) -> None:
         run_process(["git", "restore", "--staged", "--", "."], cwd=fggs_dir, dry_run=opts.dry_run)
         run_process(["git", "checkout", "--", "."], cwd=fggs_dir, dry_run=opts.dry_run)
         run_process(["git", "checkout", tag], cwd=fggs_dir, dry_run=opts.dry_run)
-        run_generate_mode(GenerateConfig(root=opts.root, prefix=opts.prefix, variants=[tag], dry_run=opts.dry_run))
+        run_generate_mode(
+            GenerateConfig(
+                root=opts.root,
+                prefix=opts.prefix,
+                variants=[tag],
+                experiments=opt.experiments,
+                dry_run=opts.dry_run))
 
         run_comparison = (variant_index == 0)
         bench_opts = BenchmarkRunnerConfig(
@@ -1279,6 +1291,7 @@ def main() -> None:
             root=args.root,
             prefix=args.prefix,
             variants=args.variants,
+            opts=args.experiments,
             dry_run=args.dry_run,
         )
         validate_generate_config(generate_config)

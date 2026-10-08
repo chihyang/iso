@@ -73,6 +73,14 @@
                   ,(bell-cx in-size))))
     (apply-gate circ 0)))
 
+;;; had after a bell
+(define (had-bell-state-spec f in-size out-size)
+  (let* ((n in-size)
+         (circ (to-gate (bell-state n)
+                        ,(apply-circ hadamard 0)
+                        ,(bell-cx in-size))))
+    (apply-gate circ 0)))
+
 ;;; General Deutsch-Jozsa
 (define (deutsch-jozsa-spec f in-size out-size)
   (let* ((n (+ in-size out-size))
@@ -256,8 +264,68 @@
                  (para x (range (- n 2) (- n 1)))
                  (para cx (range (- n 2) n))
                  (para x (range (- n 2) (- n 1)))
-                 (para hadamard (range in-size in-size)))))
+                 (para hadamard (range in-size n)))))
     (apply-gate circ 1)))
+
+;;; Randomize 1-qubit symmetry
+(define randomized-choices
+  '(x y z rx ry rz hadamard))
+
+(define (random-deg)
+  (/ (* (random 0 360)) pi 180))
+
+(define (random-one-gate)
+  (let ((idx (random (length randomized-choices))))
+    (match (list-ref randomized-choices idx)
+      ('x 'x)
+      ('y `(ry ,pi))
+      ('z `(rz ,pi))
+      ('rx `(rx ,(random-deg)))
+      ('ry `(ry ,(random-deg)))
+      ('rz `(rz ,(random-deg)))
+      ('hadamard 'hadamard))))
+
+(define (randomize-1 depth)
+  (cond
+    ((zero? depth) '())
+    (else
+     (cons (random-one-gate) (randomize-1 (sub1 depth))))))
+
+(define (inv-gate gate)
+  (match gate
+    ('x 'x)
+    (`(rx ,deg) `(rx ,(- deg)))
+    (`(ry ,deg) `(ry ,(- deg)))
+    (`(rz ,deg) `(rz ,(- deg)))
+    ('hadamard 'hadamard)))
+
+(define (gate->circuit gate)
+  (match gate
+    ('x x)
+    (`(rx ,deg) (rx deg))
+    (`(ry ,deg) (ry deg))
+    (`(rz ,deg) (rz deg))
+    ('hadamard hadamard)))
+
+(define (symmetry-gates gates)
+  (match gates
+    ('() '())
+    ((cons a d)
+     (cons (inv-gate a) (symmetry-gates d)))))
+
+(define (gen-one-qubit-circuit depth)
+  (let ((gates (randomize-1 depth)))
+    (map gate->circuit (append* (map list gates (symmetry-gates gates))))))
+
+;;; here out size serves as circuit depth
+(define (random-symmetry-spec f in-size out-size)
+  (let ((circ (to-gate (random-circ in-size)
+                 (casc
+                  ,(append*
+                    (map (λ (i)
+                           (append* (map (λ (g) (apply-circ g i)) (gen-one-qubit-circuit out-size))))
+                         (range in-size)))))))
+    (apply-gate circ 0)))
 
 ;;; Generate cases
 (define (gen-one-benchmark case-generator algo-name simulator spec oracle f-out-size qubits)
@@ -286,6 +354,14 @@
 (define (gen-bell-state tag)
   (define algo-name tag)
   (define spec bell-state-spec)
+  (define oracle unused)
+  (define out-size unused)
+  (define qubits (range 1 41))
+  (gen-benchmarks algo-name spec oracle out-size qubits))
+
+(define (gen-had-bell-state tag)
+  (define algo-name tag)
+  (define spec had-bell-state-spec)
   (define oracle unused)
   (define out-size unused)
   (define qubits (range 1 41))
@@ -360,29 +436,95 @@
   (define qubits (range 1 20))
   (gen-benchmarks algo-name spec oracle out-size qubits))
 
-(define (gen-cases)
-  (gen-had-case 'had-last-qubit)
-  (gen-bell-state 'bell-state)
-  (gen-dj-case 'deutsch-jozsa-is-even deutsch-jozsa-spec is-even (range 1 5))
-  (gen-dj-case 'deutsch-jozsa-to-zero-simplified simplified-deutsch-jozsa-to-zero to-zero (range 1 21))
-  (gen-dj-case 'deutsch-jozsa-is-even-simplified simplified-deutsch-jozsa-is-even is-even (range 1 21))
+(define (gen-random-symmetry tag)
+  (random-seed 0)
+  (define algo-name tag)
+  (define spec random-symmetry-spec)
+  (define oracle unused)
+  (define out-size (λ (in) (* in in)))
+  (define qubits (range 1 10))
+  (gen-benchmarks algo-name spec oracle out-size qubits))
+
+(define (had-last-qubit-case)
+  (gen-had-case 'had-last-qubit))
+(define (bell-state-case)
+  (gen-bell-state 'bell-state))
+(define (had-bell-state-case)
+  (gen-had-bell-state 'had-bell-state))
+(define (deutsch-jozsa-is-even-case)
+  (gen-dj-case 'deutsch-jozsa-is-even deutsch-jozsa-spec is-even (range 1 5)))
+(define (deutsch-jozsa-to-zero-simplified-case)
+  (gen-dj-case 'deutsch-jozsa-to-zero-simplified simplified-deutsch-jozsa-to-zero to-zero (range 1 21)))
+(define (deutsch-jozsa-is-even-simplified-case)
+  (gen-dj-case 'deutsch-jozsa-is-even-simplified simplified-deutsch-jozsa-is-even is-even (range 1 21)))
+(define (simon-case)
   (parameterize [(supported-simulators `((qtorch . ,gen-qasm-case)))]
     (gen-simon-big-matrix-case 'simon (range 1 2)))
   (parameterize [(supported-simulators `((iso    . ,gen-iso-case)
                                          (qiskit . ,gen-qiskit-case)
                                          (qsim   . ,gen-cirq-case)
                                          (quimb  . ,gen-quimb-case)))]
-    (gen-simon-big-matrix-case 'simon (range 1 5)))
-  (gen-simon-decompose-case 'simon-decompose (range 1 4))
-  (gen-grover-case 0 'grover)
-  (gen-qft 'qft)
-  (gen-mcx 'mcx)
-  (gen-had-to-last-dj-to-zero 'had-last-dj-zero)
+    (gen-simon-big-matrix-case 'simon (range 1 5))))
+(define (simon-decompose-case)
+  (gen-simon-decompose-case 'simon-decompose (range 1 4)))
+(define (grover-case)
+  (gen-grover-case 0 'grover))
+(define (qft-case)
+  (gen-qft 'qft))
+(define (mcx-case)
+  (gen-mcx 'mcx))
+(define (had-last-dj-zero-case)
+  (gen-had-to-last-dj-to-zero 'had-last-dj-zero))
+(define (had-last-dj-even-case)
   (gen-had-to-last-dj-is-even 'had-last-dj-even))
+(define (random-symmetry-case)
+  (gen-random-symmetry 'random-symmetry))
+
+(define benchmarks
+  `((had-last-qubit . ,had-last-qubit-case)
+    (bell-state . ,bell-state-case)
+    (had-bell-state . ,had-bell-state-case)
+    (deutsch-jozsa-is-even . ,deutsch-jozsa-is-even-case)
+    (deutsch-jozsa-to-zero-simplified . ,deutsch-jozsa-to-zero-simplified-case)
+    (deutsch-jozsa-is-even-simplified . ,deutsch-jozsa-is-even-simplified-case)
+    (simon . ,simon-case)
+    (simon-decompose . ,simon-decompose-case)
+    (grover . ,grover-case)
+    (qft . ,qft-case)
+    (mcx . ,mcx-case)
+    (had-last-dj-zero . ,had-last-dj-zero-case)
+    (had-last-dj-even . ,had-last-dj-even-case)
+    (random-symmetry . ,random-symmetry-case)))
+
+(define (gen-cases cases)
+  (for-each
+   (λ (tag) ((dict-ref benchmarks tag)))
+   cases))
+
+(define (verify-bench! c)
+  (unless (dict-has-key? benchmarks c)
+    (error 'cases
+           "The specified benchmark ~a doesn't exist, available:\n~a"
+           c (dict-keys benchmarks))))
+
+(define list-bench (make-parameter #f))
+(define picked-benches (make-parameter '()))
+
+(define (main)
+  (if (list-bench)
+    (printf "Available benchmarks are: \n~a\n" (dict-keys benchmarks))
+    (gen-cases (picked-benches))))
 
 (command-line
  #:program "cases"
- #:once-each
+ #:once-any
  [("-d" "--dest") dest "Target directory" (working-directory dest)]
+ [("-l" "--list") "List all available benchmarks" (list-bench #t)]
+ #:multi
+ [("++bench")
+  specified-bench
+  "Specify the benchmarks that you want to generate"
+  (verify-bench! (string->symbol specified-bench))
+  (picked-benches (cons (string->symbol specified-bench) (picked-benches)))]
  #:args ()
- (gen-cases))
+ (main))

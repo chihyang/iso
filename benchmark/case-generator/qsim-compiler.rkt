@@ -573,8 +573,8 @@
      "~a :: (Unit + Unit) <-> (Unit + Unit)
 ~a =
 {
-  left unit  <-> [~a * left unit + (0 :+ ~a) * right unit];
-  right unit <-> [(0 :+ ~a) * left unit + ~a * right unit]
+  left unit  <-> [(~a :+ 0) * left unit + (0 :+ ~a) * right unit];
+  right unit <-> [(0 :+ ~a) * left unit + (~a :+ 0) * right unit]
 }"
      name name
      (print-iso-scalar c) (print-iso-scalar (- s))
@@ -587,8 +587,8 @@
      "~a :: (Unit + Unit) <-> (Unit + Unit)
 ~a =
 {
-  left unit  <-> [~a * left unit + ~a * right unit];
-  right unit <-> [~a * left unit + ~a * right unit]
+  left unit  <-> [(~a :+ 0) * left unit + (~a :+ 0) * right unit];
+  right unit <-> [(~a :+ 0) * left unit + (~a :+ 0) * right unit]
 }"
      name name
      (print-iso-scalar c) (print-iso-scalar (- s))
