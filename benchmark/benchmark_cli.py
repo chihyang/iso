@@ -1163,7 +1163,7 @@ def run_full_mode(opts: RunBenchmarkConfig) -> None:
             memory_limit=opts.memory_limit,
             dry_run=opts.dry_run,
             tag=tag,
-            log_path=os.path.join(benchmark_root, f"{opts.log_path}-{tag}"),
+            log_path=os.path.join(opts.output_path, f"{opts.log_path}"),
             experiments=opts.experiments,
             exclude_experiments=opts.exclude_experiments,
             run_comparison_simulators=run_comparison,
@@ -1174,15 +1174,15 @@ def run_full_mode(opts: RunBenchmarkConfig) -> None:
     if opts.dry_run:
         print("Skip graph generation during dry run")
     else:
-        graph_output_dir = Path(iso_dir) / opts.output_path
+        graph_output_dir = Path(opts.output_path)
         renamed = rename_csv_files_to_old(graph_output_dir)
         if renamed:
             print(f"Renamed {renamed} existing CSV file(s) to .csv.old under {graph_output_dir}")
 
         graph_opts = GraphConfig(
             prefix=opts.prefix,
-            output_path=os.path.join(iso_dir, opts.output_path),
-            metadata_csv_path=os.path.join(iso_dir, opts.metadata_csv_path),
+            output_path=Path(opts.output_path),
+            metadata_csv_path=Path(opts.metadata_csv_path),
             search_root=iso_dir,
             variants=opts.variants,
             primary_variant=opts.primary_variant,
