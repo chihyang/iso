@@ -796,7 +796,7 @@ def combine_graph(
     for mul_col in mul_cols:
         dest = mul_col[0]
         src = mul_col[1:]
-        dataframe[dest] = (2 ** dataframe[src[1]]) * dataframe[src[0]]
+        dataframe[dest] = (2.0 ** dataframe[src[1]].astype('float64')) * dataframe[src[0]]
 
     create_dir_if_needed(str(out_name.parent))
     print(f"Write to {out_name}")
