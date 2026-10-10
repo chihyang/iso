@@ -805,13 +805,20 @@ def combine_graph(
 
 def run_graph_mode(opts: GraphConfig) -> None:
     create_dir_if_needed(opts.output_path)
+    search_root = Path(opts.search_root)
+    raw_data_dir = Path(opts.output_path) / "raw_data"
     discovered_tags = discover_tags(opts.prefix, opts.search_root)
     tags = resolve_experiment_selection(discovered_tags, opts.experiments, opts.exclude_experiments)
     primary_variant = resolve_primary_variant(opts.variants, opts.primary_variant)
+    searched_csv_file_pairs: List[Tuple[Path, Path]] = []
 
     for tag in tags:
         print(f"Process {tag}")
         files = find_files_by_prefix_and_tag(opts.prefix, tag, opts.search_root)
+        for csv_file in files:
+            source_key = csv_file.resolve()
+            relative_path = csv_file.relative_to(search_root)
+            searched_csv_file_pairs.append((csv_file, raw_data_dir / relative_path))
 
         avg_cols = [
             "qiskit-simulation",
@@ -867,6 +874,14 @@ def run_graph_mode(opts: GraphConfig) -> None:
         primary_variant=primary_variant,
         experiments=tags,
     )
+    copy_raw_csv_files(searched_csv_file_pairs)
+
+
+def copy_raw_csv_files(file_pairs: Sequence[Tuple[Path, Path]]) -> None:
+    for source, destination in file_pairs:
+        create_dir_if_needed(str(destination.parent))
+        print(f"Copy {source} to {destination}")
+        shutil.copy2(source, destination)
 
 
 
