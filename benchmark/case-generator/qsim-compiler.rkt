@@ -2031,4 +2031,4 @@ import quimb.tensor as qtn")
   (match prog
     (`(,gate ,n)
      (let ((size (gate-size gate)))
-       (cons size (+ (count-initilize size n) (count-gate gate)))))))
+       (cons size (count-gate gate))))))
