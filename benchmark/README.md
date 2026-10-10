@@ -77,7 +77,7 @@ The command above runs a full benchmark including the following quantum algorith
 * QFT on `n` qubits, up to 20 qubits
 * Grover's algorithm, up to 7 qubits
 
-The command above takes about **A FEW HOURS**.
+The command above might take **10 to 20 HOURS**.
 
 The result will be stored into `/benchmark/result/full`, including the following CSV files:
 * `had-last-qubit.csv`

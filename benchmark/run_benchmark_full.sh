@@ -6,4 +6,19 @@ python /benchmark/benchmark_cli.py run \
        --prefix benchmark_full \
        -o /benchmark/result/full \
        --meta_path /benchmark/benchmark-meta-data/ \
-       --experiments had-last-qubit deutsch-jozsa-is-even-simplified simon mcx qft grover
+       --experiments \
+       had-last-qubit \
+       bell-state \
+       casc-had-first-bell \
+       casc-had-last-bell \
+       para-n-had-last-ten-qubit-bell \
+       para-n-had-last-n-bell \
+       para-n-ten-qubit-bell \
+       para-two-n-bell-state \
+       casc-two-n-bell-state \
+       deutsch-jozsa-is-even-simplified \
+       had-last-dj-even \
+       simon \
+       mcx \
+       qft \
+       grover
