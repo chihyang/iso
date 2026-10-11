@@ -241,7 +241,7 @@ All given examples assume the script is run within the Docker container in the d
 
 ## `run` mode
 
-### Examples
+### <a id="run-example" />Examples
 
 * Run the full benchmark.
 ``` shell
@@ -261,7 +261,7 @@ python /benchmark/benchmark_cli.py run \
 ``` shell
 python /benchmark/benchmark_cli.py run \
        --root /workspace \
-       --prefix benchmark_small \
+       --prefix benchmark-latest \
        --case_limit 5 \
        -o /benchmark/result/small \
        --meta_path /benchmark/benchmark-meta-data/ \
@@ -342,7 +342,7 @@ python benchmark_cli.py bench \
     --csv_path /workspace/iso/benchmark-latest-ein_opt \
     --case_limit 3 \
     --tag ein_opt \
-    --experiments qft
+    --experiments grover qft
 ```
 
 After all simulations are performed, a file named as `/workspace/iso/benchmark-latest-ein_opt/qft-ein_opt-{current-date-time}.csv` will be generated.
@@ -378,7 +378,7 @@ benchmark_cli.py bench [-h] --benchmark_root BENCHMARK_ROOT --csv_path CSV_PATH
 
 ## `graph` mode
 
-### Examples
+### <a id="graph-example" />Examples
 
 Suppose you have run the command example in [`generate` examples](#generate-example) and [`bench` examples](#bench-example).
 You can run the following command to generate the benchmark result figure.
@@ -427,14 +427,15 @@ benchmark_cli.py graph [-h] --prefix PREFIX
 
 ### Examples
 
-Suppose `/benchmark/result/small` contains aggregated benchmark CSV files produced by `run` or `graph` mode.
+Suppose `/benchmark/result/small` contains aggregated benchmark CSV files
+produced by [`run` examples](#run-example), [`bench` examples](#bench-example), or [`graph` examples](#graph-example).
 You can redraw the benchmark figure without rerunning or aggregating the benchmarks:
 
 ``` shell
 python benchmark_cli.py plot \
     --data_path /benchmark/result/small/ \
-    --variants no_opt ein_opt id_detect allein_opt \
-    --primary_variant allein_opt \
+    --variants ein_opt \
+    --primary_variant ein_opt \
     --figure_name benchmark-replotted.pdf \
     --experiments qft
 ```
