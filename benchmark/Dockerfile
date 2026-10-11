@@ -36,12 +36,12 @@ RUN curl https://get-ghcup.haskell.org -sSf | sh -s -- -y
 ENV PATH="/root/.ghcup/bin:/root/.cabal/bin:/opt/venv/bin:${PATH}"
 
 # ----------------------------
-# Install Racket 9.1
+# Install Racket 9.3
 # ----------------------------
-RUN curl -L -O https://download.racket-lang.org/releases/9.1/installers/racket-9.1-x86_64-linux-buster-cs.sh && \
-    chmod +x racket-9.1-x86_64-linux-buster-cs.sh && \
-    ./racket-9.1-x86_64-linux-buster-cs.sh --in-place --dest /opt/racket && \
-    rm racket-9.1-x86_64-linux-buster-cs.sh
+RUN curl -L -O https://download.racket-lang.org/releases/9.3/installers/racket-minimal-9.3-x86_64-linux-buster-cs.sh && \
+    chmod +x racket-minimal-9.3-x86_64-linux-buster-cs.sh && \
+    ./racket-minimal-9.3-x86_64-linux-buster-cs.sh --in-place --dest /opt/racket && \
+    rm racket-minimal-9.3-x86_64-linux-buster-cs.sh
 
 # ----------------------------
 # Clone repos
