@@ -6,6 +6,7 @@ Modes:
 - generate: generate benchmark data
 - bench: benchmark execution only
 - graph: aggregate CSV outputs
+- plot: draw figures from aggregated CSV outputs
 """
 
 import argparse
@@ -57,6 +58,16 @@ class GraphConfig:
     output_path: str = "."
     metadata_csv_path: Optional[str] = None
     search_root: str = "."
+    variants: List[str] = field(default_factory=lambda: default_variants)
+    primary_variant: Optional[str] = None
+    figure_name: str = "benchmark.pdf"
+    experiments: Optional[List[str]] = None
+    exclude_experiments: Optional[List[str]] = None
+
+
+@dataclass
+class PlotConfig:
+    data_path: str = "."
     variants: List[str] = field(default_factory=lambda: default_variants)
     primary_variant: Optional[str] = None
     figure_name: str = "benchmark.pdf"
@@ -352,6 +363,28 @@ def validate_graph_config(opts: GraphConfig) -> None:
     if not available_tags:
         fail(f"no experiment tags found in {matches[0]}")
     resolve_experiment_selection(available_tags, opts.experiments, opts.exclude_experiments)
+
+
+def discover_plot_experiments(data_path: Path) -> List[str]:
+    return sorted(path.stem for path in data_path.iterdir() if path.is_file() and path.suffix == ".csv")
+
+
+def validate_plot_config(opts: PlotConfig) -> None:
+    data_path = Path(opts.data_path)
+    if not data_path.is_dir():
+        fail(f"data_path directory not found: {data_path}")
+    if not opts.figure_name:
+        fail("--figure_name cannot be empty")
+
+    validate_variants(opts.variants)
+    resolve_primary_variant(opts.variants, opts.primary_variant)
+    validate_experiments(opts.experiments)
+    validate_exclude_experiments(opts.exclude_experiments)
+
+    available = discover_plot_experiments(data_path)
+    if not available:
+        fail(f"no CSV files found in {data_path}")
+    resolve_experiment_selection(available, opts.experiments, opts.exclude_experiments)
 
 
 def validate_run_config(opts: RunBenchmarkConfig) -> None:
@@ -922,6 +955,55 @@ PLOT_VARIANT_COLOR_PAIRS: List[Tuple[str, str]] = [
     ("tab:gray", "black"),
 ]
 
+PLOT_VARIANT_METRICS = [
+    "iso-to-perpl",
+    "perpl-to-fgg",
+    "iso-simulation",
+    "iso-to-fgg",
+    "iso-fgg-simulation",
+    "qiskit-simulation",
+    "qsim-simulation",
+    "qtorch-simulation",
+    "quimb-simulation",
+]
+
+PLOT_AVERAGE_METRICS = [
+    "qiskit-simulation",
+    "qsim-simulation",
+    "qtorch-simulation",
+    "quimb-simulation",
+    "iso-to-perpl",
+    "perpl-to-fgg",
+    "iso-to-fgg",
+    "iso-perpl-fgg",
+    "qtorch-simulation-full",
+]
+
+PLOT_VARIANT_TOTAL_METRICS = [
+    "iso-perpl-fgg-total",
+    "iso-fgg-total",
+]
+
+
+def _plot_required_columns(experiment: str, variants: Sequence[str]) -> List[str]:
+    required = [
+        "qubit-number",
+        "gate-number",
+    ]
+    for variant in variants:
+        required.extend(f"{experiment}-{variant}:{metric}" for metric in PLOT_VARIANT_METRICS)
+    required.extend(f"{experiment}-avg:{metric}" for metric in PLOT_AVERAGE_METRICS)
+    for variant in variants:
+        required.extend(f"{experiment}-{variant}:{metric}" for metric in PLOT_VARIANT_TOTAL_METRICS)
+    return list(dict.fromkeys(required))
+
+
+def _plot_validate_csv_schemas(data_dir: Path, experiments: Sequence[str], variants: Sequence[str]) -> None:
+    for experiment in experiments:
+        path = data_dir / f"{experiment}.csv"
+        columns = _plot_load_csv_columns(path)
+        _plot_require_columns(columns, _plot_required_columns(experiment, variants), path)
+
 
 def _plot_experiment_specs(experiments: Sequence[str]) -> List[Tuple[str, str, str]]:
     if not experiments:
@@ -1128,6 +1210,22 @@ def run_embedded_figure_generation(
     print(f"Wrote: {combined_path}")
 
 
+def run_plot_mode(opts: PlotConfig) -> None:
+    data_path = Path(opts.data_path)
+    available = discover_plot_experiments(data_path)
+    experiments = resolve_experiment_selection(available, opts.experiments, opts.exclude_experiments)
+    primary_variant = resolve_primary_variant(opts.variants, opts.primary_variant)
+
+    _plot_validate_csv_schemas(data_path, experiments, opts.variants)
+    run_embedded_figure_generation(
+        data_dir=data_path,
+        figure_name=opts.figure_name,
+        variants=opts.variants,
+        primary_variant=primary_variant,
+        experiments=experiments,
+    )
+
+
 def run_process(cmd: List[str], cwd: Optional[str] = None, dry_run: bool = False) -> None:
     printable = shlex.join(cmd)
     print(f"Running: {printable} (cwd={cwd})")
@@ -1226,7 +1324,7 @@ def build_parser() -> argparse.ArgumentParser:
     run_parser.add_argument("--root", default="/workspace", help="Workspace root that contains iso and perpl")
     run_parser.add_argument("--prefix", default="benchmark-latest", help="Prefix for generated benchmark directories")
     run_parser.add_argument("--variants", nargs="+", default=default_variants, help="Optimization variants")
-    run_parser.add_argument("--primary_variant", default=None,
+    run_parser.add_argument("--primary_variant", default=default_primary_variant,
                             help=f"Variant used by figure 1 optimized lines, default to {default_primary_variant} "
                             "if it is in --variants,"
                             "otherwise default to the first option in --variants.")
@@ -1267,7 +1365,7 @@ def build_parser() -> argparse.ArgumentParser:
     graph_parser.add_argument("--search_root", type=str, default=".", help="Directory whose children are searched")
     graph_parser.add_argument("--variants", nargs="+", default=default_variants,
                               help="Optimization variants")
-    graph_parser.add_argument("--primary_variant", default=None,
+    graph_parser.add_argument("--primary_variant", default=default_primary_variant,
                               help=f"Variant used by figure 1 optimized lines, default to {default_primary_variant}"
                               " if it is in --variants,"
                               "otherwise default to the first option in --variants.")
@@ -1275,6 +1373,20 @@ def build_parser() -> argparse.ArgumentParser:
                               help="Benchmark PDF output name. The PDF will be put into --output_path.")
     graph_parser.add_argument("--experiments", nargs="+", default=None, help="Experiment names to include")
     graph_parser.add_argument("--exclude_experiments", nargs="+", default=None, help="Experiment names to exclude")
+
+    plot_parser = subparsers.add_parser("plot", help="Draw benchmark from the aggregated benchmark CSV outputs",
+                                         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    plot_parser.add_argument("-d", "--data_path", default=".", help="Aggregated benchmark CSV data directory")
+    plot_parser.add_argument("--variants", nargs="+", default=default_variants,
+                              help="Optimization variants")
+    plot_parser.add_argument("--primary_variant", default=default_primary_variant,
+                              help=f"Variant used by figure 1 optimized lines, default to {default_primary_variant}"
+                              " if it is in --variants,"
+                              "otherwise default to the first option in --variants.")
+    plot_parser.add_argument("--figure_name", type=str, default="benchmark.pdf",
+                             help="Benchmark PDF output name. Relative paths are put under --data_path.")
+    plot_parser.add_argument("--experiments", nargs="+", default=None, help="Experiment names to include")
+    plot_parser.add_argument("--exclude_experiments", nargs="+", default=None, help="Experiment names to exclude")
 
     return parser
 
@@ -1343,6 +1455,18 @@ def main() -> None:
         )
         validate_graph_config(graph_config)
         run_graph_mode(graph_config)
+
+    elif args.mode == "plot":
+        plot_config = PlotConfig(
+            data_path=args.data_path,
+            variants=args.variants,
+            primary_variant=args.primary_variant,
+            figure_name=args.figure_name,
+            experiments=args.experiments,
+            exclude_experiments=args.exclude_experiments,
+        )
+        validate_plot_config(plot_config)
+        run_plot_mode(plot_config)
 
     else:
         raise SystemExit(f"Unknown mode {args.mode}: check available modes with -h")
