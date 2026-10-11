@@ -16,6 +16,9 @@
          to-quimb to-quimb/port
          to-cirq to-cirq/port)
 
+(define (threads-number)
+  (inexact->exact (ceiling (/ (processor-count) 2))))
+
 ;;; Spec of the case generator:
 ;;; Prog      ::= Main
 ;;; Main      ::= Circ Nat ; apply a circuit to the initial input
@@ -1094,6 +1097,7 @@ from qiskit_aer import Aer, AerSimulator"))
              final (make-qbits-str size n) final)
      (format "~a.append(~a, ~a.qubits)" final (generate-qiskit-gate-name gate) final)
      (format "simulator = Aer.get_backend('statevector_simulator')")
+     (format "simulator.set_option('max_parallel_threads', ~a)" (threads-number))
      (format "~a = transpile(~a, simulator, optimization_level=2)" final final)
      (format "job = simulator.run(~a, shots=1)"
              final)
@@ -1206,6 +1210,7 @@ from qiskit_aer import Aer, AerSimulator"))
              final (make-qbits-str size n) final)
      (format "~a.append(~a, ~a.qubits)" final (generate-qiskit-gate-name gate) final)
      (format "simulator = Aer.get_backend('statevector_simulator')")
+     (format "simulator.set_option('max_parallel_threads', ~a)" (threads-number))
      (format "~a = transpile(~a, simulator, optimization_level=2)" final final)
      (format "job = simulator.run(~a, shots=1)"
              final)
@@ -1517,7 +1522,7 @@ from qiskit_aer import Aer, AerSimulator"))
     (file-writer ((curry generate-qasm-measurement!) prog) meas-name)
     ;; generate the instruction
     (file-writer ((curry generate-qasm-simulation!)
-                  qasm-name meas-name "8" "simple-stoch" out-name)
+                  qasm-name meas-name (threads-number) "simple-stoch" out-name)
                  sim-name)))
 
 ;;; compiler to Cirq
@@ -1670,7 +1675,8 @@ import qsimcirq")
 
 (define (generate-cirq-execution circ-name qbits)
   (generate-lines*
-   (format "qsim_simulator = qsimcirq.QSimSimulator()")
+   (format "qsim_options = qsimcirq.QSimOptions(cpu_threads=~a)" (threads-number))
+   (format "qsim_simulator = qsimcirq.QSimSimulator(qsim_options=qsim_options)")
    (format "qsim_results = qsim_simulator.simulate(~a, qubit_order=~a)" circ-name qbits)
    (format "print(qsim_results)")))
 
@@ -1787,7 +1793,8 @@ import qsimcirq")
 (define (generate-cirq-execution/port port circ-name qbits)
   (generate-lines*/port
    port
-   (format "qsim_simulator = qsimcirq.QSimSimulator()")
+   (format "qsim_options = qsimcirq.QSimOptions(cpu_threads=~a)" (threads-number))
+   (format "qsim_simulator = qsimcirq.QSimSimulator(qsim_options=qsim_options)")
    (format "qsim_results = qsim_simulator.simulate(~a, qubit_order=~a)" circ-name qbits)
    (format "print(qsim_results)")))
 
@@ -1852,7 +1859,8 @@ import qsimcirq")
     for not))
 
 (define (generate-quimb-header)
-  "### Install Quimb, if needed
+  (format
+   "### Install Quimb, if needed
 
 \"\"\"
 !pip install quimb autoray cotengra
@@ -1860,7 +1868,15 @@ import qsimcirq")
 
 import numpy as np
 import quimb as qu
-import quimb.tensor as qtn")
+import quimb.tensor as qtn
+import os
+
+os.environ[\"MKL_NUM_THREADS\"] = \"~a\"
+os.environ[\"OMP_NUM_THREADS\"] = \"~a\"
+os.environ[\"NUMBA_NUM_THREADS\"] = \"~a\""
+   (threads-number)
+   (threads-number)
+   (threads-number)))
 
 (define (safe-quimb-name name)
   (let ([str-sym (raw-safe name)])
