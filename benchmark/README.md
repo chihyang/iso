@@ -71,7 +71,16 @@ cd /benchmark/ && bash run_benchmark_full.sh
 
 The command above runs a full benchmark including the following quantum algorithms:
 * Applying Hadamard to the last qubit, up to 40 qubits
+* Bell-state preparation, up to 40 qubits
+* Applying Hadamard to the first qubit followed by Bell-state preparation, up to 40 qubits
+* Applying Hadamard to the last qubit followed by Bell-state preparation, up to 40 qubits
+* Applying Hadamard to the last of `n` qubits in parallel with a fixed 10-qubit Bell state, up to 50 total qubits
+* Applying Hadamard to the last of `n` qubits in parallel with an `n`-qubit Bell state, up to 80 total qubits
+* Running `n` fixed 10-qubit Bell-state preparations in parallel, up to 90 total qubits
+* Running two `n`-qubit Bell-state preparations in parallel, up to 80 total qubits
+* Running two `n`-qubit Bell-state preparations in sequence, up to 40 qubits
 * The Deutsch-Jozsa algorithm with the even function as oracle, up to 20 qubits
+* Applying Hadamard to the last of `n` qubit in parallel with an `n`-qubit simplified Deutsch-Jozsa even-oracle circuit, up to 40 total qubits
 * Simon's algorithm, with $$s = 2^{n} − 1$$, up to 8 qubits
 * Multiple-Control-X with `n` control qubits decomposed to 1- and 2-qubit gates, up to 7 qubits
 * QFT on `n` qubits, up to 20 qubits
@@ -81,7 +90,16 @@ The command above might take **10 to 20 HOURS**.
 
 The result will be stored into `/benchmark/result/full`, including the following CSV files:
 * `had-last-qubit.csv`
+* `bell-state.csv`
+* `casc-had-first-bell.csv`
+* `casc-had-last-bell.csv`
+* `para-n-had-last-ten-qubit-bell.csv`
+* `para-n-had-last-n-bell.csv`
+* `para-n-ten-qubit-bell.csv`
+* `para-two-n-bell-state.csv`
+* `casc-two-n-bell-state.csv`
 * `deutsch-jozsa-is-even-simplified.csv`
+* `had-last-dj-even.csv`
 * `simon.csv`
 * `mcx.csv`
 * `qft.csv`
@@ -96,23 +114,13 @@ and a PDF figure file:
 
 The benchmark is organized as *variants*.
 Each variant corresponds to an optimization level of [fggs](https://github.com/chihyang/fggs/tree/oopsla_benchmark).
-Right now, there are three optimization levels:
+Right now, there are four optimization levels:
 * *no_opt*
-* *exp_opt*
-* *all_opt*
+* *ein_opt*
+* *allein_opt*
 * *id_detect*
 
-For each variant, there are multiple algorithms.
-The following algorithms have been implemented:
-* apply Hadamard to the last qubit
-* Bell state preparation
-* Deutsch-Jozsa, with the constant oracle that always returns 0, where the oracle is simplified to Identity
-* Deutsch-Jozsa, with the balanced oracle that checks if a number is even
-* Deutsch-Jozsa, with the balanced oracle that checks if a number is even, where the oracle is simplified to CNOT
-* Simon's, with the key $$s = 2^{n} - 1$$ for $$n$$ qubits
-* Grover
-* QFT
-* Multiple-Control-Not
+For each variant, the algorithms in [Run a full benchmark](#run-a-full-benchmark).
 
 For each algorithm of a variant, after the simulation is finished, a CSV file will be generated and put into the specified folder (See [below](#benchmark-cli-command-line-arguments)).
 This CSV has the following columns.
@@ -152,9 +160,17 @@ Where `{algorithm}` can be one of the following:
 
 * `had-last-qubit`
 * `bell-state`
+* `casc-had-first-bell`
+* `casc-had-last-bell`
+* `para-n-had-last-ten-qubit-bell`
+* `para-n-had-last-n-bell`
+* `para-n-ten-qubit-bell`
+* `para-two-n-bell-state`
+* `casc-two-n-bell-state`
 * `deutsch-jozsa-is-even`
 * `deutsch-jozsa-to-zero-simplified`
 * `deutsch-jozsa-is-even-simplified`
+* `had-last-dj-even`
 * `simon`
 * `grover`
 * `qft`
@@ -163,8 +179,8 @@ Where `{algorithm}` can be one of the following:
 and `{variant}` can be one of the following:
 
 * `no_opt`
-* `exp_opt`
-* `all_opt`
+* `ein_opt`
+* `allein_opt`
 * `id_detect`
 
 If a metadata table is provided, columns from that table will also be added to the aggregated CSV.
@@ -180,7 +196,7 @@ For now, the following metadata for each algorithm is supported:
 After aggregating data, the scripts will also generate two series of plots.
 
 In the first series, each subplot compares the simulation performance for one FGG variant, Qiskit, qsim, and qTorch.
-If the `--variants` option of the `benchmark_cli.py` is not set through the command line and `all_opt` variant is performed, `all_opt` will be used in this series of plots.
+If the `--variants` option of the `benchmark_cli.py` is not set through the command line and `allein_opt` variant is performed, `allein_opt` will be used in this series of plots.
 Otherwise, the first performed variant will be put into this series of graphs.
 (See the options `--variants` and `--primary_variant` for the benchmark CLI below.)
 
@@ -212,12 +228,13 @@ The following tools are included:
 
 **NOTE: The following section is for those who need to look into the pipeline. For most users, it can be ignored.**
 
-The core CLI, `/workspace/iso/benchmark/benchmark_cli.py`, supports four modes:
+The core CLI, `/workspace/iso/benchmark/benchmark_cli.py`, supports five modes:
 
 * `run`: run the whole benchmark pipeline, from generating data, running the benchmark, aggregating data, to drawing the figures, which can be regarded as the combination of `generate` + `bench` + `graph`
 * `generate`: generate the benchmark data
 * `bench`: run one benchmark variant
 * `graph`: aggregate data from all benchmark variants and draw figures
+* `plot`: validate aggregated benchmark CSV files and draw figures from the data
 
 The following sections introduce detailed arguments to each mode.
 All given examples assume the script is run within the Docker container in the directory `/benchmark/`.
@@ -233,7 +250,11 @@ python /benchmark/benchmark_cli.py run \
        --prefix benchmark_full \
        -o /benchmark/result/full \
        --meta_path /benchmark/benchmark-meta-data/ \
-       --experiments had-last-qubit deutsch-jozsa-is-even-simplified simon mcx qft grover
+       --experiments \
+       had-last-qubit bell-state casc-had-first-bell casc-had-last-bell \
+       para-n-had-last-ten-qubit-bell para-n-had-last-n-bell \
+       para-n-ten-qubit-bell para-two-n-bell-state casc-two-n-bell-state \
+       deutsch-jozsa-is-even-simplified had-last-dj-even simon mcx qft grover
 ```
 * Run a smaller benchmark.
 
@@ -266,8 +287,8 @@ benchmark_cli.py run [-h] [--root ROOT] [--prefix PREFIX] [--variants VARIANTS [
   If `iso`, `perpl`, or `fggs` doesn't exist, report an error and exit.
   If `/{root}/iso/{prefix}-{variant}` already exists and there are existing CSV files in these folders, they will be renamed to `*.csv.old` to avoid interference with the current execution.
 * `--prefix {prefix}`: Prefix for generated benchmark directories (default: `benchmark-latest`).
-* `--variants {variant} ...`: Optimization variants (default: `['no_opt', 'exp_opt', 'id_detect', 'all_opt']`).
-* `--primary_variant {primary_variant}`: FGG optimization variant used by series 1, default to `all_opt` if it is in `--variants`, otherwise default to the first option passed to `--variants`. (default: `None`)
+* `--variants {variant} ...`: Optimization variants (default: `['no_opt', 'ein_opt', 'id_detect', 'allein_opt']`).
+* `--primary_variant {primary_variant}`: FGG optimization variant used by series 1, default to `allein_opt` if it is in `--variants`, otherwise default to the first option passed to `--variants`. (default: `None`)
 *  `--case_limit {case_limit}`: Limit case count for each algorithm.
    Zero means no limit (default: 0).
 *  `-d`, `--dry_run`: Print commands without executing (default: `False`).
@@ -288,10 +309,10 @@ benchmark_cli.py run [-h] [--root ROOT] [--prefix PREFIX] [--variants VARIANTS [
 
 ### <a id="generate-example" />Examples
 
-* Generate a directory `/workspace/iso/benchmark-latest-exp_opt` that contains all supported algorithms.
+* Generate a directory `/workspace/iso/benchmark-latest-ein_opt` that contains all supported algorithms.
 
 ``` shell
-python benchmark_cli.py generate --variants exp_opt
+python benchmark_cli.py generate --variants ein_opt
 ```
 ### Usage
 
@@ -305,7 +326,7 @@ benchmark_cli.py generate [-h] [--root ROOT] [--prefix PREFIX] [--variants VARIA
 * `--root {root}`: Workspace root that contains `iso`, `perpl`, and `fggs` repositories (default: `/workspace`).
   All generated benchmark programs will be put into `/{root}/iso`, and the folders are named as `/{root}/iso/{prefix}-{variant}`.
 * `--prefix {prefix}`: Prefix for generated benchmark directories (default: `benchmark-latest`).
-* `--variants {variant} ...`: Optimization variants (default: `['no_opt', 'exp_opt', 'id_detect', 'all_opt']`).
+* `--variants {variant} ...`: Optimization variants (default: `['no_opt', 'ein_opt', 'id_detect', 'allein_opt']`).
 * `-d`, `--dry_run`: Print commands without executing (default: `False`).
 
 ## `bench` mode
@@ -317,14 +338,14 @@ You can run the following command to run that benchmark.
 
 ``` shell
 python benchmark_cli.py bench \
-    --benchmark_root /workspace/iso/benchmark-latest-exp_opt \
-    --csv_path /workspace/iso/benchmark-latest-exp_opt \
+    --benchmark_root /workspace/iso/benchmark-latest-ein_opt \
+    --csv_path /workspace/iso/benchmark-latest-ein_opt \
     --case_limit 3 \
-    --tag exp_opt \
+    --tag ein_opt \
     --experiments qft
 ```
 
-After all simulations are performed, a file named as `/workspace/iso/benchmark-latest-exp_opt/qft-exp_opt-{current-date-time}.csv` will be generated.
+After all simulations are performed, a file named as `/workspace/iso/benchmark-latest-ein_opt/qft-ein_opt-{current-date-time}.csv` will be generated.
 
 ### Usage
 
@@ -345,7 +366,7 @@ benchmark_cli.py bench [-h] --benchmark_root BENCHMARK_ROOT --csv_path CSV_PATH
 * `-d`, `--dry_run`: Print commands without executing (default: `False`).
 * `-t {minutes}`, `--time_limit {minutes}`: Time limit per command in minutes (default: `5`).
 * `-m {gigabytes}`, `--memory_limit {gigabytes}`: Memory limit per command in GB (default: `95%` of the total memory of the machine).
-* `--tag {tag}`: Tag used in benchmark CSV headers, which is supposed to be one of `all_opt`, `exp_opt`, `id_detect`, and `no_opt`.
+* `--tag {tag}`: Tag used in benchmark CSV headers, which is supposed to be one of `allein_opt`, `ein_opt`, `id_detect`, and `no_opt`.
   But it is not enforced.
   You can also use different tags from the recommended ones.
 * `--log {log_path}`: Base log name (default: log).
@@ -366,14 +387,14 @@ You can run the following command to generate the benchmark result figure.
 python benchmark_cli.py graph \
     --prefix benchmark-latest \
     --search_root /workspace/iso/ \
-    --variants exp_opt \
-    --primary_variant exp_opt \
-    -o /benchmark/result/example/ \
+    --variants ein_opt \
+    --primary_variant ein_opt \
+    -o /benchmark/result/small/ \
     --meta_path benchmark-meta-data/ \
     --experiments qft
 ```
 
-In the folder `/benchmark/result/example`, a CSV file `qft.csv` and a PDF `benchmark.pdf` will be generated.
+In the folder `/benchmark/result/small`, a CSV file `qft.csv` and a PDF `benchmark.pdf` will be generated.
 
 ### Usage
 
@@ -393,11 +414,50 @@ benchmark_cli.py graph [-h] --prefix PREFIX
 * `-o {output_path}`, `--output_path {output_path}`: Graph CSV output directory (default: `.`).
 * `--meta_path {metadata_csv_path}`: Optional directory with extra metadata CSV files (default: `benchmark-meta-data`).
 * `--search_root {search_root}`: Directory whose children are searched (default: `.`).
-* `--variants {variant} ...`: Optimization variants (default: `['no_opt', 'exp_opt', 'id_detect', 'all_opt']`).
-* `--primary_variant {primary_variant}`: FGG optimization variant used by series 1, default to `all_opt` if it is in `--variants`, otherwise default to the first option passed to `--variants` (default: `None`).
+* `--variants {variant} ...`: Optimization variants (default: `['no_opt', 'ein_opt', 'id_detect', 'allein_opt']`).
+* `--primary_variant {primary_variant}`: FGG optimization variant used by series 1, default to `allein_opt` if it is in `--variants`, otherwise default to the first option passed to `--variants` (default: `None`).
 * `--figure_name {figure_name}`: Benchmark PDF output name.
   The PDF will be put into `--output_path`. (default: `benchmark.pdf`).
 * `--experiments {experiment} ...`: Algorithm simulation data to aggregate.
    By default, all data under `{search_root}` will be aggregated.
 * `--exclude_experiments {exclude_experiment} ...`: Algorithm simulation data not to aggregate.
    If specified, the data of these algorithms will be not be aggregated.
+
+## `plot` mode
+
+### Examples
+
+Suppose `/benchmark/result/small` contains aggregated benchmark CSV files produced by `run` or `graph` mode.
+You can redraw the benchmark figure without rerunning or aggregating the benchmarks:
+
+``` shell
+python benchmark_cli.py plot \
+    --data_path /benchmark/result/small/ \
+    --variants no_opt ein_opt id_detect allein_opt \
+    --primary_variant allein_opt \
+    --figure_name benchmark-replotted.pdf \
+    --experiments qft
+```
+
+Before drawing, `plot` verifies that every selected CSV contains the metadata, per-variant simulation and compilation, average, and total columns required by the figures.
+The PDF `/benchmark/result/small/benchmark-replotted.pdf` will then be generated.
+
+### Usage
+
+``` shell
+benchmark_cli.py plot [-h] [-d DATA_PATH]
+    [--variants VARIANTS [VARIANTS ...]] [--primary_variant PRIMARY_VARIANT]
+    [--figure_name FIGURE_NAME]
+    [--experiments EXPERIMENTS [EXPERIMENTS ...]]
+    [--exclude_experiments EXCLUDE_EXPERIMENTS [EXCLUDE_EXPERIMENTS ...]]
+```
+
+### Options
+
+* `-h`, `--help`: Show this help message and exit.
+* `-d {data_path}`, `--data_path {data_path}`: Directory containing aggregated benchmark CSV files (default: `.`).
+* `--variants {variant} ...`: Optimization variants whose columns must be present and plotted (default: `['no_opt', 'ein_opt', 'id_detect', 'allein_opt']`).
+* `--primary_variant {primary_variant}`: FGG optimization variant used by series 1, default to `allein_opt` if it is in `--variants`, otherwise default to the first option passed to `--variants` (default: `allein_opt`).
+* `--figure_name {figure_name}`: Benchmark PDF output name. Relative paths are put under `--data_path` (default: `benchmark.pdf`).
+* `--experiments {experiment} ...`: Aggregated experiment CSV files to plot. By default, all CSV files directly under `--data_path` are plotted.
+* `--exclude_experiments {exclude_experiment} ...`: Aggregated experiment CSV files not to plot.
