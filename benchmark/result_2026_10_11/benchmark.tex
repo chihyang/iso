@@ -1,0 +1,1550 @@
+\documentclass[acmsmall,screen]{acmart}
+\pagestyle{plain}
+
+\usepackage{tikz}
+\usetikzlibrary{matrix,fit,quantikz}
+\usepackage{pgfplots}
+\usepgfplotslibrary{groupplots,colorbrewer}
+\newcommand{\expand}{\mathop{\mathsf{expand}}}
+
+%%
+%% end of the preamble, start of the body of the document source.
+\begin{document}
+\begin{figure}
+\pgfplotsset{
+  small,
+  compat=1.5,
+  every tick label/.append style={font=\tiny},
+  label style={font=\footnotesize},
+  title style={font=\footnotesize},
+  ymode=log,
+  table/col sep=comma,
+  colormap/Paired-10,
+  % styles
+  fggi/.style={
+    color=Set1-A,
+    mark=*,
+    solid,
+    mark size=1.8pt,
+    mark options={draw=Paired-F},
+  },
+  fggp/.style={
+    color=Set1-B,
+    mark=square*,
+    solid,
+    mark size=1.8pt,
+    mark options={draw=Paired-B,rotate=45},
+  },
+  qiskit/.style={
+    color=Set1-C,
+    mark=Mercedes star,
+    solid,
+    mark size=1.8pt,
+  },
+  cirq/.style={
+    color=Set1-D,
+    mark=x,
+    solid,
+    mark size=1.8pt,
+  },
+  qtorch/.style={
+    color=Set1-E,
+    mark=star,
+    solid,
+    mark size=1.8pt,
+  },
+  quimb/.style={
+    color=Set1-H,
+    mark=pentagon,
+    solid,
+    mark size=1.8pt,
+  },
+  gates/.style={
+    color=gray,
+    mark=none,
+    dotted,
+    semithick,
+  },
+}
+\begin{center}
+\begin{tikzpicture}
+  \begin{groupplot}[group style={group size=2 by 3, group name=b1},
+    group/horizontal sep=4em,
+    group/vertical sep=5em]
+
+    \nextgroupplot[
+    xlabel={Number of qubits},
+    ylabel={Running time (seconds)},
+    axis y line*=left,
+    title={Hadamard to the last qubit},
+    legend style={
+      at={(0.5,-0.1)},
+      anchor=north,legend columns=-1,
+      font=\footnotesize,
+      draw=none,
+      legend columns=2,
+      legend cell align={left},
+    },
+    legend to name=benchmark1,
+    mark repeat=8,
+    execute at end plot visualization/.append={%
+      \xdef\savedxminhad{\pgfkeysvalueof{/pgfplots/xmin}}%
+      \xdef\savedxmaxhad{\pgfkeysvalueof{/pgfplots/xmax}}%
+      \xdef\savedyminhad{\pgfkeysvalueof{/pgfplots/ymin}}%
+      \xdef\savedymaxhad{\pgfkeysvalueof{/pgfplots/ymax}}%
+    },
+    ]
+    \addplot[fggi] table[x=qubit-number, y=had-last-qubit-allein_opt:iso-fgg-total] {had-last-qubit.csv};
+    \addplot[fggp, mark phase=3] table[x=qubit-number, y=had-last-qubit-allein_opt:iso-perpl-fgg-total] {had-last-qubit.csv};
+    \addplot[qiskit] table[x=qubit-number, y=had-last-qubit-avg:qiskit-simulation] {had-last-qubit.csv};
+    \addplot[cirq] table[x=qubit-number, y=had-last-qubit-avg:qsim-simulation] {had-last-qubit.csv};
+    \addplot[quimb] table[x=qubit-number, y=had-last-qubit-avg:quimb-simulation] {had-last-qubit.csv};
+
+    \addlegendentry{FGG simulation with $\expand$ and $\bigl[\begin{smallmatrix}1&0\\0&1\end{smallmatrix}\bigr]$ opts};
+    \addlegendentry{FGG simulation with $\expand$ and $\bigl[\begin{smallmatrix}1&0\\0&1\end{smallmatrix}\bigr]$ opts, through PERPL};
+    \addlegendentry{Qiskit};
+    \addlegendentry{qsim};
+    \addlegendentry{quimb};
+    \addlegendimage{qtorch};
+    \addlegendentry{qTorch};
+    \addlegendimage{gates};
+    \addlegendentry{Number of gates};
+
+    \nextgroupplot[
+    xlabel={Number of qubits},
+    axis y line*=left,
+    title={Deutsch-Jozsa with the even oracle},
+    mark repeat=4,
+    execute at end plot visualization/.append={%
+      \xdef\savedxmindje{\pgfkeysvalueof{/pgfplots/xmin}}%
+      \xdef\savedxmaxdje{\pgfkeysvalueof{/pgfplots/xmax}}%
+      \xdef\savedymindje{\pgfkeysvalueof{/pgfplots/ymin}}%
+      \xdef\savedymaxdje{\pgfkeysvalueof{/pgfplots/ymax}}%
+    },
+    ]
+    \addplot[fggi] table[x=qubit-number, y=deutsch-jozsa-is-even-simplified-allein_opt:iso-fgg-total] {deutsch-jozsa-is-even-simplified.csv};
+    \addplot[fggp, mark phase=3] table[x=qubit-number, y=deutsch-jozsa-is-even-simplified-allein_opt:iso-perpl-fgg-total] {deutsch-jozsa-is-even-simplified.csv};
+    \addplot[qiskit] table[x=qubit-number, y=deutsch-jozsa-is-even-simplified-avg:qiskit-simulation] {deutsch-jozsa-is-even-simplified.csv};
+    \addplot[cirq] table[x=qubit-number, y=deutsch-jozsa-is-even-simplified-avg:qsim-simulation] {deutsch-jozsa-is-even-simplified.csv};
+    \addplot[quimb] table[x=qubit-number, y=deutsch-jozsa-is-even-simplified-avg:quimb-simulation] {deutsch-jozsa-is-even-simplified.csv};
+
+    \nextgroupplot[
+    xlabel={Number of qubits},
+    ylabel={Running time (seconds)},
+    axis y line*=left,
+    title={Simon's},
+    mark repeat=1,
+    execute at end plot visualization/.append={%
+      \xdef\savedxminsimon{\pgfkeysvalueof{/pgfplots/xmin}}%
+      \xdef\savedxmaxsimon{\pgfkeysvalueof{/pgfplots/xmax}}%
+      \xdef\savedyminsimon{\pgfkeysvalueof{/pgfplots/ymin}}%
+      \xdef\savedymaxsimon{\pgfkeysvalueof{/pgfplots/ymax}}%
+    },
+    ]
+    \addplot[fggi] table[x=qubit-number, y=simon-allein_opt:iso-fgg-total] {simon.csv};
+    \addplot[fggp] table[x=qubit-number, y=simon-allein_opt:iso-perpl-fgg-total] {simon.csv};
+    \addplot[qiskit] table[x=qubit-number, y=simon-avg:qiskit-simulation] {simon.csv};
+    \addplot[cirq] table[x=qubit-number, y=simon-avg:qsim-simulation] {simon.csv};
+    \addplot[quimb] table[x=qubit-number, y=simon-avg:quimb-simulation] {simon.csv};
+
+    \nextgroupplot[
+    xlabel={Number of qubits},
+    axis y line*=left,
+    title={Decomposed $C^{n}(X)$},
+    mark repeat=2,
+    execute at end plot visualization/.append={%
+      \xdef\savedxminmcx{\pgfkeysvalueof{/pgfplots/xmin}}%
+      \xdef\savedxmaxmcx{\pgfkeysvalueof{/pgfplots/xmax}}%
+      \xdef\savedyminmcx{\pgfkeysvalueof{/pgfplots/ymin}}%
+      \xdef\savedymaxmcx{\pgfkeysvalueof{/pgfplots/ymax}}%
+    },
+    ]
+    \addplot[fggi] table[x=qubit-number, y=mcx-allein_opt:iso-fgg-total] {mcx.csv};
+    \addplot[fggp] table[x=qubit-number, y=mcx-allein_opt:iso-perpl-fgg-total] {mcx.csv};
+    \addplot[qiskit] table[x=qubit-number, y=mcx-avg:qiskit-simulation] {mcx.csv};
+    \addplot[cirq] table[x=qubit-number, y=mcx-avg:qsim-simulation] {mcx.csv};
+    \addplot[quimb] table[x=qubit-number, y=mcx-avg:quimb-simulation] {mcx.csv};
+
+    \nextgroupplot[
+    xlabel={Number of qubits},
+    ylabel={Running time (seconds)},
+    axis y line*=left,
+    title={QFT},
+    mark repeat=2,
+    execute at end plot visualization/.append={%
+      \xdef\savedxminqft{\pgfkeysvalueof{/pgfplots/xmin}}%
+      \xdef\savedxmaxqft{\pgfkeysvalueof{/pgfplots/xmax}}%
+      \xdef\savedyminqft{\pgfkeysvalueof{/pgfplots/ymin}}%
+      \xdef\savedymaxqft{\pgfkeysvalueof{/pgfplots/ymax}}%
+    },
+    ]
+    \addplot[fggi] table[x=qubit-number, y=qft-allein_opt:iso-fgg-total] {qft.csv};
+    \addplot[fggp] table[x=qubit-number, y=qft-allein_opt:iso-perpl-fgg-total] {qft.csv};
+    \addplot[qiskit] table[x=qubit-number, y=qft-avg:qiskit-simulation] {qft.csv};
+    \addplot[cirq] table[x=qubit-number, y=qft-avg:qsim-simulation] {qft.csv};
+    \addplot[quimb] table[x=qubit-number, y=qft-avg:quimb-simulation] {qft.csv};
+
+    \nextgroupplot[
+    xlabel={Number of qubits},
+    axis y line*=left,
+    title={Grover},
+    mark repeat=2,
+    execute at end plot visualization/.append={%
+      \xdef\savedxmingrover{\pgfkeysvalueof{/pgfplots/xmin}}%
+      \xdef\savedxmaxgrover{\pgfkeysvalueof{/pgfplots/xmax}}%
+      \xdef\savedymingrover{\pgfkeysvalueof{/pgfplots/ymin}}%
+      \xdef\savedymaxgrover{\pgfkeysvalueof{/pgfplots/ymax}}%
+    },
+    ]
+    \addplot[fggi] table[x=qubit-number, y=grover-allein_opt:iso-fgg-total] {grover.csv};
+    \addplot[fggp] table[x=qubit-number, y=grover-allein_opt:iso-perpl-fgg-total] {grover.csv};
+    \addplot[qiskit] table[x=qubit-number, y=grover-avg:qiskit-simulation] {grover.csv};
+    \addplot[cirq] table[x=qubit-number, y=grover-avg:qsim-simulation] {grover.csv};
+    \addplot[quimb] table[x=qubit-number, y=grover-avg:quimb-simulation] {grover.csv};
+  \end{groupplot}
+
+  \begin{axis}[
+    at={(b1 c1r1.south west)},
+    anchor=south west,
+    ymode=log,
+    xmin=\savedxminhad,
+    xmax=\savedxmaxhad,
+    ymin=exp(\savedyminhad),
+    ymax=exp(\savedymaxhad),
+    mark repeat=4,
+    hide axis,
+    ]
+    \addplot[qtorch] table[x=qubit-number, y=had-last-qubit-avg:qtorch-simulation-full] {had-last-qubit.csv};
+  \end{axis}
+
+  \begin{axis}[
+    at={(b1 c2r1.south west)},
+    anchor=south west,
+    ymode=log,
+    xmin=\savedxmindje,
+    xmax=\savedxmaxdje,
+    ymin=exp(\savedymindje),
+    ymax=exp(\savedymaxdje),
+    mark repeat=2,
+    hide axis,
+    ]
+    \addplot[qtorch] table[x=qubit-number, y=deutsch-jozsa-is-even-simplified-avg:qtorch-simulation-full] {deutsch-jozsa-is-even-simplified.csv};
+  \end{axis}
+
+  \begin{axis}[
+    at={(b1 c1r2.south west)},
+    anchor=south west,
+    ymode=log,
+    xmin=\savedxminsimon,
+    xmax=\savedxmaxsimon,
+    ymin=exp(\savedyminsimon),
+    ymax=exp(\savedymaxsimon),
+    hide axis,
+    ]
+    \addplot[qtorch] table[x=qubit-number, y=simon-avg:qtorch-simulation-full] {simon.csv};
+  \end{axis}
+
+  \begin{axis}[
+    at={(b1 c2r2.south west)},
+    anchor=south west,
+    ymode=log,
+    xmin=\savedxminmcx,
+    xmax=\savedxmaxmcx,
+    ymin=exp(\savedyminmcx),
+    ymax=exp(\savedymaxmcx),
+    hide axis,
+    ]
+    \addplot[qtorch] table[x=qubit-number, y=mcx-avg:qtorch-simulation-full] {mcx.csv};
+  \end{axis}
+
+  \begin{axis}[
+    at={(b1 c1r3.south west)},
+    anchor=south west,
+    ymode=log,
+    xmin=\savedxminqft,
+    xmax=\savedxmaxqft,
+    ymin=exp(\savedyminqft),
+    ymax=exp(\savedymaxqft),
+    hide axis,
+    ]
+    \addplot[qtorch] table[x=qubit-number, y=qft-avg:qtorch-simulation-full] {qft.csv};
+  \end{axis}
+
+  \begin{axis}[
+    at={(b1 c2r3.south west)},
+    anchor=south west,
+    ymode=log,
+    xmin=\savedxmingrover,
+    xmax=\savedxmaxgrover,
+    ymin=exp(\savedymingrover),
+    ymax=exp(\savedymaxgrover),
+    hide axis,
+    ]
+    \addplot[qtorch] table[x=qubit-number, y=grover-avg:qtorch-simulation-full] {grover.csv};
+  \end{axis}
+
+  \begin{axis}[
+    at={(b1 c1r1.south west)},
+    anchor=south west,
+    axis x line=none,
+    axis y line*=right,
+    ymode=log,
+    ]
+    \addplot[gates] table[x=qubit-number, y=gate-number] {had-last-qubit.csv};
+  \end{axis}
+
+  \begin{axis}[
+    at={(b1 c2r1.south west)},
+    anchor=south west,
+    axis x line=none,
+    axis y line*=right,
+    ymode=log,
+    ylabel={Number of gates},
+    ]
+    \addplot[gates] table[x=qubit-number, y=gate-number] {deutsch-jozsa-is-even-simplified.csv};
+  \end{axis}
+
+  \begin{axis}[
+    at={(b1 c1r2.south west)},
+    anchor=south west,
+    axis x line=none,
+    axis y line*=right,
+    ymode=log,
+    ]
+    \addplot[gates] table[x=qubit-number, y=gate-number] {simon.csv};
+  \end{axis}
+
+  \begin{axis}[
+    at={(b1 c2r2.south west)},
+    anchor=south west,
+    axis x line=none,
+    axis y line*=right,
+    ymode=log,
+    ylabel={Number of gates},
+    ]
+    \addplot[gates] table[x=qubit-number, y=gate-number] {mcx.csv};
+  \end{axis}
+
+  \begin{axis}[
+    at={(b1 c1r3.south west)},
+    anchor=south west,
+    axis x line=none,
+    axis y line*=right,
+    ymode=log,
+    ]
+    \addplot[gates] table[x=qubit-number, y=gate-number] {qft.csv};
+  \end{axis}
+
+  \begin{axis}[
+    at={(b1 c2r3.south west)},
+    anchor=south west,
+    axis x line=none,
+    axis y line*=right,
+    ymode=log,
+    ylabel={Number of gates},
+    ]
+    \addplot[gates] table[x=qubit-number, y=gate-number] {grover.csv};
+  \end{axis}
+
+  \path (b1 c1r3.south west) -- (b1 c2r3.south east) coordinate[midway] (lower_middle);
+  \node[anchor=north, yshift=-2.5em] at (lower_middle) {\ref{benchmark1}};
+\end{tikzpicture}
+\end{center}
+\caption{Simulation and compilation times of our FGG-based simulators, comparing different sets of optimizations.
+  For each plot, the $x$-axis shows the number of qubits, and the $y$-axis shows run time in seconds.}
+\label{fig:bench-1}
+\end{figure}
+
+\newpage
+\pagestyle{plain}
+\begin{figure}
+\pgfplotsset{
+  small,
+  compat=1.5,
+  every tick label/.append style={font=\tiny},
+  label style={font=\footnotesize},
+  title style={font=\footnotesize},
+  ymode=log,
+  table/col sep=comma,
+  colormap/Paired-10,
+  % styles
+  fggi/.style={
+    color=Set1-A,
+    mark=*,
+    solid,
+    mark size=1.8pt,
+    mark options={draw=Paired-F},
+  },
+  fggp/.style={
+    color=Set1-B,
+    mark=square*,
+    solid,
+    mark size=1.8pt,
+    mark options={draw=Paired-B,rotate=45},
+  },
+  qiskit/.style={
+    color=Set1-C,
+    mark=Mercedes star,
+    solid,
+    mark size=1.8pt,
+  },
+  cirq/.style={
+    color=Set1-D,
+    mark=x,
+    solid,
+    mark size=1.8pt,
+  },
+  qtorch/.style={
+    color=Set1-E,
+    mark=star,
+    solid,
+    mark size=1.8pt,
+  },
+  quimb/.style={
+    color=Set1-H,
+    mark=pentagon,
+    solid,
+    mark size=1.8pt,
+  },
+  gates/.style={
+    color=gray,
+    mark=none,
+    dotted,
+    semithick,
+  },
+}
+\begin{center}
+\begin{tikzpicture}
+  \begin{groupplot}[group style={group size=2 by 3, group name=b1},
+    group/horizontal sep=4em,
+    group/vertical sep=5em]
+    \nextgroupplot[
+    xlabel={Number of qubits},
+    ylabel={Running time (seconds)},
+    axis y line*=left,
+    title={Bell state},
+    legend style={
+      at={(0.5,-0.1)},
+      anchor=north,legend columns=-1,
+      font=\footnotesize,
+      draw=none,
+      legend columns=2,
+      legend cell align={left},
+    },
+    legend to name=benchmark1,
+    mark repeat=8,
+    execute at end plot visualization/.append={%
+      \xdef\savedxminbell{\pgfkeysvalueof{/pgfplots/xmin}}%
+      \xdef\savedxmaxbell{\pgfkeysvalueof{/pgfplots/xmax}}%
+      \xdef\savedyminbell{\pgfkeysvalueof{/pgfplots/ymin}}%
+      \xdef\savedymaxbell{\pgfkeysvalueof{/pgfplots/ymax}}%
+    },
+    ]
+    \addplot[fggi] table[x=qubit-number, y=bell-state-allein_opt:iso-fgg-total] {bell-state.csv};
+    \addplot[fggp, mark phase=3] table[x=qubit-number, y=bell-state-allein_opt:iso-perpl-fgg-total] {bell-state.csv};
+    \addplot[qiskit] table[x=qubit-number, y=bell-state-avg:qiskit-simulation] {bell-state.csv};
+    \addplot[cirq] table[x=qubit-number, y=bell-state-avg:qsim-simulation] {bell-state.csv};
+    \addplot[quimb] table[x=qubit-number, y=bell-state-avg:quimb-simulation] {bell-state.csv};
+
+    \addlegendentry{FGG simulation with $\expand$ and $\bigl[\begin{smallmatrix}1&0\\0&1\end{smallmatrix}\bigr]$ opts};
+    \addlegendentry{FGG simulation with $\expand$ and $\bigl[\begin{smallmatrix}1&0\\0&1\end{smallmatrix}\bigr]$ opts, through PERPL};
+    \addlegendentry{Qiskit};
+    \addlegendentry{qsim};
+    \addlegendentry{quimb};
+    \addlegendimage{qtorch};
+    \addlegendentry{qTorch};
+    \addlegendimage{gates};
+    \addlegendentry{Number of gates};
+
+    \nextgroupplot[
+    xlabel={Number of qubits},
+    axis y line*=left,
+    title={Two $N$-qubit Bell in cascade},
+    mark repeat=4,
+    execute at end plot visualization/.append={%
+      \xdef\savedxminctb{\pgfkeysvalueof{/pgfplots/xmin}}%
+      \xdef\savedxmaxctb{\pgfkeysvalueof{/pgfplots/xmax}}%
+      \xdef\savedyminctb{\pgfkeysvalueof{/pgfplots/ymin}}%
+      \xdef\savedymaxctb{\pgfkeysvalueof{/pgfplots/ymax}}%
+    },
+    ]
+    \addplot[fggi] table[x=qubit-number, y=casc-two-n-bell-state-allein_opt:iso-fgg-total] {casc-two-n-bell-state.csv};
+    \addplot[fggp] table[x=qubit-number, y=casc-two-n-bell-state-allein_opt:iso-perpl-fgg-total] {casc-two-n-bell-state.csv};
+    \addplot[qiskit] table[x=qubit-number, y=casc-two-n-bell-state-avg:qiskit-simulation] {casc-two-n-bell-state.csv};
+    \addplot[cirq] table[x=qubit-number, y=casc-two-n-bell-state-avg:qsim-simulation] {casc-two-n-bell-state.csv};
+    \addplot[quimb] table[x=qubit-number, y=casc-two-n-bell-state-avg:quimb-simulation] {casc-two-n-bell-state.csv};
+
+    \nextgroupplot[
+    xlabel={Number of qubits},
+    ylabel={Running time (seconds)},
+    axis y line*=left,
+    title={Hadamard to the first qubit before Bell},
+    mark repeat=4,
+    execute at end plot visualization/.append={%
+      \xdef\savedxminchfb{\pgfkeysvalueof{/pgfplots/xmin}}%
+      \xdef\savedxmaxchfb{\pgfkeysvalueof{/pgfplots/xmax}}%
+      \xdef\savedyminchfb{\pgfkeysvalueof{/pgfplots/ymin}}%
+      \xdef\savedymaxchfb{\pgfkeysvalueof{/pgfplots/ymax}}%
+    },
+    ]
+    \addplot[fggi] table[x=qubit-number, y=casc-had-first-bell-allein_opt:iso-fgg-total] {casc-had-first-bell.csv};
+    \addplot[fggp, mark phase=3] table[x=qubit-number, y=casc-had-first-bell-allein_opt:iso-perpl-fgg-total] {casc-had-first-bell.csv};
+    \addplot[qiskit] table[x=qubit-number, y=casc-had-first-bell-avg:qiskit-simulation] {casc-had-first-bell.csv};
+    \addplot[cirq] table[x=qubit-number, y=casc-had-first-bell-avg:qsim-simulation] {casc-had-first-bell.csv};
+    \addplot[quimb] table[x=qubit-number, y=casc-had-first-bell-avg:quimb-simulation] {casc-had-first-bell.csv};
+
+    \nextgroupplot[
+    xlabel={Number of qubits},
+    axis y line*=left,
+    title={Hadamard to the last qubit before Bell},
+    mark repeat=4,
+    execute at end plot visualization/.append={%
+      \xdef\savedxminchlb{\pgfkeysvalueof{/pgfplots/xmin}}%
+      \xdef\savedxmaxchlb{\pgfkeysvalueof{/pgfplots/xmax}}%
+      \xdef\savedyminchlb{\pgfkeysvalueof{/pgfplots/ymin}}%
+      \xdef\savedymaxchlb{\pgfkeysvalueof{/pgfplots/ymax}}%
+    },
+    ]
+    \addplot[fggi] table[x=qubit-number, y=casc-had-last-bell-allein_opt:iso-fgg-total] {casc-had-last-bell.csv};
+    \addplot[fggp] table[x=qubit-number, y=casc-had-last-bell-allein_opt:iso-perpl-fgg-total] {casc-had-last-bell.csv};
+    \addplot[qiskit] table[x=qubit-number, y=casc-had-last-bell-avg:qiskit-simulation] {casc-had-last-bell.csv};
+    \addplot[cirq] table[x=qubit-number, y=casc-had-last-bell-avg:qsim-simulation] {casc-had-last-bell.csv};
+    \addplot[quimb] table[x=qubit-number, y=casc-had-last-bell-avg:quimb-simulation] {casc-had-last-bell.csv};
+
+    \nextgroupplot[
+    xlabel={Number of qubits},
+    ylabel={Running time (seconds)},
+    axis y line*=left,
+    title={One Hadamard in parallel with Deutsch-Jozsa},
+    mark repeat=4,
+    execute at end plot visualization/.append={%
+      \xdef\savedxminhdj{\pgfkeysvalueof{/pgfplots/xmin}}%
+      \xdef\savedxmaxhdj{\pgfkeysvalueof{/pgfplots/xmax}}%
+      \xdef\savedyminhdj{\pgfkeysvalueof{/pgfplots/ymin}}%
+      \xdef\savedymaxhdj{\pgfkeysvalueof{/pgfplots/ymax}}%
+    },
+    ]
+    \addplot[fggi] table[x=qubit-number, y=had-last-dj-even-allein_opt:iso-fgg-total] {had-last-dj-even.csv};
+    \addplot[fggp] table[x=qubit-number, y=had-last-dj-even-allein_opt:iso-perpl-fgg-total] {had-last-dj-even.csv};
+    \addplot[qiskit] table[x=qubit-number, y=had-last-dj-even-avg:qiskit-simulation] {had-last-dj-even.csv};
+    \addplot[cirq] table[x=qubit-number, y=had-last-dj-even-avg:qsim-simulation] {had-last-dj-even.csv};
+    \addplot[quimb] table[x=qubit-number, y=had-last-dj-even-avg:quimb-simulation] {had-last-dj-even.csv};
+  \end{groupplot}
+
+  \begin{axis}[
+    at={(b1 c1r1.south west)},
+    anchor=south west,
+    ymode=log,
+    xmin=\savedxminbell,
+    xmax=\savedxmaxbell,
+    ymin=exp(\savedyminbell),
+    ymax=exp(\savedymaxbell),
+    hide axis,
+    ]
+    \addplot[qtorch] table[x=qubit-number, y=bell-state-avg:qtorch-simulation-full] {bell-state.csv};
+  \end{axis}
+
+
+  \begin{axis}[
+    at={(b1 c2r1.south west)},
+    anchor=south west,
+    ymode=log,
+    xmin=\savedxminctb,
+    xmax=\savedxmaxctb,
+    ymin=exp(\savedymaxctb),
+    ymax=exp(\savedymaxctb),
+    hide axis,
+    ]
+    \addplot[qtorch] table[x=qubit-number, y=casc-two-n-bell-state-avg:qtorch-simulation-full] {casc-two-n-bell-state.csv};
+  \end{axis}
+
+  \begin{axis}[
+    at={(b1 c1r2.south west)},
+    anchor=south west,
+    ymode=log,
+    xmin=\savedxminchfb,
+    xmax=\savedxmaxchfb,
+    ymin=exp(\savedyminchfb),
+    ymax=exp(\savedymaxchfb),
+    hide axis,
+    ]
+    \addplot[qtorch] table[x=qubit-number, y=casc-had-first-bell-avg:qtorch-simulation-full] {casc-had-first-bell.csv};
+  \end{axis}
+
+  \begin{axis}[
+    at={(b1 c2r2.south west)},
+    anchor=south west,
+    ymode=log,
+    xmin=\savedxminchlb,
+    xmax=\savedxmaxchlb,
+    ymin=exp(\savedyminchlb),
+    ymax=exp(\savedymaxchlb),
+    hide axis,
+    ]
+    \addplot[qtorch] table[x=qubit-number, y=casc-had-last-bell-avg:qtorch-simulation-full] {casc-had-last-bell.csv};
+  \end{axis}
+
+  \begin{axis}[
+    at={(b1 c1r3.south west)},
+    anchor=south west,
+    ymode=log,
+    xmin=\savedxminhdj,
+    xmax=\savedxmaxhdj,
+    ymin=exp(\savedyminhdj),
+    ymax=exp(\savedymaxhdj),
+    hide axis,
+    ]
+    \addplot[qtorch] table[x=qubit-number, y=had-last-dj-even-avg:qtorch-simulation-full] {had-last-dj-even.csv};
+  \end{axis}
+
+  \begin{axis}[
+    at={(b1 c1r1.south west)},
+    anchor=south west,
+    axis x line=none,
+    axis y line*=right,
+    ymode=log,
+    ]
+    \addplot[gates] table[x=qubit-number, y=gate-number] {bell-state.csv};
+  \end{axis}
+
+  \begin{axis}[
+    at={(b1 c2r1.south west)},
+    anchor=south west,
+    axis x line=none,
+    axis y line*=right,
+    ymode=log,
+    ylabel={Number of gates},
+    ]
+    \addplot[gates] table[x=qubit-number, y=gate-number] {casc-two-n-bell-state.csv};
+  \end{axis}
+
+  \begin{axis}[
+    at={(b1 c1r2.south west)},
+    anchor=south west,
+    axis x line=none,
+    axis y line*=right,
+    ymode=log,
+    ]
+    \addplot[gates] table[x=qubit-number, y=gate-number] {casc-had-first-bell.csv};
+  \end{axis}
+
+  \begin{axis}[
+    at={(b1 c2r2.south west)},
+    anchor=south west,
+    axis x line=none,
+    axis y line*=right,
+    ymode=log,
+    ylabel={Number of gates},
+    ]
+    \addplot[gates] table[x=qubit-number, y=gate-number] {casc-had-last-bell.csv};
+  \end{axis}
+
+  \begin{axis}[
+    at={(b1 c1r3.south west)},
+    anchor=south west,
+    axis x line=none,
+    axis y line*=right,
+    ymode=log,
+    ylabel={Number of gates},
+    ]
+    \addplot[gates] table[x=qubit-number, y=gate-number] {had-last-dj-even.csv};
+  \end{axis}
+
+  \path (b1 c1r3.south west) -- (b1 c2r3.south east) coordinate[midway] (lower_middle);
+  \node[anchor=north, yshift=-2.5em] at (lower_middle) {\ref{benchmark1}};
+\end{tikzpicture}
+\end{center}
+\caption{Simulation and compilation times of our FGG-based simulators, comparing different sets of optimizations.
+  For each plot, the $x$-axis shows the number of qubits, and the $y$-axis shows run time in seconds (continued).}
+\label{fig:bench-2}
+\end{figure}
+
+\newpage
+\pagestyle{plain}
+\begin{figure}
+\pgfplotsset{
+  small,
+  compat=1.5,
+  every tick label/.append style={font=\tiny},
+  label style={font=\footnotesize},
+  title style={font=\footnotesize},
+  ymode=log,
+  table/col sep=comma,
+  colormap/Paired-10,
+  % styles
+  fggi/.style={
+    color=Set1-A,
+    mark=*,
+    solid,
+    mark size=1.8pt,
+    mark options={draw=Paired-F},
+  },
+  fggp/.style={
+    color=Set1-B,
+    mark=square*,
+    solid,
+    mark size=1.8pt,
+    mark options={draw=Paired-B,rotate=45},
+  },
+  qiskit/.style={
+    color=Set1-C,
+    mark=Mercedes star,
+    solid,
+    mark size=1.8pt,
+  },
+  cirq/.style={
+    color=Set1-D,
+    mark=x,
+    solid,
+    mark size=1.8pt,
+  },
+  qtorch/.style={
+    color=Set1-E,
+    mark=star,
+    solid,
+    mark size=1.8pt,
+  },
+  quimb/.style={
+    color=Set1-H,
+    mark=pentagon,
+    solid,
+    mark size=1.8pt,
+  },
+  gates/.style={
+    color=gray,
+    mark=none,
+    dotted,
+    semithick,
+  },
+}
+\begin{center}
+\begin{tikzpicture}
+  \begin{groupplot}[group style={group size=2 by 2, group name=b1},
+    group/horizontal sep=4em,
+    group/vertical sep=5em]
+    \nextgroupplot[
+    xlabel={Number of qubits},
+    ylabel={Running time (seconds)},
+    axis y line*=left,
+    title={Hadamard in parallel with $N$-qubit Bell},
+    legend style={
+      at={(0.5,-0.1)},
+      anchor=north,legend columns=-1,
+      font=\footnotesize,
+      draw=none,
+      legend columns=2,
+      legend cell align={left},
+    },
+    legend to name=benchmark1,
+    mark repeat=4,
+    execute at end plot visualization/.append={%
+      \xdef\savedxminhlnb{\pgfkeysvalueof{/pgfplots/xmin}}%
+      \xdef\savedxmaxhlnb{\pgfkeysvalueof{/pgfplots/xmax}}%
+      \xdef\savedyminhlnb{\pgfkeysvalueof{/pgfplots/ymin}}%
+      \xdef\savedymaxhlnb{\pgfkeysvalueof{/pgfplots/ymax}}%
+    },
+    ]
+    \addplot[fggi] table[x=qubit-number, y=para-n-had-last-n-bell-allein_opt:iso-fgg-total] {para-n-had-last-n-bell.csv};
+    \addplot[fggp, mark phase=3] table[x=qubit-number, y=para-n-had-last-n-bell-allein_opt:iso-perpl-fgg-total] {para-n-had-last-n-bell.csv};
+    \addplot[qiskit] table[x=qubit-number, y=para-n-had-last-n-bell-avg:qiskit-simulation] {para-n-had-last-n-bell.csv};
+    \addplot[cirq] table[x=qubit-number, y=para-n-had-last-n-bell-avg:qsim-simulation] {para-n-had-last-n-bell.csv};
+    \addplot[quimb] table[x=qubit-number, y=para-n-had-last-n-bell-avg:quimb-simulation] {para-n-had-last-n-bell.csv};
+
+    \addlegendentry{FGG simulation with $\expand$ and $\bigl[\begin{smallmatrix}1&0\\0&1\end{smallmatrix}\bigr]$ opts};
+    \addlegendentry{FGG simulation with $\expand$ and $\bigl[\begin{smallmatrix}1&0\\0&1\end{smallmatrix}\bigr]$ opts, through PERPL};
+    \addlegendentry{Qiskit};
+    \addlegendentry{qsim};
+    \addlegendentry{quimb};
+    \addlegendimage{qtorch};
+    \addlegendentry{qTorch};
+    \addlegendimage{gates};
+    \addlegendentry{Number of gates};
+
+    \nextgroupplot[
+    xlabel={Number of qubits},
+    axis y line*=left,
+    title={Hadamard in parallel with 10-qubit Bell},
+    mark repeat=8,
+    execute at end plot visualization/.append={%
+      \xdef\savedxminphadtb{\pgfkeysvalueof{/pgfplots/xmin}}%
+      \xdef\savedxmaxphadtb{\pgfkeysvalueof{/pgfplots/xmax}}%
+      \xdef\savedyminphadtb{\pgfkeysvalueof{/pgfplots/ymin}}%
+      \xdef\savedymaxphadtb{\pgfkeysvalueof{/pgfplots/ymax}}%
+    },
+    ]
+    \addplot[fggi] table[x=qubit-number, y=para-n-had-last-ten-qubit-bell-allein_opt:iso-fgg-total] {para-n-had-last-ten-qubit-bell.csv};
+    \addplot[fggp] table[x=qubit-number, y=para-n-had-last-ten-qubit-bell-allein_opt:iso-perpl-fgg-total] {para-n-had-last-ten-qubit-bell.csv};
+    \addplot[qiskit] table[x=qubit-number, y=para-n-had-last-ten-qubit-bell-avg:qiskit-simulation] {para-n-had-last-ten-qubit-bell.csv};
+    \addplot[cirq] table[x=qubit-number, y=para-n-had-last-ten-qubit-bell-avg:qsim-simulation] {para-n-had-last-ten-qubit-bell.csv};
+    \addplot[quimb] table[x=qubit-number, y=para-n-had-last-ten-qubit-bell-avg:quimb-simulation] {para-n-had-last-ten-qubit-bell.csv};
+
+    \nextgroupplot[
+    xlabel={Number of qubits},
+    ylabel={Running time (seconds)},
+    axis y line*=left,
+    title={$N$ 10-qubit Bell in parallel},
+    execute at end plot visualization/.append={%
+      \xdef\savedxminntbell{\pgfkeysvalueof{/pgfplots/xmin}}%
+      \xdef\savedxmaxntbell{\pgfkeysvalueof{/pgfplots/xmax}}%
+      \xdef\savedyminntbell{\pgfkeysvalueof{/pgfplots/ymin}}%
+      \xdef\savedymaxntbell{\pgfkeysvalueof{/pgfplots/ymax}}%
+    },
+    ]
+    \addplot[fggi] table[x=qubit-number, y=para-n-ten-qubit-bell-allein_opt:iso-fgg-total] {para-n-ten-qubit-bell.csv};
+    \addplot[fggp, mark phase=3] table[x=qubit-number, y=para-n-ten-qubit-bell-allein_opt:iso-perpl-fgg-total] {para-n-ten-qubit-bell.csv};
+    \addplot[qiskit] table[x=qubit-number, y=para-n-ten-qubit-bell-avg:qiskit-simulation] {para-n-ten-qubit-bell.csv};
+    \addplot[cirq] table[x=qubit-number, y=para-n-ten-qubit-bell-avg:qsim-simulation] {para-n-ten-qubit-bell.csv};
+    \addplot[quimb] table[x=qubit-number, y=para-n-ten-qubit-bell-avg:quimb-simulation] {para-n-ten-qubit-bell.csv};
+
+    \nextgroupplot[
+    xlabel={Number of qubits},
+    axis y line*=left,
+    title={Two $N$-qubit Bell in parallel},
+    mark repeat=4,
+    execute at end plot visualization/.append={%
+      \xdef\savedxmintnbell{\pgfkeysvalueof{/pgfplots/xmin}}%
+      \xdef\savedxmaxtnbell{\pgfkeysvalueof{/pgfplots/xmax}}%
+      \xdef\savedymintnbell{\pgfkeysvalueof{/pgfplots/ymin}}%
+      \xdef\savedymaxtnbell{\pgfkeysvalueof{/pgfplots/ymax}}%
+    },
+    ]
+    \addplot[fggi] table[x=qubit-number, y=para-two-n-bell-state-allein_opt:iso-fgg-total] {para-two-n-bell-state.csv};
+    \addplot[fggp] table[x=qubit-number, y=para-two-n-bell-state-allein_opt:iso-perpl-fgg-total] {para-two-n-bell-state.csv};
+    \addplot[qiskit] table[x=qubit-number, y=para-two-n-bell-state-avg:qiskit-simulation] {para-two-n-bell-state.csv};
+    \addplot[cirq] table[x=qubit-number, y=para-two-n-bell-state-avg:qsim-simulation] {para-two-n-bell-state.csv};
+    \addplot[quimb] table[x=qubit-number, y=para-two-n-bell-state-avg:quimb-simulation] {para-two-n-bell-state.csv};
+  \end{groupplot}
+
+  \begin{axis}[
+    at={(b1 c1r1.south west)},
+    anchor=south west,
+    ymode=log,
+    xmin=\savedxminhlnb,
+    xmax=\savedxmaxhlnb,
+    ymin=exp(\savedyminhlnb),
+    ymax=exp(\savedymaxhlnb),
+    hide axis,
+    ]
+    \addplot[qtorch] table[x=qubit-number, y=para-n-had-last-n-bell-avg:qtorch-simulation-full] {para-n-had-last-n-bell.csv};
+  \end{axis}
+
+  \begin{axis}[
+    at={(b1 c2r1.south west)},
+    anchor=south west,
+    xmin=\savedxminphadtb,
+    xmax=\savedxmaxphadtb,
+    ymin=exp(\savedyminphadtb),
+    ymax=exp(\savedymaxphadtb),
+    ymode=log,
+    hide axis,
+    ]
+    \addplot[qtorch] table[x=qubit-number, y=para-n-had-last-ten-qubit-bell-avg:qtorch-simulation-full] {para-n-had-last-ten-qubit-bell.csv};
+  \end{axis}
+
+  \begin{axis}[
+    at={(b1 c1r2.south west)},
+    anchor=south west,
+    ymode=log,
+    xmin=\savedxminntbell,
+    xmax=\savedxmaxntbell,
+    ymin=exp(\savedyminntbell),
+    ymax=exp(\savedymaxntbell),
+    hide axis,
+    ]
+    \addplot[qtorch] table[x=qubit-number, y=para-n-ten-qubit-bell-avg:qtorch-simulation-full] {para-n-ten-qubit-bell.csv};
+  \end{axis}
+
+  \begin{axis}[
+    at={(b1 c2r2.south west)},
+    anchor=south west,
+    ymode=log,
+    xmin=\savedxmintnbell,
+    xmax=\savedxmaxtnbell,
+    ymin=exp(\savedymintnbell),
+    ymax=exp(\savedymaxtnbell),
+    hide axis,
+    ]
+    \addplot[qtorch] table[x=qubit-number, y=para-two-n-bell-state-avg:qtorch-simulation-full] {para-two-n-bell-state.csv};
+  \end{axis}
+
+
+  \begin{axis}[
+    at={(b1 c1r1.south west)},
+    anchor=south west,
+    axis x line=none,
+    axis y line*=right,
+    ymode=log,
+    ]
+    \addplot[gates] table[x=qubit-number, y=gate-number] {para-n-had-last-n-bell.csv};
+  \end{axis}
+
+  \begin{axis}[
+    at={(b1 c2r1.south west)},
+    anchor=south west,
+    axis x line=none,
+    axis y line*=right,
+    ymode=log,
+    ylabel={Number of gates},
+    ]
+    \addplot[gates] table[x=qubit-number, y=gate-number] {para-n-had-last-ten-qubit-bell.csv};
+  \end{axis}
+
+  \begin{axis}[
+    at={(b1 c1r2.south west)},
+    anchor=south west,
+    axis x line=none,
+    axis y line*=right,
+    ymode=log,
+    ]
+    \addplot[gates] table[x=qubit-number, y=gate-number] {para-n-ten-qubit-bell.csv};
+  \end{axis}
+
+  \begin{axis}[
+    at={(b1 c2r2.south west)},
+    anchor=south west,
+    axis x line=none,
+    axis y line*=right,
+    ymode=log,
+    ylabel={Number of gates},
+    ]
+    \addplot[gates] table[x=qubit-number, y=gate-number] {para-two-n-bell-state.csv};
+  \end{axis}
+
+  \path (b1 c1r2.south west) -- (b1 c2r2.south east) coordinate[midway] (lower_middle);
+  \node[anchor=north, yshift=-2.5em] at (lower_middle) {\ref{benchmark1}};
+\end{tikzpicture}
+\end{center}
+\caption{Simulation and compilation times of our FGG-based simulators, comparing different sets of optimizations.
+  For each plot, the $x$-axis shows the number of qubits, and the $y$-axis shows run time in seconds (continued).}
+\label{fig:bench-2}
+\end{figure}
+
+\newpage
+\pagestyle{plain}
+\begin{figure}
+\pgfplotsset{
+  small,
+  compat=1.5,
+  every tick label/.append style={font=\tiny},
+  label style={font=\footnotesize},
+  title style={font=\footnotesize},
+  ytick pos=left,
+  ymode=log,
+  table/col sep=comma,
+  clip marker paths=false,
+  colormap/BuGn-9,
+  cycle list/Set1-9,
+  % combine it with 'mark list*':
+  cycle multiindex* list={
+    mark list*\nextlist
+    Set1-9\nextlist
+  },
+  colormap/Paired-10,
+  % styles
+  fggi-all/.style={
+    color=RdYlGn-B,
+    mark=*,
+    solid,
+    mark size=1.5pt,
+  },
+  fggi-exp/.style={
+    color=RdYlGn-N,
+    mark=halfcircle*,
+    solid,
+    mark size=1.5pt,
+    mark options={rotate=90},
+  },
+  fggi-id/.style={
+    color=Set1-B,
+    mark=halfcircle*,
+    solid,
+    mark size=1.5pt,
+    mark options={rotate=-90},
+  },
+  fggi-comp/.style={
+    color=gray,
+    mark=none,
+    dotted,
+    semithick,
+  },
+  fggp-all/.style={
+    color=Set1-B,
+    mark=square*,
+    solid,
+    mark size=1.5pt,
+    mark options={rotate=45},
+  },
+  fggp-exp/.style={
+    color=PuOr-B,
+    mark=halfsquare left*,
+    solid,
+    mark size=2pt,
+  },
+  fggp-id/.style={
+    color=PuOr-N,
+    mark=halfsquare right*,
+    solid,
+    mark size=2pt,
+  },
+  fggp-comp/.style={
+    color=YlGnBu-H,
+    mark=square,
+    solid,
+    mark size=1.5pt,
+    mark options={fill=white,rotate=45},
+  },
+}
+\begin{center}
+\begin{tikzpicture}
+  \begin{groupplot}[group style={group size=2 by 3, group name=b1},
+    group/horizontal sep=4em,
+    group/vertical sep=5em]
+    \nextgroupplot[
+    xlabel={Number of qubits},
+    ylabel={Running time (seconds)},
+    % axis y line*=left,
+    title={Hadamard to the last qubit},
+    legend style={
+      at={(0.5,-0.1)},
+      anchor=north,legend columns=-1,
+      font=\footnotesize,
+      draw=none,
+      legend columns=2,
+      legend cell align={left},
+    },
+    legend to name=benchmark2,
+    mark repeat=8,
+    ]
+    \addplot[fggi-all] table[x=qubit-number, y=had-last-qubit-allein_opt:iso-fgg-simulation] {had-last-qubit.csv};
+    \addplot[fggi-exp] table[x=qubit-number, y=had-last-qubit-ein_opt:iso-fgg-simulation] {had-last-qubit.csv};
+    \addplot[fggi-id] table[x=qubit-number, y=had-last-qubit-no_opt:iso-fgg-simulation] {had-last-qubit.csv};
+    \addlegendentry{FGG solver with $\expand$ and $\bigl[\begin{smallmatrix}1&0\\0&1\end{smallmatrix}\bigr]$ opts};
+    \addlegendentry{FGG solver with $\expand$ opt};
+    \addlegendentry{FGG solver without any opt};
+    \addlegendimage{fggi-comp};
+    \addlegendentry{FGG compiled from ISO};
+
+    \nextgroupplot[
+    xlabel={Number of qubits},
+    % axis y line*=left,
+    title={Deutsch-Jozsa with the even oracle},
+    mark repeat=4,
+    ]
+    \addplot[fggi-all] table[x=qubit-number, y=deutsch-jozsa-is-even-simplified-allein_opt:iso-fgg-simulation] {deutsch-jozsa-is-even-simplified.csv};
+    \addplot[fggi-exp] table[x=qubit-number, y=deutsch-jozsa-is-even-simplified-ein_opt:iso-fgg-simulation] {deutsch-jozsa-is-even-simplified.csv};
+    \addplot[fggi-id] table[x=qubit-number, y=deutsch-jozsa-is-even-simplified-no_opt:iso-fgg-simulation] {deutsch-jozsa-is-even-simplified.csv};
+
+    \nextgroupplot[
+    xlabel={Number of qubits},
+    ylabel={Running time (seconds)},
+    % axis y line*=left,
+    title={Simon's},
+    mark repeat=1,
+    ]
+    \addplot[fggi-all]  table[x=qubit-number, y=simon-allein_opt:iso-fgg-simulation] {simon.csv};
+    \addplot[fggi-exp]  table[x=qubit-number, y=simon-ein_opt:iso-fgg-simulation] {simon.csv};
+    \addplot[fggi-id]   table[x=qubit-number, y=simon-no_opt:iso-fgg-simulation] {simon.csv};
+
+    \nextgroupplot[
+    xlabel={Number of qubits},
+    % axis y line*=left,
+    title={Decomposed $C^{n}(X)$},
+    mark repeat=2,
+    ]
+    \addplot[fggi-all]  table[x=qubit-number, y=mcx-allein_opt:iso-fgg-simulation] {mcx.csv};
+    \addplot[fggi-exp]  table[x=qubit-number, y=mcx-ein_opt:iso-fgg-simulation] {mcx.csv};
+    \addplot[fggi-id]   table[x=qubit-number, y=mcx-no_opt:iso-fgg-simulation] {mcx.csv};
+
+    \nextgroupplot[
+    xlabel={Number of qubits},
+    ylabel={Running time (seconds)},
+    % axis y line*=left,
+    title={QFT},
+    mark repeat=2,
+    ]
+    \addplot[fggi-all]  table[x=qubit-number, y=qft-allein_opt:iso-fgg-simulation] {qft.csv};
+    \addplot[fggi-exp]  table[x=qubit-number, y=qft-ein_opt:iso-fgg-simulation] {qft.csv};
+    \addplot[fggi-id]   table[x=qubit-number, y=qft-no_opt:iso-fgg-simulation] {qft.csv};
+
+    \nextgroupplot[
+    xlabel={Number of qubits},
+    % axis y line*=left,
+    title={Grover},
+    mark repeat=2,
+    ]
+    \addplot[fggi-all]  table[x=qubit-number, y=grover-allein_opt:iso-fgg-simulation] {grover.csv};
+    \addplot[fggi-exp]  table[x=qubit-number, y=grover-ein_opt:iso-fgg-simulation] {grover.csv};
+    \addplot[fggi-id]   table[x=qubit-number, y=grover-no_opt:iso-fgg-simulation] {grover.csv};
+  \end{groupplot}
+
+  \begin{axis}[
+    at={(b1 c1r1.south west)},
+    anchor=south west,
+    axis x line=none,
+    axis y line*=right,
+    ymode=log,
+    ]
+    \addplot[fggi-comp] table[x=qubit-number, y=had-last-qubit-avg:iso-to-fgg] {had-last-qubit.csv};
+  \end{axis}
+
+  \begin{axis}[
+    at={(b1 c2r1.south west)},
+    anchor=south west,
+    axis x line=none,
+    axis y line*=right,
+    ymode=log,
+    ylabel={Compile time (seconds)},
+    ]
+    \addplot[fggi-comp] table[x=qubit-number, y=deutsch-jozsa-is-even-simplified-avg:iso-to-fgg] {deutsch-jozsa-is-even-simplified.csv};
+  \end{axis}
+
+  \begin{axis}[
+    at={(b1 c1r2.south west)},
+    anchor=south west,
+    axis x line=none,
+    axis y line*=right,
+    ymode=log,
+    ]
+    \addplot[fggi-comp] table[x=qubit-number, y=simon-avg:iso-to-fgg] {simon.csv};
+  \end{axis}
+
+  \begin{axis}[
+    at={(b1 c2r2.south west)},
+    anchor=south west,
+    axis x line=none,
+    axis y line*=right,
+    ymode=log,
+    ylabel={Compile time (seconds)},
+    ]
+    \addplot[fggi-comp] table[x=qubit-number, y=mcx-avg:iso-to-fgg] {mcx.csv};
+  \end{axis}
+
+  \begin{axis}[
+    at={(b1 c1r3.south west)},
+    anchor=south west,
+    axis x line=none,
+    axis y line*=right,
+    ymode=log,
+    ]
+    \addplot[fggi-comp] table[x=qubit-number, y=qft-avg:iso-to-fgg] {qft.csv};
+  \end{axis}
+
+  \begin{axis}[
+    at={(b1 c2r3.south west)},
+    anchor=south west,
+    axis x line=none,
+    axis y line*=right,
+    ymode=log,
+    ylabel={Compile time (seconds)},
+    ]
+    \addplot[fggi-comp] table[x=qubit-number, y=grover-avg:iso-to-fgg] {grover.csv};
+  \end{axis}
+
+  \path (b1 c1r3.south west) -- (b1 c2r3.south east) coordinate[midway] (lower_middle);
+  \node[anchor=north, yshift=-2.5em] at (lower_middle) {\ref{benchmark2}};
+\end{tikzpicture}
+\end{center}
+\caption{Simulation and compilation times of our FGG-based simulators, comparing different sets of optimizations.
+  For each plot, the $x$-axis shows the number of qubits, and the $y$-axis shows run time in seconds.}
+\label{fig:ablation}
+\end{figure}
+
+\newpage
+\pagestyle{plain}
+\begin{figure}
+\pgfplotsset{
+  small,
+  compat=1.5,
+  every tick label/.append style={font=\tiny},
+  label style={font=\footnotesize},
+  title style={font=\footnotesize},
+  ytick pos=left,
+  ymode=log,
+  table/col sep=comma,
+  clip marker paths=false,
+  colormap/BuGn-9,
+  cycle list/Set1-9,
+  % combine it with 'mark list*':
+  cycle multiindex* list={
+    mark list*\nextlist
+    Set1-9\nextlist
+  },
+  colormap/Paired-10,
+  % styles
+  fggi-all/.style={
+    color=RdYlGn-B,
+    mark=*,
+    solid,
+    mark size=1.5pt,
+  },
+  fggi-exp/.style={
+    color=RdYlGn-N,
+    mark=halfcircle*,
+    solid,
+    mark size=1.5pt,
+    mark options={rotate=90},
+  },
+  fggi-id/.style={
+    color=Set1-B,
+    mark=halfcircle*,
+    solid,
+    mark size=1.5pt,
+    mark options={rotate=-90},
+  },
+  fggi-comp/.style={
+    color=gray,
+    mark=none,
+    dotted,
+    semithick,
+  },
+  fggp-all/.style={
+    color=Set1-B,
+    mark=square*,
+    solid,
+    mark size=1.5pt,
+    mark options={rotate=45},
+  },
+  fggp-exp/.style={
+    color=PuOr-B,
+    mark=halfsquare left*,
+    solid,
+    mark size=2pt,
+  },
+  fggp-id/.style={
+    color=PuOr-N,
+    mark=halfsquare right*,
+    solid,
+    mark size=2pt,
+  },
+  fggp-comp/.style={
+    color=YlGnBu-H,
+    mark=square,
+    solid,
+    mark size=1.5pt,
+    mark options={fill=white,rotate=45},
+  },
+}
+\begin{center}
+\begin{tikzpicture}
+  \begin{groupplot}[group style={group size=2 by 3, group name=b1},
+    group/horizontal sep=4em,
+    group/vertical sep=5em]
+    \nextgroupplot[
+    xlabel={Number of qubits},
+    ylabel={Running time (seconds)},
+    % axis y line*=left,
+    title={Bell state},
+    legend style={
+      at={(0.5,-0.1)},
+      anchor=north,legend columns=-1,
+      font=\footnotesize,
+      draw=none,
+      legend columns=2,
+      legend cell align={left},
+    },
+    legend to name=benchmark3,
+    mark repeat=4,
+    ]
+    \addplot[fggi-all] table[x=qubit-number, y=bell-state-allein_opt:iso-fgg-simulation] {bell-state.csv};
+    \addplot[fggi-exp] table[x=qubit-number, y=bell-state-ein_opt:iso-fgg-simulation] {bell-state.csv};
+    \addplot[fggi-id] table[x=qubit-number, y=bell-state-no_opt:iso-fgg-simulation] {bell-state.csv};
+    \addlegendentry{FGG solver with $\expand$ and $\bigl[\begin{smallmatrix}1&0\\0&1\end{smallmatrix}\bigr]$ opts};
+    \addlegendentry{FGG solver with $\expand$ opt};
+    \addlegendentry{FGG solver without any opt};
+    \addlegendimage{fggi-comp};
+    \addlegendentry{FGG compiled from ISO};
+
+    \nextgroupplot[
+    xlabel={Number of qubits},
+    % axis y line*=left,
+    title={Two $N$-qubit Bell in cascade},
+    mark repeat=4,
+    ]
+    \addplot[fggi-all] table[x=qubit-number, y=casc-two-n-bell-state-allein_opt:iso-fgg-simulation] {casc-two-n-bell-state.csv};
+    \addplot[fggi-exp] table[x=qubit-number, y=casc-two-n-bell-state-ein_opt:iso-fgg-simulation] {casc-two-n-bell-state.csv};
+    \addplot[fggi-id] table[x=qubit-number, y=casc-two-n-bell-state-no_opt:iso-fgg-simulation] {casc-two-n-bell-state.csv};
+
+    \nextgroupplot[
+    xlabel={Number of qubits},
+    ylabel={Running time (seconds)},
+    % axis y line*=left,
+    title={Hadamard to the first qubit before Bell},
+    mark repeat=1,
+    ]
+    \addplot[fggi-all]  table[x=qubit-number, y=casc-had-first-bell-allein_opt:iso-fgg-simulation] {casc-had-first-bell.csv};
+    \addplot[fggi-exp]  table[x=qubit-number, y=casc-had-first-bell-ein_opt:iso-fgg-simulation] {casc-had-first-bell.csv};
+    \addplot[fggi-id]   table[x=qubit-number, y=casc-had-first-bell-no_opt:iso-fgg-simulation] {casc-had-first-bell.csv};
+
+    \nextgroupplot[
+    xlabel={Number of qubits},
+    % axis y line*=left,
+    title={Hadamard to the last qubit before Bell},
+    mark repeat=2,
+    ]
+    \addplot[fggi-all]  table[x=qubit-number, y=casc-had-last-bell-allein_opt:iso-fgg-simulation] {casc-had-last-bell.csv};
+    \addplot[fggi-exp]  table[x=qubit-number, y=casc-had-last-bell-ein_opt:iso-fgg-simulation] {casc-had-last-bell.csv};
+    \addplot[fggi-id]   table[x=qubit-number, y=casc-had-last-bell-no_opt:iso-fgg-simulation] {casc-had-last-bell.csv};
+
+    \nextgroupplot[
+    xlabel={Number of qubits},
+    ylabel={Running time (seconds)},
+    % axis y line*=left,
+    title={One Hadamard in parallel with Deutsch-Jozsa},
+    mark repeat=2,
+    ]
+    \addplot[fggi-all]  table[x=qubit-number, y=had-last-dj-even-allein_opt:iso-fgg-simulation] {had-last-dj-even.csv};
+    \addplot[fggi-exp]  table[x=qubit-number, y=had-last-dj-even-ein_opt:iso-fgg-simulation] {had-last-dj-even.csv};
+    \addplot[fggi-id]   table[x=qubit-number, y=had-last-dj-even-no_opt:iso-fgg-simulation] {had-last-dj-even.csv};
+  \end{groupplot}
+
+  \begin{axis}[
+    at={(b1 c1r1.south west)},
+    anchor=south west,
+    axis x line=none,
+    axis y line*=right,
+    ymode=log,
+    ]
+    \addplot[fggi-comp] table[x=qubit-number, y=bell-state-avg:iso-to-fgg] {bell-state.csv};
+  \end{axis}
+
+  \begin{axis}[
+    at={(b1 c2r1.south west)},
+    anchor=south west,
+    axis x line=none,
+    axis y line*=right,
+    ymode=log,
+    ylabel={Compile time (seconds)},
+    ]
+    \addplot[fggi-comp] table[x=qubit-number, y=casc-two-n-bell-state-avg:iso-to-fgg] {casc-two-n-bell-state.csv};
+  \end{axis}
+
+  \begin{axis}[
+    at={(b1 c1r2.south west)},
+    anchor=south west,
+    axis x line=none,
+    axis y line*=right,
+    ymode=log,
+    ]
+    \addplot[fggi-comp] table[x=qubit-number, y=casc-had-first-bell-avg:iso-to-fgg] {casc-had-first-bell.csv};
+  \end{axis}
+
+  \begin{axis}[
+    at={(b1 c2r2.south west)},
+    anchor=south west,
+    axis x line=none,
+    axis y line*=right,
+    ymode=log,
+    ylabel={Compile time (seconds)},
+    ]
+    \addplot[fggi-comp] table[x=qubit-number, y=casc-had-last-bell-avg:iso-to-fgg] {casc-had-last-bell.csv};
+  \end{axis}
+
+  \begin{axis}[
+    at={(b1 c1r3.south west)},
+    anchor=south west,
+    axis x line=none,
+    axis y line*=right,
+    ylabel={Compile time (seconds)},
+    ymode=log,
+    ]
+    \addplot[fggi-comp] table[x=qubit-number, y=had-last-dj-even-avg:iso-to-fgg] {had-last-dj-even.csv};
+  \end{axis}
+
+  \path (b1 c1r3.south west) -- (b1 c2r3.south east) coordinate[midway] (lower_middle);
+  \node[anchor=north, yshift=-2.5em] at (lower_middle) {\ref{benchmark3}};
+\end{tikzpicture}
+\end{center}
+\caption{Simulation and compilation times of our FGG-based simulators, comparing different sets of optimizations.
+  For each plot, the $x$-axis shows the number of qubits, and the $y$-axis shows run time in seconds (continued).}
+\label{fig:ablation}
+\end{figure}
+
+\newpage
+\pagestyle{plain}
+\begin{figure}
+\pgfplotsset{
+  small,
+  compat=1.5,
+  every tick label/.append style={font=\tiny},
+  label style={font=\footnotesize},
+  title style={font=\footnotesize},
+  ytick pos=left,
+  ymode=log,
+  table/col sep=comma,
+  clip marker paths=false,
+  colormap/BuGn-9,
+  cycle list/Set1-9,
+  % combine it with 'mark list*':
+  cycle multiindex* list={
+    mark list*\nextlist
+    Set1-9\nextlist
+  },
+  colormap/Paired-10,
+  % styles
+  fggi-all/.style={
+    color=RdYlGn-B,
+    mark=*,
+    solid,
+    mark size=1.5pt,
+  },
+  fggi-exp/.style={
+    color=RdYlGn-N,
+    mark=halfcircle*,
+    solid,
+    mark size=1.5pt,
+    mark options={rotate=90},
+  },
+  fggi-id/.style={
+    color=Set1-B,
+    mark=halfcircle*,
+    solid,
+    mark size=1.5pt,
+    mark options={rotate=-90},
+  },
+  fggi-comp/.style={
+    color=gray,
+    mark=none,
+    dotted,
+    semithick,
+  },
+  fggp-all/.style={
+    color=Set1-B,
+    mark=square*,
+    solid,
+    mark size=1.5pt,
+    mark options={rotate=45},
+  },
+  fggp-exp/.style={
+    color=PuOr-B,
+    mark=halfsquare left*,
+    solid,
+    mark size=2pt,
+  },
+  fggp-id/.style={
+    color=PuOr-N,
+    mark=halfsquare right*,
+    solid,
+    mark size=2pt,
+  },
+  fggp-comp/.style={
+    color=YlGnBu-H,
+    mark=square,
+    solid,
+    mark size=1.5pt,
+    mark options={fill=white,rotate=45},
+  },
+}
+\begin{center}
+\begin{tikzpicture}
+  \begin{groupplot}[group style={group size=2 by 2, group name=b1},
+    group/horizontal sep=4em,
+    group/vertical sep=5em]
+    \nextgroupplot[
+    xlabel={Number of qubits},
+    ylabel={Running time (seconds)},
+    % axis y line*=left,
+    title={Hadamard in parallel with $N$-qubit Bell},
+    legend style={
+      at={(0.5,-0.1)},
+      anchor=north,legend columns=-1,
+      font=\footnotesize,
+      draw=none,
+      legend columns=2,
+      legend cell align={left},
+    },
+    legend to name=benchmark4,
+    mark repeat=4,
+    ]
+    \addplot[fggi-all] table[x=qubit-number, y=para-n-had-last-n-bell-allein_opt:iso-fgg-simulation] {para-n-had-last-n-bell.csv};
+    \addplot[fggi-exp] table[x=qubit-number, y=para-n-had-last-n-bell-ein_opt:iso-fgg-simulation] {para-n-had-last-n-bell.csv};
+    \addplot[fggi-id] table[x=qubit-number, y=para-n-had-last-n-bell-no_opt:iso-fgg-simulation] {para-n-had-last-n-bell.csv};
+    \addlegendentry{FGG solver with $\expand$ and $\bigl[\begin{smallmatrix}1&0\\0&1\end{smallmatrix}\bigr]$ opts};
+    \addlegendentry{FGG solver with $\expand$ opt};
+    \addlegendentry{FGG solver without any opt};
+    \addlegendimage{fggi-comp};
+    \addlegendentry{FGG compiled from ISO};
+
+    \nextgroupplot[
+    xlabel={Number of qubits},
+    % axis y line*=left,
+    title={Hadamard in parallel with 10-qubit Bell},
+    mark repeat=4,
+    ]
+    \addplot[fggi-all] table[x=qubit-number, y=para-n-had-last-ten-qubit-bell-allein_opt:iso-fgg-simulation] {para-n-had-last-ten-qubit-bell.csv};
+    \addplot[fggi-exp] table[x=qubit-number, y=para-n-had-last-ten-qubit-bell-ein_opt:iso-fgg-simulation] {para-n-had-last-ten-qubit-bell.csv};
+    \addplot[fggi-id] table[x=qubit-number, y=para-n-had-last-ten-qubit-bell-no_opt:iso-fgg-simulation] {para-n-had-last-ten-qubit-bell.csv};
+
+    \nextgroupplot[
+    xlabel={Number of qubits},
+    ylabel={Running time (seconds)},
+    % axis y line*=left,
+    title={$N$ 10-qubit Bell in parallel},
+    mark repeat=1,
+    ]
+    \addplot[fggi-all]  table[x=qubit-number, y=para-n-ten-qubit-bell-allein_opt:iso-fgg-simulation] {para-n-ten-qubit-bell.csv};
+    \addplot[fggi-exp]  table[x=qubit-number, y=para-n-ten-qubit-bell-ein_opt:iso-fgg-simulation] {para-n-ten-qubit-bell.csv};
+    \addplot[fggi-id]   table[x=qubit-number, y=para-n-ten-qubit-bell-no_opt:iso-fgg-simulation] {para-n-ten-qubit-bell.csv};
+
+    \nextgroupplot[
+    xlabel={Number of qubits},
+    % axis y line*=left,
+    title={Two $N$-qubit Bell in parallel},
+    mark repeat=2,
+    ]
+    \addplot[fggi-all]  table[x=qubit-number, y=para-two-n-bell-state-allein_opt:iso-fgg-simulation] {para-two-n-bell-state.csv};
+    \addplot[fggi-exp]  table[x=qubit-number, y=para-two-n-bell-state-ein_opt:iso-fgg-simulation] {para-two-n-bell-state.csv};
+    \addplot[fggi-id]   table[x=qubit-number, y=para-two-n-bell-state-no_opt:iso-fgg-simulation] {para-two-n-bell-state.csv};
+  \end{groupplot}
+
+  \begin{axis}[
+    at={(b1 c1r1.south west)},
+    anchor=south west,
+    axis x line=none,
+    axis y line*=right,
+    ymode=log,
+    ]
+    \addplot[fggi-comp] table[x=qubit-number, y=para-n-had-last-n-bell-avg:iso-to-fgg] {para-n-had-last-n-bell.csv};
+  \end{axis}
+
+  \begin{axis}[
+    at={(b1 c2r1.south west)},
+    anchor=south west,
+    axis x line=none,
+    axis y line*=right,
+    ymode=log,
+    ylabel={Compile time (seconds)},
+    ]
+    \addplot[fggi-comp] table[x=qubit-number, y=para-n-had-last-ten-qubit-bell-avg:iso-to-fgg] {para-n-had-last-ten-qubit-bell.csv};
+  \end{axis}
+
+  \begin{axis}[
+    at={(b1 c1r2.south west)},
+    anchor=south west,
+    axis x line=none,
+    axis y line*=right,
+    ymode=log,
+    ]
+    \addplot[fggi-comp] table[x=qubit-number, y=para-n-ten-qubit-bell-avg:iso-to-fgg] {para-n-ten-qubit-bell.csv};
+  \end{axis}
+
+  \begin{axis}[
+    at={(b1 c2r2.south west)},
+    anchor=south west,
+    axis x line=none,
+    axis y line*=right,
+    ymode=log,
+    ylabel={Compile time (seconds)},
+    ]
+    \addplot[fggi-comp] table[x=qubit-number, y=para-two-n-bell-state-avg:iso-to-fgg] {para-two-n-bell-state.csv};
+  \end{axis}
+
+  \path (b1 c1r2.south west) -- (b1 c2r2.south east) coordinate[midway] (lower_middle);
+  \node[anchor=north, yshift=-2.5em] at (lower_middle) {\ref{benchmark4}};
+\end{tikzpicture}
+\end{center}
+\caption{Simulation and compilation times of our FGG-based simulators, comparing different sets of optimizations.
+  For each plot, the $x$-axis shows the number of qubits, and the $y$-axis shows run time in seconds (continued).}
+\label{fig:ablation}
+\end{figure}
+
+\end{document}
