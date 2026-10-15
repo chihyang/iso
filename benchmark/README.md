@@ -23,10 +23,10 @@ The benchmark scripts you run below will put the results into this directory.
 ## Check existing results
 
 Within the docker container, you can check the existing benchmark results.
-Enter the directory `result_2026_03_14`:
+Enter the directory `result_2026_10_11`:
 
 ``` shell
-cd /benchmark/result/result_2026_03_14
+cd /benchmark/result/result_2026_10_11
 ```
 
 You can see the following files:
@@ -215,7 +215,7 @@ The docker image contains everything you need to run the experiments, in the fol
 * `/workspace/iso/benchmark/benchmark_cli.py`: the benchmark CLI, see below for detailed command line arguments
 * `/workspace/iso/benchmark/run_benchmark_small.sh`: the quick script to run a partial benchmark
 * `/workspace/iso/benchmark/run_benchmark_full.sh`: the quick script to run a complete benchmark
-* `/workspace/iso/benchmark/result_2026_03_14`: the directory holding existing benchmark result data
+* `/workspace/iso/benchmark/result_2026_10_11`: the directory holding existing benchmark result data
 
 The following tools are included:
 
