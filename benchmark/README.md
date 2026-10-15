@@ -7,8 +7,17 @@ This is the documentation for the ISO benchmark.
 
 ## Pull a docker image
 
+If you download the docker image as a `.tar.gz` file from Zenodo, for example,
+`iso-benchmark-1.8-cpu.tar.gz`, you can load the docker in the following way:
+
 ``` shell
-docker pull chihyanghsin/iso-benchmark:latest-cpu
+docker load -i iso-benchmark-1.8-cpu.tar.gz
+```
+
+Alternatively, you can use Docker Hub:
+
+``` shell
+docker pull chihyanghsin/iso-benchmark:1.8-cpu
 ```
 
 ## Run a docker container
